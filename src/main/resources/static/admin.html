@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Team Token Admin</title>
+  <link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+  <main class="admin-shell">
+    <header class="admin-header">
+      <div>
+        <h1>Team Token Admin</h1>
+        <div id="pageStatus" class="meta">Loading token bindings...</div>
+      </div>
+      <a href="/">Dashboard</a>
+    </header>
+
+    <section class="panel">
+      <div class="section-title">Create Device Token</div>
+      <form id="createForm" class="form grid-form">
+        <label><span>Team ID</span><input id="teamId" required></label>
+        <label><span>User ID</span><input id="userId" required></label>
+        <label><span>Device ID</span><input id="deviceId" required></label>
+        <label><span>Device Name</span><input id="deviceName"></label>
+        <button type="submit">Create Token</button>
+      </form>
+      <div id="createdToken" class="created-token hidden"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">Device Token Bindings</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+          <tr>
+            <th>Team</th>
+            <th>User</th>
+            <th>Device</th>
+            <th>Token</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Last Seen</th>
+            <th>Actions</th>
+          </tr>
+          </thead>
+          <tbody id="tokensBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="/admin.js"></script>
+</body>
+</html>
