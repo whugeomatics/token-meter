@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$jar = Join-Path $root "target\agent-dashboard-0.1.0-SNAPSHOT.jar"
+$jar = Join-Path $root "agent-dashboard-app\target\agent-dashboard-0.1.0-SNAPSHOT.jar"
 
 if (-not (Test-Path -LiteralPath $jar)) {
     throw "Jar not found: $jar"

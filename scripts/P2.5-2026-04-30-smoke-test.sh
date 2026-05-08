@@ -2,15 +2,14 @@
 set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-JAR="$ROOT/target/agent-dashboard-0.1.0-SNAPSHOT.jar"
+JAR="$ROOT/agent-dashboard-app/target/agent-dashboard-0.1.0-SNAPSHOT.jar"
+COLLECTOR_JAR="$ROOT/agent-dashboard-collector/target/agent-dashboard-collector-0.1.0-SNAPSHOT.jar"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/agent-dashboard-p25.XXXXXX")"
 SESSIONS="$WORK/sessions/2026/04/30"
 SERVER_DB="$WORK/server-db"
 DIRECT_DB="$WORK/direct-db"
-COLLECTOR_DB="$WORK/collector-db"
 DEFAULT_HOME="$WORK/default-home"
 DEFAULT_SESSIONS="$DEFAULT_HOME/.codex/sessions/2026/04/30"
-DEFAULT_COLLECTOR_DB="$DEFAULT_HOME/.agent-dashboard/collector-sqlite"
 JSONL="$SESSIONS/rollout-team-smoke.jsonl"
 DEFAULT_JSONL="$DEFAULT_SESSIONS/rollout-default-collector.jsonl"
 PAYLOAD="$WORK/team-payload.json"
@@ -19,6 +18,13 @@ PORT=$((19080 + ($$ % 1000)))
 TOKEN="p25-smoke-token"
 BAD_TOKEN="p25-bad-token"
 ADMIN_TOKEN="p25-admin-token"
+
+test -f "$JAR"
+test -f "$COLLECTOR_JAR"
+if jar tf "$COLLECTOR_JAR" | grep -E '(^static/|local/agent/dashboard/http/|local/agent/dashboard/report/|local/agent/dashboard/store/|local/agent/dashboard/app/AgentTokenDashboardApp|DashboardServer|AdminService|AdminAuth|DashboardPage|org/sqlite/|sqlite-jdbc)' >/dev/null; then
+  printf '%s\n' "collector jar contains dashboard/database classes or static assets" >&2
+  exit 1
+fi
 
 mkdir -p "$SESSIONS" "$DEFAULT_SESSIONS"
 
@@ -37,7 +43,7 @@ JSONL
 
 created="$(java -jar "$JAR" --create-device-token --db="$SERVER_DB" --timezone=Asia/Shanghai \
   --team-id=team-smoke --user-id=user-alice --device-id=device-alice \
-  --device-name="Alice MacBook")"
+  --device-name="Alice MacBook" 2>&1)"
 printf '%s\n' "$created" | grep '"registered":true' >/dev/null
 TOKEN="$(printf '%s\n' "$created" | sed -n 's/.*"device_token":"\([^"]*\)".*/\1/p')"
 test -n "$TOKEN"
@@ -56,20 +62,24 @@ JSON
 
 java -jar "$JAR" --register-device-token --db="$DIRECT_DB" --timezone=Asia/Shanghai \
   --device-token="$TOKEN" --team-id=team-smoke --user-id=user-alice --device-id=device-alice \
-  --device-name="Alice MacBook" | grep '"registered":true' >/dev/null
-direct1="$(java -jar "$JAR" --db="$DIRECT_DB" --timezone=Asia/Shanghai --device-token="$TOKEN" --team-ingest-file="$PAYLOAD")"
+  --device-name="Alice MacBook" 2>&1 | grep '"registered":true' >/dev/null
+direct1="$(java -jar "$JAR" --db="$DIRECT_DB" --timezone=Asia/Shanghai --device-token="$TOKEN" --team-ingest-file="$PAYLOAD" 2>&1)"
 printf '%s\n' "$direct1" | grep '"accepted":2' >/dev/null
 test -f "$DIRECT_DB/agent-dashboard-team-registry.sqlite"
 test -f "$DIRECT_DB/agent-dashboard-team-2026-04.sqlite"
-direct2="$(java -jar "$JAR" --db="$DIRECT_DB" --timezone=Asia/Shanghai --device-token="$TOKEN" --team-ingest-file="$PAYLOAD")"
+direct2="$(java -jar "$JAR" --db="$DIRECT_DB" --timezone=Asia/Shanghai --device-token="$TOKEN" --team-ingest-file="$PAYLOAD" 2>&1)"
 printf '%s\n' "$direct2" | grep '"duplicate":2' >/dev/null
-direct_report="$(java -jar "$JAR" --team-report --days=30 --db="$DIRECT_DB" --timezone=Asia/Shanghai)"
+direct_report="$(java -jar "$JAR" --team-report --days=30 --db="$DIRECT_DB" --timezone=Asia/Shanghai 2>&1)"
 printf '%s\n' "$direct_report" | grep '"total_tokens":220' >/dev/null
+printf '%s\n' "$direct_report" | grep '"usage_event_count":2' >/dev/null
+printf '%s\n' "$direct_report" | grep '"avg_tokens_per_call":110.00' >/dev/null
+printf '%s\n' "$direct_report" | grep '"reasoning_ratio":0.142857' >/dev/null
+printf '%s\n' "$direct_report" | grep '"upload_health":' >/dev/null
 printf '%s\n' "$direct_report" | grep '"user_id":"user-alice"' >/dev/null
 printf '%s\n' "$direct_report" | grep '"device_id":"device-alice"' >/dev/null
-direct_conflict="$(java -jar "$JAR" --db="$DIRECT_DB" --timezone=Asia/Shanghai --device-token="$TOKEN" --team-ingest-file="$CONFLICT_PAYLOAD")"
+direct_conflict="$(java -jar "$JAR" --db="$DIRECT_DB" --timezone=Asia/Shanghai --device-token="$TOKEN" --team-ingest-file="$CONFLICT_PAYLOAD" 2>&1)"
 printf '%s\n' "$direct_conflict" | grep '"error_code":"identity_conflict"' >/dev/null
-direct_unknown="$(java -jar "$JAR" --db="$DIRECT_DB" --timezone=Asia/Shanghai --device-token="$BAD_TOKEN" --team-ingest-file="$PAYLOAD")"
+direct_unknown="$(java -jar "$JAR" --db="$DIRECT_DB" --timezone=Asia/Shanghai --device-token="$BAD_TOKEN" --team-ingest-file="$PAYLOAD" 2>&1)"
 printf '%s\n' "$direct_unknown" | grep '"error_code":"unauthorized"' >/dev/null
 
 PORT="$PORT" java -jar "$JAR" --sessions-dir="$SESSIONS" --db="$SERVER_DB" --timezone=Asia/Shanghai \
@@ -139,27 +149,25 @@ if printf '%s\n' "$admin_list_after_delete" | grep '"user_id":"user-bob"' >/dev/
   exit 1
 fi
 
-upload1="$(java -jar "$JAR" --collect-team --sessions-dir="$SESSIONS" --collector-db="$COLLECTOR_DB" \
+upload1="$(java -jar "$COLLECTOR_JAR" --collect-team --sessions-dir="$SESSIONS" \
   --timezone=Asia/Shanghai --server-url="http://127.0.0.1:$PORT" --device-token="$TOKEN" \
-  --user-id=user-alice --device-id=device-alice --days=30 --batch-size=1)"
+  --user-id=user-alice --device-id=device-alice --days=30 --batch-size=1 2>&1)"
 printf '%s\n' "$upload1" | grep '"status":"ok"' >/dev/null
 printf '%s\n' "$upload1" | grep '"accepted":2' >/dev/null
 printf '%s\n' "$upload1" | grep '"batches":2' >/dev/null
-if test -f "$COLLECTOR_DB/agent-dashboard-team-registry.sqlite"; then
-  printf '%s\n' "collector should not initialize server team registry" >&2
-  exit 1
-fi
-
-upload2="$(java -jar "$JAR" --collect-team --sessions-dir="$SESSIONS" --collector-db="$COLLECTOR_DB" \
+upload2="$(java -jar "$COLLECTOR_JAR" --collect-team --sessions-dir="$SESSIONS" \
   --timezone=Asia/Shanghai --server-url="http://127.0.0.1:$PORT" --device-token="$TOKEN" \
-  --user-id=user-alice --device-id=device-alice --days=30 --batch-size=1)"
+  --user-id=user-alice --device-id=device-alice --days=30 --batch-size=1 2>&1)"
 printf '%s\n' "$upload2" | grep '"duplicate":2' >/dev/null
 
-default_upload="$(java -Duser.home="$DEFAULT_HOME" -jar "$JAR" --collect-team \
+default_upload="$(java -Duser.home="$DEFAULT_HOME" -jar "$COLLECTOR_JAR" --collect-team \
   --timezone=Asia/Shanghai --server-url="http://127.0.0.1:$PORT" --device-token="$TOKEN" \
-  --user-id=user-alice --device-id=device-alice --days=30)"
+  --user-id=user-alice --device-id=device-alice --days=30 2>&1)"
 printf '%s\n' "$default_upload" | grep '"accepted":1' >/dev/null
-test -f "$DEFAULT_COLLECTOR_DB/agent-dashboard-2026-04.sqlite"
+if find "$DEFAULT_HOME/.agent-dashboard" -type f -name '*.sqlite' 2>/dev/null | grep . >/dev/null; then
+  printf '%s\n' "collector should not create local sqlite files" >&2
+  exit 1
+fi
 
 conflict_status="$(curl --noproxy '*' -sS -o "$WORK/conflict.json" -w '%{http_code}' \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
@@ -179,6 +187,25 @@ printf '%s\n' "$team_report" | grep '"total_tokens":250' >/dev/null
 printf '%s\n' "$team_report" | grep '"user_id":"user-alice"' >/dev/null
 printf '%s\n' "$team_report" | grep '"device_id":"device-alice"' >/dev/null
 printf '%s\n' "$team_report" | grep '"model":"gpt-5-team-smoke"' >/dev/null
+printf '%s\n' "$team_report" | grep '"teams":' >/dev/null
+printf '%s\n' "$team_report" | grep '"team_models":' >/dev/null
+printf '%s\n' "$team_report" | grep '"usage_event_count":3' >/dev/null
+printf '%s\n' "$team_report" | grep '"avg_tokens_per_session":125.00' >/dev/null
+printf '%s\n' "$team_report" | grep '"avg_tokens_per_call":83.33' >/dev/null
+printf '%s\n' "$team_report" | grep '"cache_hit_rate":0.117647' >/dev/null
+printf '%s\n' "$team_report" | grep '"reasoning_ratio":0.125000' >/dev/null
+printf '%s\n' "$team_report" | grep '"active_seconds":1' >/dev/null
+printf '%s\n' "$team_report" | grep -E '"user_id":"user-alice"[^}]*"active_seconds":1' >/dev/null
+printf '%s\n' "$team_report" | grep -E '"device_id":"device-alice"[^}]*"active_seconds":1' >/dev/null
+printf '%s\n' "$team_report" | grep -E '"model":"gpt-5-team-smoke"[^}]*"active_seconds":1' >/dev/null
+printf '%s\n' "$team_report" | grep '"upload_health":' >/dev/null
+printf '%s\n' "$team_report" | grep '"health_status":"' >/dev/null
+printf '%s\n' "$team_report" | grep '"recent_uploads":' >/dev/null
+printf '%s\n' "$team_report" | grep '"uploads":' >/dev/null
+printf '%s\n' "$team_report" | grep '"upload_date":' >/dev/null
+printf '%s\n' "$team_report" | grep '"team_id":"team-smoke"' >/dev/null
+filtered_team_report="$(curl --noproxy '*' -fsS "http://127.0.0.1:$PORT/api/team/report?days=30&team_id=team-smoke")"
+printf '%s\n' "$filtered_team_report" | grep '"total_tokens":250' >/dev/null
 
 kill "$SERVER_PID" >/dev/null 2>&1 || true
 wait "$SERVER_PID" >/dev/null 2>&1 || true

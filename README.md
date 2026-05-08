@@ -109,7 +109,7 @@ Codex sandbox note: Windows `.cmd`, `cmd.exe /c`, and local Java service startup
 After packaging:
 
 ```powershell
-java -jar target\agent-dashboard-0.1.0-SNAPSHOT.jar --port=18080
+java -jar agent-dashboard-app\target\agent-dashboard-0.1.0-SNAPSHOT.jar --port=18080
 ```
 
 Open:

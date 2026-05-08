@@ -43,6 +43,23 @@ P2 暂不要求新增公开 ingestion HTTP API。
 
 后续如需要手动刷新，可在 P2 review 后决定是否增加只绑定 `127.0.0.1` 的内部 endpoint。
 
+2026-05-01 补充：
+
+Dashboard 服务新增本机内部 endpoint：
+
+```text
+POST /api/ingest
+```
+
+用途：
+
+- Local 页面点击 Refresh 时，先触发一次 Codex session 增量采集，再重新请求 `/api/report`。
+- endpoint 复用 P2 `CodexIngestionService` 和现有 SQLite 去重规则。
+- 只随 dashboard 服务绑定在 `127.0.0.1`，不作为 team collector 或远程 ingest API。
+- 不读取、返回或持久化 prompt / response 正文。
+
+响应沿用 CLI ingestion JSON 输出结构。采集结果存在错误时返回非 2xx，页面显示 refresh 失败。
+
 ## Dashboard 启动采集
 
 2026-04-30 mac 修复后，普通 dashboard 服务启动时会先执行一次本地 Codex ingestion，再启动只读 `/api/report`。

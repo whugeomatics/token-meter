@@ -44,7 +44,12 @@ GET /api/report
     "total_tokens": 0,
     "non_cached_input_tokens": 0,
     "net_tokens": 0,
-    "cache_hit_rate": 0
+    "cache_hit_rate": 0,
+    "reasoning_ratio": 0,
+    "usage_event_count": 0,
+    "active_seconds": 0,
+    "avg_tokens_per_session": 0,
+    "avg_tokens_per_call": 0
   },
   "daily": [],
   "models": [],
@@ -82,6 +87,11 @@ GET /api/report
 - `non_cached_input_tokens`: `input_tokens - cached_input_tokens`。
 - `net_tokens`: `non_cached_input_tokens + output_tokens`。
 - `cache_hit_rate`: `cached_input_tokens / input_tokens`，当 `input_tokens = 0` 时为 `0`。
+- `reasoning_ratio`: `reasoning_output_tokens / output_tokens`，当 `output_tokens = 0` 时为 `0`。
+- `usage_event_count`: 已入库 usage event 行数，可近似表示 Codex 用量事件次数，不等同于用户提问数。
+- `active_seconds`: 聚合范围内最早 usage event 到最晚 usage event 的时间窗口秒数。
+- `avg_tokens_per_session`: `total_tokens / session_count`，当 session 数为 `0` 时为 `0`。
+- `avg_tokens_per_call`: `total_tokens / usage_event_count`，当 `usage_event_count = 0` 时为 `0`。
 
 ### daily item
 
@@ -96,7 +106,12 @@ GET /api/report
   "non_cached_input_tokens": 0,
   "net_tokens": 0,
   "cache_hit_rate": 0,
-  "session_count": 0
+  "reasoning_ratio": 0,
+  "session_count": 0,
+  "usage_event_count": 0,
+  "active_seconds": 0,
+  "avg_tokens_per_session": 0,
+  "avg_tokens_per_call": 0
 }
 ```
 
@@ -116,6 +131,9 @@ GET /api/report
   "net_tokens": 0,
   "cache_hit_rate": 0,
   "session_count": 0,
+  "usage_event_count": 0,
+  "avg_tokens_per_session": 0,
+  "avg_tokens_per_call": 0,
   "active_seconds": 0
 }
 ```
@@ -131,6 +149,8 @@ GET /api/report
   "ended_at": "2026-04-29T12:10:00+08:00",
   "active_seconds": 600,
   "models": ["gpt-5.4"],
+  "usage_event_count": 0,
+  "avg_tokens_per_call": 0,
   "input_tokens": 0,
   "cached_input_tokens": 0,
   "output_tokens": 0,

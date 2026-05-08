@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Dashboard Admin</title>
+  <link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+  <main class="admin-shell login-shell">
+    <section class="panel login-panel">
+      <h1>Admin Login</h1>
+      <form id="loginForm" class="form">
+        <label>
+          <span>Admin Token</span>
+          <input id="adminToken" type="password" autocomplete="current-password" required>
+        </label>
+        <button type="submit">Sign In</button>
+      </form>
+      <div id="loginStatus" class="status"></div>
+    </section>
+  </main>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const status = document.getElementById('loginStatus');
+      status.textContent = 'Signing in...';
+      status.className = 'status';
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_token: document.getElementById('adminToken').value })
+      });
+      if (response.ok) {
+        location.href = '/admin.html';
+        return;
+      }
+      status.textContent = 'Invalid admin token';
+      status.className = 'status error';
+    });
+  </script>
+</body>
+</html>

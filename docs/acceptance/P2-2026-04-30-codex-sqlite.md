@@ -143,7 +143,7 @@ powershell -ExecutionPolicy Bypass -File scripts\P2-2026-04-30-smoke-test.ps1
 
 - 用户真实 Windows 终端执行 `mvn -DskipTests clean package`，结果 `BUILD SUCCESS`，编译 21 个 source files，复制 2 个 resources。
 - 用户真实 Windows 终端执行 `powershell -ExecutionPolicy Bypass -File scripts\P2-2026-04-30-smoke-test.ps1`，结果 `P2 smoke test passed`。
-- SLF4J StaticLoggerBinder warning 来自 sqlite-jdbc/slf4j 依赖，当前回退 no-op logger，不影响验收。
+- SLF4J binding 使用 `slf4j-nop`，collector 和 smoke 日志不应再出现 StaticLoggerBinder warning。
 
 Codex 沙箱记录：
 
