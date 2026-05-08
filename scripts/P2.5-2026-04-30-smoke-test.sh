@@ -2,9 +2,9 @@
 set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-JAR="$ROOT/agent-dashboard-app/target/agent-dashboard-app-0.1.0-SNAPSHOT.jar"
-COLLECTOR_JAR="$ROOT/agent-dashboard-collector/target/agent-dashboard-collector-0.1.0-SNAPSHOT.jar"
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/agent-dashboard-p25.XXXXXX")"
+JAR="$ROOT/token-meter-app/target/token-meter-app-0.1.0-SNAPSHOT.jar"
+COLLECTOR_JAR="$ROOT/token-meter-collector/target/token-meter-collector-0.1.0-SNAPSHOT.jar"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/token-meter-p25.XXXXXX")"
 SESSIONS="$WORK/sessions/2026/04/30"
 SERVER_DB="$WORK/server-db"
 DIRECT_DB="$WORK/direct-db"
@@ -21,7 +21,7 @@ ADMIN_TOKEN="p25-admin-token"
 
 test -f "$JAR"
 test -f "$COLLECTOR_JAR"
-if jar tf "$COLLECTOR_JAR" | grep -E '(^static/|local/agent/dashboard/http/|local/agent/dashboard/report/|local/agent/dashboard/store/|local/agent/dashboard/app/AgentTokenDashboardApp|DashboardServer|AdminService|AdminAuth|DashboardPage|org/sqlite/|sqlite-jdbc)' >/dev/null; then
+if jar tf "$COLLECTOR_JAR" | grep -E '(^static/|local/token/meter/http/|local/token/meter/report/|local/token/meter/store/|local/token/meter/app/TokenMeterApp|DashboardServer|AdminService|AdminAuth|DashboardPage|org/sqlite/|sqlite-jdbc)' >/dev/null; then
   printf '%s\n' "collector jar contains dashboard/database classes or static assets" >&2
   exit 1
 fi
@@ -47,7 +47,7 @@ created="$(java -jar "$JAR" --create-device-token --db="$SERVER_DB" --timezone=A
 printf '%s\n' "$created" | grep '"registered":true' >/dev/null
 TOKEN="$(printf '%s\n' "$created" | sed -n 's/.*"device_token":"\([^"]*\)".*/\1/p')"
 test -n "$TOKEN"
-test -f "$SERVER_DB/agent-dashboard-team-registry.sqlite"
+test -f "$SERVER_DB/token-meter-team-registry.sqlite"
 
 cat > "$PAYLOAD" <<'JSON'
 {"collector_version":"0.1.0","client_user_id":"user-alice","client_device_id":"device-alice","events":[
@@ -66,8 +66,8 @@ java -jar "$JAR" --register-device-token --db="$DIRECT_DB" --timezone=Asia/Shang
   --device-name="Alice MacBook" 2>&1 | grep '"registered":true' >/dev/null
 direct1="$(java -jar "$JAR" --db="$DIRECT_DB" --timezone=Asia/Shanghai --device-token="$TOKEN" --team-ingest-file="$PAYLOAD" 2>&1)"
 printf '%s\n' "$direct1" | grep '"accepted":3' >/dev/null
-test -f "$DIRECT_DB/agent-dashboard-team-registry.sqlite"
-test -f "$DIRECT_DB/agent-dashboard-team-2026-04.sqlite"
+test -f "$DIRECT_DB/token-meter-team-registry.sqlite"
+test -f "$DIRECT_DB/token-meter-team-2026-04.sqlite"
 direct2="$(java -jar "$JAR" --db="$DIRECT_DB" --timezone=Asia/Shanghai --device-token="$TOKEN" --team-ingest-file="$PAYLOAD" 2>&1)"
 printf '%s\n' "$direct2" | grep '"duplicate":3' >/dev/null
 direct_report="$(java -jar "$JAR" --team-report --days=30 --db="$DIRECT_DB" --timezone=Asia/Shanghai 2>&1)"
@@ -167,7 +167,7 @@ default_upload="$(java -Duser.home="$DEFAULT_HOME" -jar "$COLLECTOR_JAR" --colle
   --timezone=Asia/Shanghai --server-url="http://127.0.0.1:$PORT" --device-token="$TOKEN" \
   --user-id=user-alice --device-id=device-alice --days=30 2>&1)"
 printf '%s\n' "$default_upload" | grep '"accepted":1' >/dev/null
-if find "$DEFAULT_HOME/.agent-dashboard" -type f -name '*.sqlite' 2>/dev/null | grep . >/dev/null; then
+if find "$DEFAULT_HOME/.token-meter" -type f -name '*.sqlite' 2>/dev/null | grep . >/dev/null; then
   printf '%s\n' "collector should not create local sqlite files" >&2
   exit 1
 fi

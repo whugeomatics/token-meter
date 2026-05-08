@@ -3,9 +3,9 @@ set -eu
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
-LABEL="${AGENT_DASHBOARD_COLLECTOR_LABEL:-local.agent.dashboard.collector}"
-INTERVAL="${AGENT_DASHBOARD_COLLECTOR_INTERVAL_SECONDS:-300}"
-CONFIG_DIR="$HOME/.agent-dashboard"
+LABEL="${TOKEN_METER_COLLECTOR_LABEL:-local.token.meter.collector}"
+INTERVAL="${TOKEN_METER_COLLECTOR_INTERVAL_SECONDS:-300}"
+CONFIG_DIR="$HOME/.token-meter"
 LOG_DIR="$CONFIG_DIR/logs"
 CONFIG="$CONFIG_DIR/collector.env"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
@@ -14,13 +14,13 @@ if [ -f "$SCRIPT_DIR/P2.5-2026-05-01-run-collector-service.sh" ]; then
 else
   RUNNER="$ROOT/scripts/P2.5-2026-05-01-run-collector-service.sh"
 fi
-if [ -f "$SCRIPT_DIR/agent-dashboard-collector-0.1.0-SNAPSHOT.jar" ]; then
-  DEFAULT_JAR="$SCRIPT_DIR/agent-dashboard-collector-0.1.0-SNAPSHOT.jar"
+if [ -f "$SCRIPT_DIR/token-meter-collector-0.1.0-SNAPSHOT.jar" ]; then
+  DEFAULT_JAR="$SCRIPT_DIR/token-meter-collector-0.1.0-SNAPSHOT.jar"
 else
-  DEFAULT_JAR="$ROOT/agent-dashboard-collector/target/agent-dashboard-collector-0.1.0-SNAPSHOT.jar"
+  DEFAULT_JAR="$ROOT/token-meter-collector/target/token-meter-collector-0.1.0-SNAPSHOT.jar"
 fi
-JAR="${AGENT_DASHBOARD_JAR:-$DEFAULT_JAR}"
-JAVA_BIN="${AGENT_DASHBOARD_JAVA:-${JAVA_HOME:+$JAVA_HOME/bin/java}}"
+JAR="${TOKEN_METER_JAR:-$DEFAULT_JAR}"
+JAVA_BIN="${TOKEN_METER_JAVA:-${JAVA_HOME:+$JAVA_HOME/bin/java}}"
 if [ -z "$JAVA_BIN" ]; then
   JAVA_BIN="$(command -v java || true)"
 fi
@@ -38,10 +38,10 @@ quote_value() {
   printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
 }
 
-require_env AGENT_DASHBOARD_SERVER_URL
-require_env AGENT_DASHBOARD_DEVICE_TOKEN
-require_env AGENT_DASHBOARD_USER_ID
-require_env AGENT_DASHBOARD_DEVICE_ID
+require_env TOKEN_METER_SERVER_URL
+require_env TOKEN_METER_DEVICE_TOKEN
+require_env TOKEN_METER_USER_ID
+require_env TOKEN_METER_DEVICE_ID
 
 if [ ! -f "$JAR" ]; then
   printf '%s\n' "collector jar not found: $JAR" >&2
@@ -52,20 +52,20 @@ if [ ! -f "$RUNNER" ]; then
   exit 1
 fi
 if [ -z "$JAVA_BIN" ] || [ ! -x "$JAVA_BIN" ]; then
-  printf '%s\n' "java runtime not found. Set AGENT_DASHBOARD_JAVA or JAVA_HOME." >&2
+  printf '%s\n' "java runtime not found. Set TOKEN_METER_JAVA or JAVA_HOME." >&2
   exit 1
 fi
 
 mkdir -p "$CONFIG_DIR" "$LOG_DIR" "$HOME/Library/LaunchAgents"
 umask 077
 {
-  printf 'AGENT_DASHBOARD_JAVA=%s\n' "$(quote_value "$JAVA_BIN")"
-  printf 'AGENT_DASHBOARD_JAR=%s\n' "$(quote_value "$JAR")"
-  printf 'AGENT_DASHBOARD_SERVER_URL=%s\n' "$(quote_value "$AGENT_DASHBOARD_SERVER_URL")"
-  printf 'AGENT_DASHBOARD_DEVICE_TOKEN=%s\n' "$(quote_value "$AGENT_DASHBOARD_DEVICE_TOKEN")"
-  printf 'AGENT_DASHBOARD_USER_ID=%s\n' "$(quote_value "$AGENT_DASHBOARD_USER_ID")"
-  printf 'AGENT_DASHBOARD_DEVICE_ID=%s\n' "$(quote_value "$AGENT_DASHBOARD_DEVICE_ID")"
-  printf 'AGENT_DASHBOARD_DAYS=%s\n' "$(quote_value "${AGENT_DASHBOARD_DAYS:-30}")"
+  printf 'TOKEN_METER_JAVA=%s\n' "$(quote_value "$JAVA_BIN")"
+  printf 'TOKEN_METER_JAR=%s\n' "$(quote_value "$JAR")"
+  printf 'TOKEN_METER_SERVER_URL=%s\n' "$(quote_value "$TOKEN_METER_SERVER_URL")"
+  printf 'TOKEN_METER_DEVICE_TOKEN=%s\n' "$(quote_value "$TOKEN_METER_DEVICE_TOKEN")"
+  printf 'TOKEN_METER_USER_ID=%s\n' "$(quote_value "$TOKEN_METER_USER_ID")"
+  printf 'TOKEN_METER_DEVICE_ID=%s\n' "$(quote_value "$TOKEN_METER_DEVICE_ID")"
+  printf 'TOKEN_METER_DAYS=%s\n' "$(quote_value "${TOKEN_METER_DAYS:-30}")"
 } > "$CONFIG"
 chmod 600 "$CONFIG"
 

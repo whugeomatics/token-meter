@@ -27,7 +27,7 @@ P2 采用保守方案：
 - 增加 `org.xerial:sqlite-jdbc`。
 - 增加 `maven-shade-plugin`，保留 main class。
 
-### `src/main/java/local/agent/dashboard/AgentTokenDashboardApp.java`
+### `src/main/java/local/token/meter/TokenMeterApp.java`
 
 - 增加 CLI 参数：
   - `--ingest`

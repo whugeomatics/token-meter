@@ -4,7 +4,7 @@
 
 本次 review 覆盖 P1 Codex Dashboard MVP 当前实现：
 
-- `src/main/java/local/agent/dashboard/AgentTokenDashboardApp.java`
+- `src/main/java/local/token/meter/TokenMeterApp.java`
 - `/api/report`
 - `/`
 - `scripts/P1-2026-04-30-smoke-test.ps1`

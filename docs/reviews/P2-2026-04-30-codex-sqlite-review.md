@@ -104,7 +104,7 @@ powershell -ExecutionPolicy Bypass -File scripts\P2-2026-04-30-smoke-test.ps1
 检查结果：
 
 - dashboard 启动前会执行一次本地 Codex ingestion，页面仍只消费只读 `/api/report`。
-- 默认路径改为 `~/.agent-dashboard/sqlite/agent-dashboard-YYYY-MM.sqlite`，`--db` 指向 `.sqlite` / `.db` 时继续单文件兼容。
+- 默认路径改为 `~/.token-meter/sqlite/token-meter-YYYY-MM.sqlite`，`--db` 指向 `.sqlite` / `.db` 时继续单文件兼容。
 - Codex session 文件优先按路径中的 `YYYY/MM/DD` 归属月份分片，避免用文件修改时间误分片。
 - 真实 mac Codex sessions 临时 ingestion 结果为 `files_scanned=4`、`events_inserted=116`、`errors=[]`。
 - 2026-04-24 的旧 Codex session 文件被扫描并记录 checkpoint，但没有 `token_count`、`total_token_usage`、`input_tokens` 或 `output_tokens`，因此不生成 usage event；该行为符合“不推算虚假 token”的 P2 口径。

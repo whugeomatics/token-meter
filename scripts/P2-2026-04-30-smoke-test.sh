@@ -2,10 +2,10 @@
 set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-JAR="$ROOT/agent-dashboard-app/target/agent-dashboard-app-0.1.0-SNAPSHOT.jar"
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/agent-dashboard-p2.XXXXXX")"
+JAR="$ROOT/token-meter-app/target/token-meter-app-0.1.0-SNAPSHOT.jar"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/token-meter-p2.XXXXXX")"
 SESSIONS="$WORK/sessions/2026/04/30"
-DB_FILE="$WORK/agent-dashboard.sqlite"
+DB_FILE="$WORK/token-meter.sqlite"
 DB_DIR="$WORK/sqlite"
 JSONL="$SESSIONS/rollout-smoke.jsonl"
 NEXT_DAY_JSONL="$SESSIONS/rollout-next-day-smoke.jsonl"
@@ -56,7 +56,7 @@ printf '%s\n' "$report_file" | grep -E '"model":"gpt-5-smoke"[^}]*"active_second
 ingest_sharded="$(java -jar "$JAR" --ingest --sessions-dir="$SESSIONS" --db="$DB_DIR" --timezone=Asia/Shanghai 2>&1)"
 printf '%s\n' "$ingest_sharded" | grep '"status":"ok"' >/dev/null
 printf '%s\n' "$ingest_sharded" | grep '"events_inserted":5' >/dev/null
-test -f "$DB_DIR/agent-dashboard-2026-04.sqlite"
+test -f "$DB_DIR/token-meter-2026-04.sqlite"
 
 report_sharded="$(java -jar "$JAR" --report --days=30 --db="$DB_DIR" --timezone=Asia/Shanghai 2>&1)"
 printf '%s\n' "$report_sharded" | grep '"total_tokens":500' >/dev/null
@@ -80,7 +80,7 @@ SERVER_PID=$!
 sleep 2
 if server_report="$(curl --noproxy '*' -fsS "http://127.0.0.1:$PORT/api/report?days=30" 2>/dev/null)"; then
     printf '%s\n' "$server_report" | grep '"total_tokens":500' >/dev/null
-    test -f "$SERVER_DB_DIR/agent-dashboard-2026-04.sqlite"
+    test -f "$SERVER_DB_DIR/token-meter-2026-04.sqlite"
     POST_START_JSONL="$SESSIONS/rollout-post-start-session.jsonl"
     cat > "$POST_START_JSONL" <<'JSONL'
 {"timestamp":"2026-04-30T03:00:00Z","type":"session_meta","payload":{"id":"p2-post-start-session"}}

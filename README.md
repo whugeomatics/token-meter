@@ -1,10 +1,10 @@
-# Agent Dashboard
+# Token Meter
 
 ![what](images/P0-2026-04-29-what.png)
 
 **English** | [中文](README.zh-CN.md)
 
-Agent Dashboard is a local model usage dashboard and future routing tool. The project starts with Codex usage analytics, then evolves toward SQLite-backed incremental collection and, later, a local OpenAI-compatible model gateway.
+Token Meter is a local model usage dashboard and future routing tool. The project starts with Codex usage analytics, then evolves toward SQLite-backed incremental collection and, later, a local OpenAI-compatible model gateway.
 
 ## Current Status
 
@@ -109,7 +109,7 @@ Codex sandbox note: Windows `.cmd`, `cmd.exe /c`, and local Java service startup
 After packaging:
 
 ```powershell
-java -jar agent-dashboard-app\target\agent-dashboard-0.1.0-SNAPSHOT.jar --port=18080
+java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --port=18080
 ```
 
 Open:
