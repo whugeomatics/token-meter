@@ -2,7 +2,7 @@
 
 ## 背景
 
-P2 已跑通 SQLite 持久化与增量采集，但实现过程中为了快速闭环，入口、HTTP、前端 HTML、Codex ingestion、SQLite repository、report aggregation 和 JSON 工具曾集中在 `AgentTokenDashboardApp.java` 一个类中。
+P2 已跑通 SQLite 持久化与增量采集，但实现过程中为了快速闭环，入口、HTTP、前端 HTML、Codex ingestion、SQLite repository、report aggregation 和 JSON 工具曾集中在 `TokenMeterApp.java` 一个类中。
 
 这会增加 P3 本地网关阶段的维护成本，因此在进入 P3 设计开发前先完成结构性整理。
 
@@ -22,7 +22,7 @@ Java 后端只负责读取该静态资源并返回 HTTP response。
 
 后端按职责拆成以下文件：
 
-- `AgentTokenDashboardApp.java`: 应用入口和模式分发。
+- `TokenMeterApp.java`: 应用入口和模式分发。
 - `AppConfig.java`: CLI/env 配置解析。
 - `DashboardServer.java`: HTTP server、路由、response 写出。
 - `DashboardPage.java`: 静态前端资源读取。

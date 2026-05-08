@@ -9,7 +9,7 @@
 P2 增加一个本地 CLI 模式：
 
 ```text
-java -jar target\agent-dashboard-0.1.0-SNAPSHOT.jar --ingest
+java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --ingest
 ```
 
 可选参数：
@@ -23,12 +23,12 @@ java -jar target\agent-dashboard-0.1.0-SNAPSHOT.jar --ingest
 `--db` 兼容两种形式：
 
 - 指向 `.sqlite` / `.db` 文件：写入单 SQLite 文件，保留 P2 初始验收脚本兼容性。
-- 指向目录：按月写入 `agent-dashboard-YYYY-MM.sqlite` 分片文件。
+- 指向目录：按月写入 `token-meter-YYYY-MM.sqlite` 分片文件。
 
 环境变量：
 
 - `CODEX_SESSIONS_DIR`: 覆盖 Codex session JSONL 目录。
-- `AGENT_DASHBOARD_DB`: 覆盖 SQLite 文件。
+- `TOKEN_METER_DB`: 覆盖 SQLite 文件。
 - `DASHBOARD_TIMEZONE`: 覆盖统计时区。
 
 ## HTTP
@@ -53,7 +53,7 @@ POST /api/ingest
 
 用途：
 
-- Local 页面点击 Refresh 时，先触发一次 Codex session 增量采集，再重新请求 `/api/report`。
+- Local 页面加载、切换 Local 时间范围或点击 Refresh 时，先触发一次 Codex session 增量采集，再重新请求 `/api/report`。
 - endpoint 复用 P2 `CodexIngestionService` 和现有 SQLite 去重规则。
 - 只随 dashboard 服务绑定在 `127.0.0.1`，不作为 team collector 或远程 ingest API。
 - 不读取、返回或持久化 prompt / response 正文。

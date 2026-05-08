@@ -31,15 +31,15 @@ cmd /c D:\Softwares\Maven-3.9.9\bin\mvn.cmd -DskipTests package
 ## 命令行自检
 
 ```text
-cmd /c java -jar target\agent-dashboard-0.1.0-SNAPSHOT.jar --report --days=7
-cmd /c java -jar target\agent-dashboard-0.1.0-SNAPSHOT.jar --report --days=1
-cmd /c java -jar target\agent-dashboard-0.1.0-SNAPSHOT.jar --report --month=2026-04
+cmd /c java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --report --days=7
+cmd /c java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --report --days=1
+cmd /c java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --report --month=2026-04
 ```
 
 ## 启动 API
 
 ```text
-cmd /c java -jar target\agent-dashboard-0.1.0-SNAPSHOT.jar --port=18080
+cmd /c java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --port=18080
 ```
 
 启动后访问：

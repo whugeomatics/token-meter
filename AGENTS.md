@@ -40,9 +40,9 @@ P3 禁止：
 
 项目是三 module 架构：
 
-- `agent-dashboard-core`：只放 app 和 collector 都需要的配置、Codex session 解析、team payload DTO、通用 DTO 和通用工具。
-- `agent-dashboard-app`：负责 dashboard/server 入口、HTTP/API、admin、report、SQLite CRUD/store、SQL resources 和静态资源。只有 app module 可以依赖 SQLite。
-- `agent-dashboard-collector`：负责 teammate 端轻量上报入口和周期性上报逻辑；collector 不依赖数据库，不启动 HTTP server，不包含 dashboard 静态资源或 CRUD/API/report/admin 实现。
+- `token-meter-core`：只放 app 和 collector 都需要的配置、Codex session 解析、team payload DTO、通用 DTO 和通用工具。
+- `token-meter-app`：负责 dashboard/server 入口、HTTP/API、admin、report、SQLite CRUD/store、SQL resources 和静态资源。只有 app module 可以依赖 SQLite。
+- `token-meter-collector`：负责 teammate 端轻量上报入口和周期性上报逻辑；collector 不依赖数据库，不启动 HTTP server，不包含 dashboard 静态资源或 CRUD/API/report/admin 实现。
 
 如果后续发现 app 和 collector 都需要的类或方法，先确认当前阶段确实双端共用，再补到 core。
 

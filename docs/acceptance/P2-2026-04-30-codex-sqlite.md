@@ -10,7 +10,7 @@
 - 时区：Asia/Shanghai
 - Java 版本：Java 17 target
 - Maven 命令：`mvn -DskipTests clean package`
-- SQLite 文件：P2 smoke test 使用临时目录下 `agent-dashboard.sqlite`
+- SQLite 文件：P2 smoke test 使用临时目录下 `token-meter.sqlite`
 - Codex 日志路径：P2 smoke test 使用脱敏临时 JSONL fixture
 - 验收日期：2026-04-30
 
@@ -23,7 +23,7 @@
 检查：
 
 - `mvn -DskipTests clean package` 通过。
-- 生成 `target\agent-dashboard-0.1.0-SNAPSHOT.jar`。
+- 生成 `token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar`。
 
 记录：
 
@@ -157,7 +157,8 @@ Codex 沙箱记录：
 变更：
 
 - dashboard 服务启动前自动执行一次 Codex ingestion，避免页面只读取空 SQLite。
-- 默认 SQLite 存储调整为月分片目录 `~/.agent-dashboard/sqlite/agent-dashboard-YYYY-MM.sqlite`。
+- Local 页面加载、切换时间范围和 Refresh 会先执行一次增量 ingestion，再读取 `/api/report`；服务启动后新增的 session 应能通过 `/api/ingest` 刷入 SQLite。
+- 默认 SQLite 存储调整为月分片目录 `~/.token-meter/sqlite/token-meter-YYYY-MM.sqlite`。
 - `--db` 指向 `.sqlite` / `.db` 文件时保持单文件兼容。
 - `/api/report` 在分片模式下按查询日期范围读取相关月分片。
 - 新增 mac smoke test `scripts/P2-2026-04-30-smoke-test.sh`。
@@ -174,7 +175,7 @@ sh scripts/P2-2026-04-30-smoke-test.sh
 - Codex mac 沙箱执行 `mvn -DskipTests package`，结果 `BUILD SUCCESS`。
 - Codex mac 沙箱执行 `sh scripts/P2-2026-04-30-smoke-test.sh`，结果 `P2 smoke test passed`。
 - smoke test 覆盖单文件 SQLite、月分片 SQLite、重复 ingestion 去重和 report 聚合。
-- Codex mac 沙箱使用真实 `/Users/zhangrui/.codex/sessions` 写入临时分片库，结果 `files_scanned=4`、`events_inserted=116`、`errors=[]`，生成 `agent-dashboard-2026-04.sqlite`。
+- Codex mac 沙箱使用真实 `/Users/zhangrui/.codex/sessions` 写入临时分片库，结果 `files_scanned=4`、`events_inserted=116`、`errors=[]`，生成 `token-meter-2026-04.sqlite`。
 - 同一临时分片库执行 `--report --days=7` 可返回非零 summary 和 daily/model/session 聚合。
 - 真实 2026-04-24 Codex session 文件被扫描并写入 `source_files`，但该文件没有 `token_count` / `total_token_usage` / `input_tokens` / `output_tokens`，因此 `usage_events=0`；P2 不推算 token，不把该 session 计入 token usage。
 - Codex mac 沙箱绑定本地 HTTP 端口失败于 `java.net.SocketException: Operation not permitted`，属于沙箱进程权限限制；脚本在该错误下跳过 server bind 检查。真实 mac 终端可继续用同一脚本校验 dashboard 启动后 `/api/report` 链路。

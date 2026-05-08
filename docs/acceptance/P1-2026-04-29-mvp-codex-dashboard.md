@@ -9,7 +9,7 @@
 - OS：Windows
 - 时区：Asia/Shanghai
 - Node/Java/Python 版本：Java 17 目标版本；Maven 构建已由用户本机终端验证通过
-- 启动命令：`cmd /c java -jar target\agent-dashboard-0.1.0-SNAPSHOT.jar --port=18080`
+- 启动命令：`cmd /c java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --port=18080`
 - Dashboard URL：`http://127.0.0.1:18080/`
 - Codex 日志路径：`%USERPROFILE%\.codex\sessions`
 - 验收日期：2026-04-30
@@ -106,7 +106,7 @@
 
 检查：
 
-- Maven package：通过。用户于 2026-04-30 在本机终端执行 `mvn -DskipTests clean package`，结果为 `BUILD SUCCESS`，生成 `target\agent-dashboard-0.1.0-SNAPSHOT.jar`。
+- Maven package：通过。用户于 2026-04-30 在本机终端执行 `mvn -DskipTests clean package`，结果为 `BUILD SUCCESS`，生成 `token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar`。
 - Codex 沙箱内 Maven 说明：`D:\Softwares\Maven-3.9.9\bin\mvn.cmd -DskipTests package` 和 `mvn -DskipTests package` 在 PowerShell 中失败，错误为 `Program 'mvn.cmd' failed to run ... 找不到指定的模块`。`cmd.exe /c "D:\Softwares\Maven-3.9.9\bin\mvn.cmd" -DskipTests package` 与 Java launcher 方式需要沙箱放行，但自动审批超时。
 - smoke test：通过。用户于 2026-04-30 在本机终端执行 `powershell -ExecutionPolicy Bypass -File scripts\P1-2026-04-30-smoke-test.ps1`，输出 `P1 smoke test passed`。
 - 已新增可复跑脚本：`scripts/P1-2026-04-30-smoke-test.ps1`。

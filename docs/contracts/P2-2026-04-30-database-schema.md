@@ -9,25 +9,25 @@
 默认位置从 2026-04-30 mac 修复起调整为月分片目录：
 
 ```text
-%USERPROFILE%\.agent-dashboard\sqlite\
+%USERPROFILE%\.token-meter\sqlite\
 ```
 
 默认分片文件名：
 
 ```text
-agent-dashboard-YYYY-MM.sqlite
+token-meter-YYYY-MM.sqlite
 ```
 
 允许通过环境变量覆盖：
 
 ```text
-AGENT_DASHBOARD_DB
+TOKEN_METER_DB
 ```
 
 兼容规则：
 
-- `AGENT_DASHBOARD_DB` 或 `--db` 指向 `.sqlite` / `.db` 文件时，继续使用单 SQLite 文件。
-- `AGENT_DASHBOARD_DB` 或 `--db` 指向目录时，按月写入该目录下的 `agent-dashboard-YYYY-MM.sqlite`。
+- `TOKEN_METER_DB` 或 `--db` 指向 `.sqlite` / `.db` 文件时，继续使用单 SQLite 文件。
+- `TOKEN_METER_DB` 或 `--db` 指向目录时，按月写入该目录下的 `token-meter-YYYY-MM.sqlite`。
 - `/api/report` 查询跨月范围时，读取查询范围覆盖的所有月分片。
 - Codex session 文件优先按路径中的 `YYYY/MM/DD` 归属月份分片；无法识别时才回退到文件修改时间。
 

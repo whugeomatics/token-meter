@@ -89,7 +89,7 @@ GET /api/report
 - `cache_hit_rate`: `cached_input_tokens / input_tokens`，当 `input_tokens = 0` 时为 `0`。
 - `reasoning_ratio`: `reasoning_output_tokens / output_tokens`，当 `output_tokens = 0` 时为 `0`。
 - `usage_event_count`: 已入库 usage event 行数，可近似表示 Codex 用量事件次数，不等同于用户提问数。
-- `active_seconds`: 聚合范围内最早 usage event 到最晚 usage event 的时间窗口秒数。
+- `active_seconds`: 对 summary、daily、models 等聚合 bucket，按 session 内不超过 30 分钟的相邻 usage event 间隔累加；超过 30 分钟的空闲间隔不计入。session item 仍展示该 session 内最早 usage event 到最晚 usage event 的时间窗口秒数。
 - `avg_tokens_per_session`: `total_tokens / session_count`，当 session 数为 `0` 时为 `0`。
 - `avg_tokens_per_call`: `total_tokens / usage_event_count`，当 `usage_event_count = 0` 时为 `0`。
 

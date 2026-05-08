@@ -57,7 +57,7 @@
 
 文件：
 
-- `src/main/java/local/agent/dashboard/AgentTokenDashboardApp.java`
+- `src/main/java/local/token/meter/TokenMeterApp.java`
 
 验证：
 
@@ -72,8 +72,8 @@
 
 ```text
 cmd /c D:\Softwares\Maven-3.9.9\bin\mvn.cmd -DskipTests package
-cmd /c java -jar target\agent-dashboard-0.1.0-SNAPSHOT.jar --report --days=7
-cmd /c java -jar target\agent-dashboard-0.1.0-SNAPSHOT.jar --report --month=2026-04
+cmd /c java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --report --days=7
+cmd /c java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --report --month=2026-04
 ```
 
 验证：

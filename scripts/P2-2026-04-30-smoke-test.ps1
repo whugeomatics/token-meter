@@ -1,11 +1,11 @@
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$jar = Join-Path $root "agent-dashboard-app\target\agent-dashboard-0.1.0-SNAPSHOT.jar"
+$jar = Join-Path $root "token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar"
 $runId = [Guid]::NewGuid().ToString("N")
-$work = Join-Path ([System.IO.Path]::GetTempPath()) "agent-dashboard-p2-$runId"
+$work = Join-Path ([System.IO.Path]::GetTempPath()) "token-meter-p2-$runId"
 $sessions = Join-Path $work "sessions\2026\04\30"
-$db = Join-Path $work "agent-dashboard.sqlite"
+$db = Join-Path $work "token-meter.sqlite"
 $jsonl = Join-Path $sessions "rollout-smoke.jsonl"
 
 New-Item -ItemType Directory -Path $sessions -Force | Out-Null
