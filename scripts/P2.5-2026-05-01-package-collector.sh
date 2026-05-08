@@ -11,8 +11,8 @@ if [ ! -f "$JAR" ]; then
   printf '%s\n' "Run: mvn -DskipTests package" >&2
   exit 1
 fi
-if jar tf "$JAR" | grep -E '(^static/|local/agent/dashboard/http/|local/agent/dashboard/app/AgentTokenDashboardApp|DashboardServer|AdminService|AdminAuth|DashboardPage)' >/dev/null; then
-  printf '%s\n' "collector jar contains dashboard-only classes or static assets: $JAR" >&2
+if jar tf "$JAR" | grep -E '(^static/|local/agent/dashboard/http/|local/agent/dashboard/report/|local/agent/dashboard/store/|local/agent/dashboard/app/AgentTokenDashboardApp|DashboardServer|AdminService|AdminAuth|DashboardPage|org/sqlite/|sqlite-jdbc)' >/dev/null; then
+  printf '%s\n' "collector jar contains dashboard/database classes or static assets: $JAR" >&2
   exit 1
 fi
 

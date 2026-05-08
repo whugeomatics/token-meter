@@ -12,13 +12,17 @@ import local.agent.dashboard.store.TeamUsageStore;
 import local.agent.dashboard.store.TeamUsageStores;
 import local.agent.dashboard.store.UsageStore;
 import local.agent.dashboard.store.UsageStores;
+import local.agent.dashboard.util.CliOutput;
 import local.agent.dashboard.util.DeviceTokenGenerator;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.logging.Logger;
 
 public final class AgentTokenDashboardApp {
+    private static final Logger LOG = Logger.getLogger(AgentTokenDashboardApp.class.getName());
+
     private AgentTokenDashboardApp() {
     }
 
@@ -32,7 +36,7 @@ public final class AgentTokenDashboardApp {
         if (config.createDeviceTokenMode()) {
             TeamUsageStore teamUsageStore = openTeamStore(config);
             String token = createDeviceTokenIfConfigured(config, teamUsageStore);
-            System.out.println("{\"status\":\"ok\",\"registered\":true,\"device_token\":\"" + token + "\"}");
+            CliOutput.writeLine("{\"status\":\"ok\",\"registered\":true,\"device_token\":\"" + token + "\"}");
             return;
         }
 
@@ -40,14 +44,14 @@ public final class AgentTokenDashboardApp {
         registerDeviceTokenIfConfigured(config, teamUsageStore);
 
         if (config.registerDeviceTokenMode()) {
-            System.out.println("{\"status\":\"ok\",\"registered\":true}");
+            CliOutput.writeLine("{\"status\":\"ok\",\"registered\":true}");
             return;
         }
 
         if (config.ingestMode()) {
             UsageStore usageStore = openUsageStore(config.dbPath());
             IngestionResult result = new CodexIngestionService(config.sessionsDir(), config.zone(), usageStore).ingest();
-            System.out.println(result.toJson());
+            CliOutput.writeLine(result.toJson());
             if (!result.errors().isEmpty()) {
                 System.exit(1);
             }
@@ -59,38 +63,38 @@ public final class AgentTokenDashboardApp {
         TeamReportService teamReportService = new TeamReportService(teamUsageStore, config.zone());
         if (config.teamReportMode()) {
             ReportQuery query = ReportQuery.from(config.reportQuery(), config.zone());
-            System.out.println(teamReportService.report(query).toJson());
+            CliOutput.writeLine(teamReportService.report(query).toJson());
             return;
         }
 
         if (config.options().containsKey("team-ingest-file")) {
             Path payload = Path.of(config.options().get("team-ingest-file"));
             String body = Files.readString(payload, StandardCharsets.UTF_8);
-            System.out.println(new TeamIngestionService(teamUsageStore, config.zone())
+            CliOutput.writeLine(new TeamIngestionService(teamUsageStore, config.zone())
                     .ingest(config.options().get("device-token"), body).toJson());
             return;
         }
 
         if (config.reportMode()) {
             ReportQuery query = ReportQuery.from(config.reportQuery(), config.zone());
-            System.out.println(reportService.report(query).toJson());
+            CliOutput.writeLine(reportService.report(query).toJson());
             return;
         }
 
         CodexIngestionService localIngestionService = new CodexIngestionService(config.sessionsDir(), config.zone(), usageStore);
         IngestionResult startupIngestion = localIngestionService.ingest();
-        System.out.println("Startup ingestion: " + startupIngestion.toJson());
+        LOG.info("Startup ingestion: " + startupIngestion.toJson());
 
         DashboardServer server = new DashboardServer(config.port(), reportService, localIngestionService,
                 new TeamIngestionService(teamUsageStore, config.zone()), teamReportService,
                 teamUsageStore, config.options().get("admin-token"));
         server.start();
 
-        System.out.println("Agent Token Dashboard listening on http://127.0.0.1:" + config.port());
-        System.out.println("Codex sessions dir: " + config.sessionsDir());
-        System.out.println("Agent Dashboard DB: " + config.dbPath());
-        System.out.println("Agent Dashboard Team registry DB: " + TeamUsageStores.resolveTeamRegistryPath(config.dbPath()));
-        System.out.println("Agent Dashboard Team event DB pattern: " + TeamUsageStores.resolveTeamDbPath(config.dbPath()));
+        LOG.info("Agent Token Dashboard listening on http://127.0.0.1:" + config.port());
+        LOG.info("Codex sessions dir: " + config.sessionsDir());
+        LOG.info("Agent Dashboard DB: " + config.dbPath());
+        LOG.info("Agent Dashboard Team registry DB: " + TeamUsageStores.resolveTeamRegistryPath(config.dbPath()));
+        LOG.info("Agent Dashboard Team event DB pattern: " + TeamUsageStores.resolveTeamDbPath(config.dbPath()));
     }
 
     private static UsageStore openUsageStore(Path path) throws Exception {

@@ -1,8 +1,6 @@
 package local.agent.dashboard.ingestion;
 
-import local.agent.dashboard.domain.ExportedUsageEvent;
 import local.agent.dashboard.domain.TeamUsageEvent;
-import local.agent.dashboard.store.UsageStore;
 import local.agent.dashboard.util.Json;
 
 import java.io.IOException;
@@ -11,14 +9,17 @@ import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HexFormat;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class TeamCollector {
-    private final UsageStore localStore;
+    private final SessionUsageScanner scanner;
     private final ZoneId zone;
     private final String serverUrl;
     private final String token;
@@ -26,9 +27,9 @@ public final class TeamCollector {
     private final String deviceId;
     private final int batchSize;
 
-    public TeamCollector(UsageStore localStore, ZoneId zone, String serverUrl, String token, String userId, String deviceId,
+    public TeamCollector(SessionUsageScanner scanner, ZoneId zone, String serverUrl, String token, String userId, String deviceId,
                          int batchSize) {
-        this.localStore = localStore;
+        this.scanner = scanner;
         this.zone = zone;
         this.serverUrl = serverUrl;
         this.token = token;
@@ -41,10 +42,18 @@ public final class TeamCollector {
         LocalDate end = LocalDate.now(zone);
         LocalDate start = end.minusDays(days - 1L);
         Instant uploadTime = Instant.now();
+        SessionUsageScan scan = scanner.scan();
+        if (!scan.result().errors().isEmpty()) {
+            throw new IOException("collector session scan failed: " + scan.result().toJson());
+        }
         List<TeamUsageEvent> events = new ArrayList<>();
-        for (ExportedUsageEvent event : localStore.loadExportEvents(start, end)) {
-            events.add(new TeamUsageEvent(event.eventKey(), "codex", event.sessionId(), event.model(), event.timestamp(),
-                    event.timestamp().atZone(zone).toLocalDate(), event.usage(), userId, deviceId));
+        for (IngestedUsageEvent event : scan.events()) {
+            LocalDate eventDate = event.timestamp().atZone(zone).toLocalDate();
+            if (eventDate.isBefore(start) || eventDate.isAfter(end)) {
+                continue;
+            }
+            events.add(new TeamUsageEvent(teamEventKey(event), "codex", event.sessionId(), event.model(), event.timestamp(),
+                    eventDate, event.delta(), userId, deviceId));
         }
         int accepted = 0;
         int duplicate = 0;
@@ -52,7 +61,7 @@ public final class TeamCollector {
         int batches = 0;
         for (int index = 0; index < events.size(); index += batchSize) {
             int endIndex = Math.min(events.size(), index + batchSize);
-            String payload = TeamIngestionService.eventsToJson("0.1.0", userId, deviceId, events.subList(index, endIndex));
+            String payload = TeamUsagePayload.eventsToJson("0.1.0", userId, deviceId, events.subList(index, endIndex));
             String response = post(payload);
             accepted += Json.longValue(response, "accepted").orElse(0L).intValue();
             duplicate += Json.longValue(response, "duplicate").orElse(0L).intValue();
@@ -60,7 +69,7 @@ public final class TeamCollector {
             batches++;
         }
         if (events.isEmpty()) {
-            String payload = TeamIngestionService.eventsToJson("0.1.0", userId, deviceId, events);
+            String payload = TeamUsagePayload.eventsToJson("0.1.0", userId, deviceId, events);
             String response = post(payload);
             accepted += Json.longValue(response, "accepted").orElse(0L).intValue();
             duplicate += Json.longValue(response, "duplicate").orElse(0L).intValue();
@@ -120,5 +129,20 @@ public final class TeamCollector {
 
     private String sanitize(String body) {
         return Json.escape(body);
+    }
+
+    private String teamEventKey(IngestedUsageEvent event) {
+        return "codex|" + event.sessionId() + "|" + sourceHash(event.sourcePath()) + "|" + event.lineNumber() + "|"
+                + event.cumulative().totalTokens() + "|" + event.cumulative().inputTokens() + "|"
+                + event.cumulative().outputTokens();
+    }
+
+    private String sourceHash(String sourcePath) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(sourcePath.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest).substring(0, 16);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable", e);
+        }
     }
 }

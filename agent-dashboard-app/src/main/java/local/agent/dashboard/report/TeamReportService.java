@@ -67,6 +67,7 @@ public final class TeamReportService {
         private final Map<LocalDate, DailyBucket> dailyBuckets = new LinkedHashMap<>();
         private final Map<String, UserDailyBucket> userDailyBuckets = new HashMap<>();
         private final Map<String, UploadHealthBucket> uploadHealthBuckets = new HashMap<>();
+        private final ActiveWindows activeWindows = new ActiveWindows();
         private String teamId = "";
         private int eventCount;
         private Instant startedAt;
@@ -87,6 +88,7 @@ public final class TeamReportService {
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
+            activeWindows.add(sessionKey(event), event.timestamp());
             users.add(event.userId());
             devices.add(event.deviceId());
             sessions.add(sessionKey(event));
@@ -112,7 +114,7 @@ public final class TeamReportService {
 
         Report toReport() {
             return new TeamReportPayload(query, teamId, summary, users.size(), devices.size(), sessions.size(),
-                    eventCount, activeSeconds(startedAt, endedAt), sortedTeams(), sortedUsers(), sortedDevices(),
+                    eventCount, activeWindows.activeSeconds(), sortedTeams(), sortedUsers(), sortedDevices(),
                     sortedModels(), sortedTeamModels(), new ArrayList<>(dailyBuckets.values()), sortedUserDaily(),
                     sortedUploadHealth(), sortedUploads());
         }
@@ -180,6 +182,7 @@ public final class TeamReportService {
         final Set<String> users = new HashSet<>();
         final Set<String> devices = new HashSet<>();
         final Set<String> sessions = new HashSet<>();
+        final ActiveWindows activeWindows = new ActiveWindows();
         final List<TeamUploadRecord> uploads = new ArrayList<>();
         int eventCount;
         Instant startedAt;
@@ -195,6 +198,7 @@ public final class TeamReportService {
             users.add(event.userId());
             devices.add(event.deviceId());
             sessions.add(sessionKey(event));
+            activeWindows.add(sessionKey(event), event.timestamp());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
@@ -215,6 +219,7 @@ public final class TeamReportService {
         final TokenTotals totals = new TokenTotals();
         final Set<String> sessions = new HashSet<>();
         final Set<String> devices = new HashSet<>();
+        final ActiveWindows activeWindows = new ActiveWindows();
         int eventCount;
         Instant startedAt;
         Instant endedAt;
@@ -230,6 +235,7 @@ public final class TeamReportService {
             totals.add(event.usage());
             sessions.add(sessionKey(event));
             devices.add(event.deviceId());
+            activeWindows.add(sessionKey(event), event.timestamp());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
@@ -244,6 +250,7 @@ public final class TeamReportService {
         final String displayName;
         final TokenTotals totals = new TokenTotals();
         final Set<String> sessions = new HashSet<>();
+        final ActiveWindows activeWindows = new ActiveWindows();
         int eventCount;
         Instant startedAt;
         Instant endedAt;
@@ -259,6 +266,7 @@ public final class TeamReportService {
         void add(StoredTeamUsageEvent event) {
             totals.add(event.usage());
             sessions.add(sessionKey(event));
+            activeWindows.add(sessionKey(event), event.timestamp());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
@@ -270,6 +278,7 @@ public final class TeamReportService {
         final String model;
         final TokenTotals totals = new TokenTotals();
         final Set<String> sessions = new HashSet<>();
+        final ActiveWindows activeWindows = new ActiveWindows();
         int eventCount;
         Instant startedAt;
         Instant endedAt;
@@ -281,6 +290,7 @@ public final class TeamReportService {
         void add(StoredTeamUsageEvent event) {
             totals.add(event.usage());
             sessions.add(sessionKey(event));
+            activeWindows.add(sessionKey(event), event.timestamp());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
@@ -295,6 +305,7 @@ public final class TeamReportService {
         final String model;
         final TokenTotals totals = new TokenTotals();
         final Set<String> sessions = new HashSet<>();
+        final ActiveWindows activeWindows = new ActiveWindows();
         int eventCount;
         Instant startedAt;
         Instant endedAt;
@@ -310,6 +321,7 @@ public final class TeamReportService {
         void add(StoredTeamUsageEvent event) {
             totals.add(event.usage());
             sessions.add(sessionKey(event));
+            activeWindows.add(sessionKey(event), event.timestamp());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
@@ -322,6 +334,7 @@ public final class TeamReportService {
         final Set<String> sessions = new HashSet<>();
         final Set<String> users = new HashSet<>();
         final Set<String> devices = new HashSet<>();
+        final ActiveWindows activeWindows = new ActiveWindows();
         int eventCount;
         Instant startedAt;
         Instant endedAt;
@@ -335,6 +348,7 @@ public final class TeamReportService {
             sessions.add(sessionKey(event));
             users.add(event.userId());
             devices.add(event.deviceId());
+            activeWindows.add(sessionKey(event), event.timestamp());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
@@ -348,6 +362,7 @@ public final class TeamReportService {
         final String displayName;
         final TokenTotals totals = new TokenTotals();
         final Set<String> sessions = new HashSet<>();
+        final ActiveWindows activeWindows = new ActiveWindows();
         int eventCount;
         Instant startedAt;
         Instant endedAt;
@@ -362,6 +377,7 @@ public final class TeamReportService {
         void add(StoredTeamUsageEvent event) {
             totals.add(event.usage());
             sessions.add(sessionKey(event));
+            activeWindows.add(sessionKey(event), event.timestamp());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
@@ -436,7 +452,7 @@ public final class TeamReportService {
             return "{\"team_id\":\"" + Json.escape(bucket.teamId) + "\"," + bucket.totals.jsonFields()
                     + ",\"sessions\":" + bucket.sessions.size() + ",\"users\":" + bucket.users.size()
                     + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
-                    TeamReportService.activeSeconds(bucket.startedAt, bucket.endedAt))
+                    bucket.activeWindows.activeSeconds())
                     + ",\"devices\":" + bucket.devices.size() + ",\"last_upload_at\":\""
                     + formatInstant(parseInstant(bucket.lastUploadAt), query.zone()) + "\"}";
         }
@@ -446,7 +462,7 @@ public final class TeamReportService {
                     + "\",\"display_name\":\"" + Json.escape(bucket.displayName)
                     + "\"," + bucket.totals.jsonFields() + ",\"sessions\":" + bucket.sessions.size()
                     + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
-                    TeamReportService.activeSeconds(bucket.startedAt, bucket.endedAt))
+                    bucket.activeWindows.activeSeconds())
                     + ",\"devices\":" + bucket.devices.size() + ",\"last_seen_at\":\""
                     + formatInstant(parseInstant(bucket.lastSeenAt), query.zone()) + "\"}";
         }
@@ -457,7 +473,7 @@ public final class TeamReportService {
                     + "\",\"display_name\":\"" + Json.escape(bucket.displayName) + "\"," + bucket.totals.jsonFields()
                     + ",\"sessions\":" + bucket.sessions.size()
                     + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
-                    TeamReportService.activeSeconds(bucket.startedAt, bucket.endedAt))
+                    bucket.activeWindows.activeSeconds())
                     + ",\"last_seen_at\":\""
                     + formatInstant(parseInstant(bucket.lastSeenAt), query.zone()) + "\"}";
         }
@@ -466,7 +482,7 @@ public final class TeamReportService {
             return "{\"model\":\"" + Json.escape(bucket.model) + "\"," + bucket.totals.jsonFields()
                     + ",\"sessions\":" + bucket.sessions.size()
                     + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
-                    TeamReportService.activeSeconds(bucket.startedAt, bucket.endedAt)) + "}";
+                    bucket.activeWindows.activeSeconds()) + "}";
         }
 
         private String teamModelJson(TeamModelBucket bucket) {
@@ -476,7 +492,7 @@ public final class TeamReportService {
                     + Json.escape(bucket.model) + "\"," + bucket.totals.jsonFields()
                     + ",\"sessions\":" + bucket.sessions.size()
                     + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
-                    TeamReportService.activeSeconds(bucket.startedAt, bucket.endedAt))
+                    bucket.activeWindows.activeSeconds())
                     + ",\"started_at\":\"" + formatInstant(bucket.startedAt, query.zone()) + "\""
                     + ",\"ended_at\":\"" + formatInstant(bucket.endedAt, query.zone()) + "\"}";
         }
@@ -485,7 +501,7 @@ public final class TeamReportService {
             return "{\"date\":\"" + bucket.date + "\"," + bucket.totals.jsonFields()
                     + ",\"sessions\":" + bucket.sessions.size() + ",\"users\":" + bucket.users.size()
                     + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
-                    TeamReportService.activeSeconds(bucket.startedAt, bucket.endedAt))
+                    bucket.activeWindows.activeSeconds())
                     + ",\"devices\":" + bucket.devices.size() + "}";
         }
 
@@ -495,7 +511,7 @@ public final class TeamReportService {
                     + "\",\"display_name\":\"" + Json.escape(bucket.displayName) + "\"," + bucket.totals.jsonFields()
                     + ",\"sessions\":" + bucket.sessions.size()
                     + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
-                    TeamReportService.activeSeconds(bucket.startedAt, bucket.endedAt)) + "}";
+                    bucket.activeWindows.activeSeconds()) + "}";
         }
 
         private String uploadJson(TeamUploadRecord upload) {
@@ -564,6 +580,32 @@ public final class TeamReportService {
             return 0L;
         }
         return endedAt.getEpochSecond() - startedAt.getEpochSecond();
+    }
+
+    private static final class ActiveWindows {
+        private final Map<String, ActiveWindow> windows = new HashMap<>();
+
+        void add(String key, Instant timestamp) {
+            windows.computeIfAbsent(key, ignored -> new ActiveWindow()).add(timestamp);
+        }
+
+        long activeSeconds() {
+            long total = 0L;
+            for (ActiveWindow window : windows.values()) {
+                total += TeamReportService.activeSeconds(window.startedAt, window.endedAt);
+            }
+            return total;
+        }
+    }
+
+    private static final class ActiveWindow {
+        Instant startedAt;
+        Instant endedAt;
+
+        void add(Instant timestamp) {
+            startedAt = min(startedAt, timestamp);
+            endedAt = max(endedAt, timestamp);
+        }
     }
 
     private static String formatInstant(Instant instant, ZoneId zone) {

@@ -1,95 +1,23 @@
 # AGENTS.md
 
-本文件是后续 agent 进入项目后的当前阶段工作手册。
+本文件只保留后续 agent 进入项目时必须先知道的核心约束和文档入口。阶段细节以 docs 为准，避免把已完成阶段的执行细节继续堆在根目录。
 
-维护原则：
+## 1. 工作原则
 
-- 只展开当前阶段必须遵守的任务、约束、必读文档和验收门槛。
-- 已完成阶段只保留状态和文档索引，不在本文件堆积执行细节。
-- 每个阶段都应形成符合该阶段目标的 `AGENTS.md`。
-- 在一个阶段周期内，根目录 `AGENTS.md` 可以随着设计、开发、review、验收发现动态调整。
-- 阶段结束时，除完成该阶段所有设计、contract、任务、review、acceptance 文档外，还必须把该阶段最终版 `AGENTS.md` 按 `docs/archive/P<阶段>-YYYY-MM-DD-AGENTS.md` 归档。
-- 每个阶段完成后，把长期有效的新约定补回本文件；阶段细节沉淀到对应 docs。
-
-## 1. 项目目标
-
-本项目最终目标是做一款本地模型使用统计与路由工具。
-
-阶段路线：
-
-1. P0：可行性调研。
-2. P1：Codex Dashboard MVP。
-3. P2：SQLite 持久化与增量采集。
-4. P2.5：Codex 团队用量采集。
-5. P3：OpenAI-compatible 本地模型网关。
-6. P4：多 provider 适配。
-7. P5：Codex、Claude Code、Cursor 等工具接入。
-8. P6：产品化。
-
-长期能力目标：
-
-- 每次会话 token 消耗。
-- 每个模型 token 消耗。
-- 每个模型使用时长。
-- 每天、每周、每月用量。
-- provider、tool、model 维度排行。
-- team、user、device 维度用量统计。
+- 先文档、再设计、再开发、再验收。没有阶段设计、contract、tasks 和 acceptance 时，不直接写功能代码。
+- 每个阶段只解决当前阶段问题；后续阶段能力只记录到文档，不提前实现。
+- 关键约定必须写入 docs，不依赖聊天上下文传递。
+- 修改认证、admin token、device token、隐私相关代码前，先明确安全影响。
+- 不记录 prompt 正文、response 正文、raw JSONL、用户输入、模型输出、admin token、device token 明文或 token hash。
+- git commit 信息使用英文，格式：`type(scope): description`。
 
 ## 2. 当前阶段
 
 当前阶段：P3 设计准备。
 
-P1、P2、P2.5 已通过验收。下一步只聚焦 P3：OpenAI-compatible 本地模型网关的设计、contract、任务拆分和验收标准。P3 仍然遵守“先设计、再开发、文档落地”的方针；在 P3 设计和 contract 补齐前，不应直接实现网关代码。
+P1、P2、P2.5 已通过验收。P3 只聚焦 OpenAI-compatible 本地模型网关的设计、contract、任务拆分和验收标准；在 P3 文档补齐前，不实现网关代码。
 
-当前阶段目标：
-
-1. 明确本地网关的最小 MVP 边界。
-2. 设计 OpenAI-compatible endpoint contract。
-3. 设计 provider adapter contract。
-4. 设计 usage event contract，复用 P2/P2.5 SQLite 统计能力。
-5. 明确流式响应、错误记录、token usage 记录和隐私边界。
-6. 拆分 P3 开发任务和验收标准。
-
-当前阶段禁止：
-
-- 不直接实现网关代码，直到 P3 设计、contract、tasks、acceptance 文档补齐。
-- 不接入 Claude Code、Cursor。
-- 不实现多 provider 自动路由。
-- 不引入登录、云同步、计费系统。
-- 不记录 prompt 正文。
-- 不记录 response 正文。
-- 不破坏 P1/P2 `/api/report` contract。
-- 不破坏 P2.5 `/api/team/report` 和 `/api/team/ingest` contract。
-
-## 3. 当前阶段必读文档
-
-P3 设计前，后续 agent 至少应先读：
-
-- `docs/archive/P1-2026-04-29-AGENTS.md`
-- `docs/archive/P2-2026-04-30-AGENTS.md`
-- `docs/P2-2026-04-30-README.md`
-- `docs/contracts/P2-2026-04-30-database-schema.md`
-- `docs/contracts/P2-2026-04-30-ingestion-api.md`
-- `docs/contracts/P1-2026-04-29-report-api.md`
-- `docs/milestones/P2-codex-sqlite/P2-2026-04-30-design.md`
-- `docs/milestones/P2-codex-sqlite/P2-2026-04-30-tasks.md`
-- `docs/reviews/P2-2026-04-30-codex-sqlite-review.md`
-- `docs/acceptance/P2-2026-04-30-codex-sqlite.md`
-- `docs/research/P1-2026-04-29-codex-log-research.md`
-- `docs/P2.5-2026-04-30-README.md`
-- `docs/contracts/P2.5-2026-04-30-team-ingestion-api.md`
-- `docs/contracts/P2.5-2026-04-30-team-usage-event.md`
-- `docs/contracts/P2.5-2026-04-30-device-token.md`
-- `docs/contracts/P2.5-2026-04-30-team-report-api.md`
-- `docs/milestones/P2.5-codex-team-collection/P2.5-2026-04-30-design.md`
-- `docs/milestones/P2.5-codex-team-collection/P2.5-2026-04-30-tasks.md`
-- `docs/reviews/P2.5-2026-04-30-codex-team-collection-design-review.md`
-- `docs/acceptance/P2.5-2026-04-30-codex-team-collection.md`
-- `scripts/P2.5-2026-04-30-smoke-test.sh`
-
-## 4. P3 文档待办
-
-P3 开发前必须先补齐：
+P3 文档待办：
 
 - `docs/P3-2026-05-01-README.md`
 - `docs/contracts/P3-2026-05-01-openai-compatible-gateway.md`
@@ -99,45 +27,70 @@ P3 开发前必须先补齐：
 - `docs/milestones/P3-local-gateway/P3-2026-05-01-tasks.md`
 - `docs/acceptance/P3-2026-05-01-local-gateway.md`
 
-## 5. P3 验收门槛
+P3 禁止：
 
-P3 不能只以“服务能启动”为完成标准。验收至少覆盖：
-
-- 网关默认只绑定 `127.0.0.1`。
-- OpenAI-compatible chat completions 非流式请求可代理并返回兼容响应。
-- 如实现 streaming，必须保持 SSE chunk 兼容并记录 stream duration。
-- usage event 写入 SQLite，且能被 `/api/report` 聚合。
-- 失败请求记录 status、耗时和错误类型。
+- 不接入 Claude Code、Cursor。
+- 不实现多 provider 自动路由。
+- 不引入登录、云同步、计费系统。
 - 不存 prompt/response 正文。
-- 不破坏 P2 ingestion。
-- 不破坏 P2.5 team ingestion/report。
-- 构建通过。
-- smoke test 或等价端到端验证通过。
-- review 和 acceptance 文档已更新。
+- 不破坏 P1/P2 `/api/report` contract。
+- 不破坏 P2.5 `/api/team/report` 和 `/api/team/ingest` contract。
 
-## 6. 已完成阶段索引
+## 3. 项目架构硬约束
 
-### P1：Codex Dashboard MVP
+项目是三 module 架构：
 
-状态：通过。
+- `agent-dashboard-core`：只放 app 和 collector 都需要的配置、Codex session 解析、team payload DTO、通用 DTO 和通用工具。
+- `agent-dashboard-app`：负责 dashboard/server 入口、HTTP/API、admin、report、SQLite CRUD/store、SQL resources 和静态资源。只有 app module 可以依赖 SQLite。
+- `agent-dashboard-collector`：负责 teammate 端轻量上报入口和周期性上报逻辑；collector 不依赖数据库，不启动 HTTP server，不包含 dashboard 静态资源或 CRUD/API/report/admin 实现。
 
-文档索引：
+如果后续发现 app 和 collector 都需要的类或方法，先确认当前阶段确实双端共用，再补到 core。
+
+代码结构：
+
+- 前端静态页面和脚本放在 app module 的 `src/main/resources/static/`。
+- HTTP/API 层只处理路由、参数、状态码和 response。
+- ingestion 层只处理日志读取和 usage event 生成。
+- repository/store 层只处理 JDBC、SQL 执行和数据库映射。
+- report 层只处理统计聚合和 contract 输出。
+- SQL DDL/DML 集中在 app module 的 `src/main/resources/db/*.sql`，Java 代码不内联建表或查询 SQL。
+- Java 入口和业务代码不得用 `System.out.print` / `System.err.print` 输出运行日志；日志使用日志 API。CLI 机器可读输出可使用专用 stdout writer。
+
+P2.5 module 细节见：
+
+- `docs/milestones/P2.5-codex-team-collection/P2.5-2026-05-08-module-architecture.md`
+
+## 4. 当前阶段必读
+
+进入 P3 设计前至少先读：
+
+- `docs/archive/P1-2026-04-29-AGENTS.md`
+- `docs/archive/P2-2026-04-30-AGENTS.md`
+- `docs/archive/P2.5-2026-04-30-AGENTS.md`
+- `docs/P2-2026-04-30-README.md`
+- `docs/P2.5-2026-04-30-README.md`
+- `docs/contracts/P1-2026-04-29-report-api.md`
+- `docs/contracts/P2-2026-04-30-database-schema.md`
+- `docs/contracts/P2-2026-04-30-ingestion-api.md`
+- `docs/contracts/P2.5-2026-04-30-team-ingestion-api.md`
+- `docs/contracts/P2.5-2026-04-30-team-usage-event.md`
+- `docs/contracts/P2.5-2026-04-30-device-token.md`
+- `docs/contracts/P2.5-2026-04-30-team-report-api.md`
+- `docs/milestones/P2.5-codex-team-collection/P2.5-2026-05-08-module-architecture.md`
+- `docs/acceptance/P2-2026-04-30-codex-sqlite.md`
+- `docs/acceptance/P2.5-2026-04-30-codex-team-collection.md`
+
+## 5. 阶段索引
+
+P1：Codex Dashboard MVP，通过。
 
 - `docs/archive/P1-2026-04-29-AGENTS.md`
 - `docs/P1-2026-04-29-README.md`
-- `docs/P1-2026-04-29-roadmap.md`
-- `docs/P1-2026-04-29-requirements.md`
-- `docs/research/P1-2026-04-29-codex-log-research.md`
 - `docs/contracts/P1-2026-04-29-report-api.md`
-- `docs/milestones/P1-codex-dashboard/P1-2026-04-29-backend-prototype.md`
 - `docs/reviews/P1-2026-04-30-codex-dashboard-review.md`
 - `docs/acceptance/P1-2026-04-29-mvp-codex-dashboard.md`
 
-### P2：SQLite 持久化与增量采集
-
-状态：通过。
-
-文档索引：
+P2：SQLite 持久化与增量采集，通过。
 
 - `docs/archive/P2-2026-04-30-AGENTS.md`
 - `docs/P2-2026-04-30-README.md`
@@ -145,33 +98,10 @@ P3 不能只以“服务能启动”为完成标准。验收至少覆盖：
 - `docs/contracts/P2-2026-04-30-ingestion-api.md`
 - `docs/milestones/P2-codex-sqlite/P2-2026-04-30-design.md`
 - `docs/milestones/P2-codex-sqlite/P2-2026-04-30-tasks.md`
-- `docs/milestones/P2-codex-sqlite/P2-2026-04-30-implementation-plan.md`
 - `docs/reviews/P2-2026-04-30-codex-sqlite-review.md`
 - `docs/acceptance/P2-2026-04-30-codex-sqlite.md`
 
-P2 长期保留约定：
-
-- SQLite 默认路径为 `~/.agent-dashboard/sqlite/agent-dashboard-YYYY-MM.sqlite` 月分片，可由 `AGENT_DASHBOARD_DB` 覆盖；覆盖值指向 `.sqlite` / `.db` 文件时使用单文件兼容模式。
-- SQLite 访问统一使用 `org.xerial:sqlite-jdbc` 和 JDBC API；业务层不得直接创建数据库连接。
-- 所有 SQLite DDL/DML 必须集中在 `src/main/resources/db/*.sql`，Java 代码只读取命名 SQL 并执行，不内联建表或查询 SQL。
-- P2 ingestion 可通过 CLI `--ingest` 触发，dashboard 启动前也会执行一次本地 ingestion。
-- usage event 持久化 delta，不持久化 cumulative snapshot。
-- changed source file 从头重放并依赖 `event_key` 去重，避免缺少上一条 cumulative snapshot 时错算 delta。
-- 没有 `token_count` 的 Codex session 只记录 source checkpoint，不生成 usage event，不根据正文或文件内容推算 token。
-- 不存 prompt/response 正文。
-- `/api/report` contract 继续兼容 P1。
-
-### P2.5：Codex 团队用量采集
-
-状态：通过。
-
-验证记录：
-
-- Maven package：`mvn -DskipTests package`，结果 `BUILD SUCCESS`。
-- P2 smoke test：`sh scripts/P2-2026-04-30-smoke-test.sh`，结果 `P2 smoke test passed`。
-- P2.5 smoke test：`sh scripts/P2.5-2026-04-30-smoke-test.sh`，结果 `P2.5 smoke test passed`。
-
-文档索引：
+P2.5：Codex 团队用量采集，通过。
 
 - `docs/archive/P2.5-2026-04-30-AGENTS.md`
 - `docs/P2.5-2026-04-30-README.md`
@@ -179,168 +109,18 @@ P2 长期保留约定：
 - `docs/contracts/P2.5-2026-04-30-team-ingestion-api.md`
 - `docs/contracts/P2.5-2026-04-30-team-report-api.md`
 - `docs/contracts/P2.5-2026-04-30-team-usage-event.md`
-- `docs/guides/P2.5-2026-05-01-admin-usage-guide.md`
 - `docs/milestones/P2.5-codex-team-collection/P2.5-2026-04-30-design.md`
+- `docs/milestones/P2.5-codex-team-collection/P2.5-2026-05-08-module-architecture.md`
 - `docs/milestones/P2.5-codex-team-collection/P2.5-2026-04-30-tasks.md`
 - `docs/reviews/P2.5-2026-04-30-codex-team-collection-design-review.md`
 - `docs/acceptance/P2.5-2026-04-30-codex-team-collection.md`
+- `docs/guides/P2.5-2026-05-01-admin-usage-guide.md`
 
-P2.5 长期保留约定：
+## 6. 验证命令
 
-- collector 只读本机 Codex sessions，只上传标准化 usage event。
-- collector 不上传 prompt、response、raw JSONL、用户输入、模型输出或本机完整路径。
-- 服务端通过 device token 绑定识别 `team_id`、`user_id`、`device_id`，不信任客户端自报归属。
-- device token 鉴权查找使用 SHA-256 hash；为支持管理员后续复制，P2.5 registry 保存可恢复 token，应按敏感数据处理。
-- `--create-device-token` 可生成并绑定团队成员设备 token。
-- 管理员页面 `/admin.html` 和 `/api/admin/*` 必须由 `--admin-token` 或 `AGENT_DASHBOARD_ADMIN_TOKEN` 保护。
-- 管理员可以分配 teammate device token；管理列表只展示 mask 后的 token，不直接展示完整 token 或 hash。
-- 管理员可以复制完整 device token 和删除 token binding；token 不支持编辑。
-- 管理员分配 token 和 teammate collector 上报流程记录在 `docs/guides/P2.5-2026-05-01-admin-usage-guide.md`。
-- team token 绑定默认保存在 `agent-dashboard-team-registry.sqlite`。
-- team usage event 默认按月保存在 `agent-dashboard-team-YYYY-MM.sqlite`，便于清理历史数据。
-- `/api/team/ingest` 使用 `team_id + user_id + device_id + event_key` 幂等去重。
-- 服务端必须记录每次 collector 上报的 `team_id/user_id/device_id/upload_date/upload_time/accepted/duplicate/rejected/status`，不得记录 token。
-- collector 日志可以输出 `upload_time`、上报人、设备、server URL、日期窗口等非敏感诊断信息，禁止输出 token。
-- collector 使用 `--collector-db` 保存本机 checkpoint，与 server `--db` 中央库分离。
-- collector 默认读取 `~/.codex/sessions`，默认 checkpoint 为 `~/.agent-dashboard/collector-sqlite`，日常命令不要求传 `--sessions-dir` 或 `--collector-db`。
-- collector 不启动 HTTP server，不占用 server 端口，也不初始化服务端 team registry。
-- teammate collector 分发包只应包含 jar 和 sh；安装脚本必须能从自身目录定位 jar 和 runner，不依赖完整源码仓库。
-- mac 上 collector 服务化使用 launchd 周期拉起一次性 collector，不使用常驻 Java 进程。
-- collector 默认单 batch 最多 500 条 event，可用 `--batch-size` 调整。
-- 前端必须保留 Local 和 Team 两个明确 Tab。
-- Team Models 必须按 `date + user_id + model` 展示明细，包含 session 时间窗口，默认按 token 降序并支持排序。
-- Team 页面必须支持按 `team_id` 区分和筛选不同团队，并展示 Uploads 上报记录。
-- Team 页面时间字段必须按 report timezone 展示，不直接显示 UTC `Z` 字符串。
-- `/api/team/report` contract 继续兼容 P2.5。
+- 构建：`mvn -DskipTests package`
+- 完整清理构建：`mvn -DskipTests clean package`
+- P2 smoke：`sh scripts/P2-2026-04-30-smoke-test.sh`
+- P2.5 smoke：`sh scripts/P2.5-2026-04-30-smoke-test.sh`
 
-## 7. 通用工作原则
-
-### 7.1 先设计，再开发，再验收
-
-每个阶段按顺序推进：
-
-1. 更新当前阶段工作手册 `AGENTS.md`。
-2. 写设计文档。
-3. 写 contract。
-4. 写任务拆分。
-5. 开发实现。
-6. 做 review。
-7. 写验收报告。
-8. 阶段结束时归档最终版 `AGENTS.md`。
-9. 把长期约定保留在下一阶段工作手册中。
-
-没有设计和 contract 时，不应直接开发。
-
-### 7.2 阶段聚焦
-
-每个阶段只解决当前阶段的问题。如果发现后续阶段需要的能力，只记录到文档，不提前实现。
-
-### 7.3 代码结构边界
-
-前后端必须保持文件级拆分：
-
-- 前端静态页面和脚本放在 `src/main/resources/static/`。
-- HTTP/API 层只处理路由、参数、状态码和 response。
-- ingestion 层只处理日志读取和 usage event 生成。
-- repository 层只处理 JDBC、SQL 执行和数据库映射。
-- report 层只处理统计聚合和 contract 输出。
-
-禁止把入口、前端 HTML、SQL、HTTP handler、ingestion 和 report 聚合长期堆在一个 Java 类里。
-
-### 7.4 文档是 agent 之间的接口
-
-多个 agent 协作时，不依赖聊天上下文传递关键约定。关键事实必须写入文档。
-
-阶段性文档命名格式：
-
-```text
-P<阶段号>-YYYY-MM-DD-<主题>.md
-```
-
-`README` 必须带阶段和日期归档；阶段结束后的 `AGENTS` 最终版必须进入 `docs/archive/`。
-
-### 7.5 Review Checklist
-
-每次提交或阶段验收前至少检查：
-
-- 是否偏离当前阶段目标。
-- 是否新增了未要求的功能。
-- 是否提前实现后续阶段。
-- 是否可能重复统计 token。
-- 是否混淆增量 usage 和累计 usage。
-- 是否记录了敏感 prompt 或 response。
-- 是否上传 raw JSONL。
-- 是否信任客户端自报 `user_id`。
-- 是否把 SQL 内联进 Java 代码。
-- 是否把前端页面重新塞回 Java 字符串。
-- 是否更新了对应文档。
-- 是否有验收标准和验收结果。
-
-## 8. Agent 分工
-
-Planner Agent：
-
-- 拆阶段。
-- 定义边界。
-- 写设计文档。
-- 写验收标准。
-- 识别风险和未知点。
-
-Research Agent：
-
-- 调研工具日志、字段、provider API。
-- 输出到 `docs/research/*.md`。
-
-Backend Agent：
-
-- 实现日志解析、API、SQLite ingestion、本地网关。
-- 开发前必须确认对应 contract。
-- 不默认记录 prompt 或 response 正文。
-- 认证和 token 相关代码改动前必须提示安全影响。
-
-Frontend Agent：
-
-- 实现 dashboard。
-- 页面字段必须来自 API contract。
-- 不在前端重新定义统计口径。
-
-Review Agent：
-
-- 检查 bug、统计口径、隐私风险、重复计数、边界条件。
-- 输出到 `docs/reviews/*.md` 或 milestone review。
-
-Acceptance Agent：
-
-- 按验收标准跑检查。
-- 记录通过项、失败项、未验证项。
-- 输出到 `docs/acceptance/*.md` 或 milestone acceptance。
-
-## 9. mac 构建执行约定
-
-当前开发环境以 mac 为准。
-
-处理规则：
-
-- 首选构建命令：`mvn -DskipTests package`。
-- 需要完整清理时使用：`mvn -DskipTests clean package`。
-- P2 mac smoke test：`sh scripts/P2-2026-04-30-smoke-test.sh`。
-- 如果 Codex 沙箱无法绑定本地 HTTP 端口，应在验收文档中记录为“沙箱执行受限”，不要判断为代码失败。
-- 需要用户真实终端验证时，应记录具体命令和用户反馈结果。
-
-## 10. 变更本文件的规则
-
-当出现以下情况时，应更新本文件：
-
-- 当前阶段变化。
-- 阶段边界变化。
-- 统计口径变化。
-- 新增长期协作约定。
-- 验收发现必须长期遵守的规则。
-- 文档命名、归档或阶段编号规则变化。
-
-更新规则：
-
-- 阶段进行中可以直接调整根目录 `AGENTS.md`，但只写当前阶段真正需要的规则。
-- 阶段结束时，必须把该阶段最终版 `AGENTS.md` 归档为 `docs/archive/P<阶段>-YYYY-MM-DD-AGENTS.md`。
-- 开始下一阶段前，必须确认上一阶段最终版 `AGENTS.md` 已归档。
-- 已完成阶段细节应放入对应 docs，只在本文件保留索引。
+如果 Codex 沙箱无法绑定本地 HTTP 端口，应在验收文档中记录为“沙箱执行受限”，不要判断为代码失败。

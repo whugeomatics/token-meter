@@ -53,6 +53,7 @@ public final class ReportService {
         private final Map<LocalDate, DailyBucket> daily = new LinkedHashMap<>();
         private final Map<String, ModelBucket> models = new HashMap<>();
         private final Map<String, SessionBucket> sessions = new HashMap<>();
+        private final ActiveWindows activeWindows = new ActiveWindows();
         private int eventCount;
         private Instant startedAt;
         private Instant endedAt;
@@ -71,6 +72,7 @@ public final class ReportService {
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
+            activeWindows.add(event.sessionId(), event.timestamp());
             LocalDate date = event.timestamp().atZone(query.zone()).toLocalDate();
             daily.computeIfAbsent(date, DailyBucket::new).add(event);
             models.computeIfAbsent(event.model(), ModelBucket::new).add(event);
@@ -78,7 +80,7 @@ public final class ReportService {
         }
 
         Report toReport() {
-            return new ReportPayload(query, summary, eventCount, sessions.size(), activeSeconds(startedAt, endedAt),
+            return new ReportPayload(query, summary, eventCount, sessions.size(), activeWindows.activeSeconds(),
                     new ArrayList<>(daily.values()),
                     models.values().stream()
                             .sorted(Comparator.comparingLong((ModelBucket bucket) -> bucket.totals.totalTokens).reversed())
@@ -114,6 +116,7 @@ public final class ReportService {
         final String model;
         final TokenTotals totals = new TokenTotals();
         final Set<String> sessions = new HashSet<>();
+        final ActiveWindows activeWindows = new ActiveWindows();
         int eventCount;
         Instant startedAt;
         Instant endedAt;
@@ -125,6 +128,7 @@ public final class ReportService {
         void add(UsageEvent event) {
             totals.add(event.usage());
             sessions.add(event.sessionId());
+            activeWindows.add(event.sessionId(), event.timestamp());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
@@ -135,6 +139,7 @@ public final class ReportService {
         final LocalDate date;
         final TokenTotals totals = new TokenTotals();
         final Set<String> sessions = new HashSet<>();
+        final ActiveWindows activeWindows = new ActiveWindows();
         int eventCount;
         Instant startedAt;
         Instant endedAt;
@@ -146,6 +151,7 @@ public final class ReportService {
         void add(UsageEvent event) {
             totals.add(event.usage());
             sessions.add(event.sessionId());
+            activeWindows.add(event.sessionId(), event.timestamp());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
@@ -172,7 +178,7 @@ public final class ReportService {
                     + bucket.totals.jsonFields() + ","
                     + "\"session_count\":" + bucket.sessions.size()
                     + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
-                    ReportService.activeSeconds(bucket.startedAt, bucket.endedAt))
+                    bucket.activeWindows.activeSeconds())
                     + "}"));
             out.append(',');
             out.append("\"models\":");
@@ -181,7 +187,7 @@ public final class ReportService {
                     + bucket.totals.jsonFields() + ","
                     + "\"session_count\":" + bucket.sessions.size()
                     + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
-                    ReportService.activeSeconds(bucket.startedAt, bucket.endedAt))
+                    bucket.activeWindows.activeSeconds())
                     + "}"));
             out.append(',');
             out.append("\"sessions\":");
@@ -216,6 +222,32 @@ public final class ReportService {
             return 0L;
         }
         return endedAt.getEpochSecond() - startedAt.getEpochSecond();
+    }
+
+    private static final class ActiveWindows {
+        private final Map<String, ActiveWindow> windows = new HashMap<>();
+
+        void add(String key, Instant timestamp) {
+            windows.computeIfAbsent(key, ignored -> new ActiveWindow()).add(timestamp);
+        }
+
+        long activeSeconds() {
+            long total = 0L;
+            for (ActiveWindow window : windows.values()) {
+                total += ReportService.activeSeconds(window.startedAt, window.endedAt);
+            }
+            return total;
+        }
+    }
+
+    private static final class ActiveWindow {
+        Instant startedAt;
+        Instant endedAt;
+
+        void add(Instant timestamp) {
+            startedAt = min(startedAt, timestamp);
+            endedAt = max(endedAt, timestamp);
+        }
     }
 
     private static String formatInstant(Instant instant, ZoneId zone) {

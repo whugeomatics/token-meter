@@ -75,7 +75,6 @@ public record AppConfig(Path sessionsDir, Path dbPath, ZoneId zone, int port,
         putEnv(result, "device-id", "AGENT_DASHBOARD_DEVICE_ID");
         putEnv(result, "device-name", "AGENT_DASHBOARD_DEVICE_NAME");
         putEnv(result, "server-url", "AGENT_DASHBOARD_SERVER_URL");
-        putEnv(result, "collector-db", "AGENT_DASHBOARD_COLLECTOR_DB");
         putEnv(result, "batch-size", "AGENT_DASHBOARD_BATCH_SIZE");
         putEnv(result, "admin-token", "AGENT_DASHBOARD_ADMIN_TOKEN");
         return result;
@@ -112,18 +111,6 @@ public record AppConfig(Path sessionsDir, Path dbPath, ZoneId zone, int port,
             return Path.of(override);
         }
         return Path.of(System.getProperty("user.home"), ".agent-dashboard", "sqlite");
-    }
-
-    public Path collectorDbPath() {
-        String override = options.get("collector-db");
-        if (override != null && !override.isBlank()) {
-            return Path.of(override);
-        }
-        String dbOverride = options.get("db");
-        if (dbOverride != null && !dbOverride.isBlank()) {
-            return Path.of(dbOverride);
-        }
-        return Path.of(System.getProperty("user.home"), ".agent-dashboard", "collector-sqlite");
     }
 
     private static ZoneId zone(String[] args, Path sessionsDir) {
