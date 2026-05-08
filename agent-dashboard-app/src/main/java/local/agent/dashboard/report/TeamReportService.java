@@ -26,6 +26,8 @@ import java.util.Locale;
 import java.util.Set;
 
 public final class TeamReportService {
+    private static final long MAX_ACTIVE_GAP_SECONDS = 30L * 60L;
+
     private final TeamUsageStore store;
     private final ZoneId zone;
 
@@ -145,10 +147,11 @@ public final class TeamReportService {
 
         private List<TeamModelBucket> sortedTeamModels() {
             return teamModelBuckets.values().stream()
-                    .sorted(Comparator.comparingLong((TeamModelBucket bucket) -> bucket.totals.totalTokens).reversed()
-                            .thenComparing((TeamModelBucket bucket) -> bucket.date, Comparator.reverseOrder())
+                    .sorted(Comparator.comparing((TeamModelBucket bucket) -> bucket.date, Comparator.reverseOrder())
+                            .thenComparing(bucket -> bucket.teamId)
                             .thenComparing(bucket -> bucket.userId)
-                            .thenComparing(bucket -> bucket.model))
+                            .thenComparing(bucket -> bucket.model)
+                            .thenComparing(Comparator.comparingLong((TeamModelBucket bucket) -> bucket.totals.totalTokens).reversed()))
                     .toList();
         }
 
@@ -592,19 +595,35 @@ public final class TeamReportService {
         long activeSeconds() {
             long total = 0L;
             for (ActiveWindow window : windows.values()) {
-                total += TeamReportService.activeSeconds(window.startedAt, window.endedAt);
+                total += window.activeSeconds();
             }
             return total;
         }
     }
 
     private static final class ActiveWindow {
-        Instant startedAt;
-        Instant endedAt;
+        final List<Instant> timestamps = new ArrayList<>();
 
         void add(Instant timestamp) {
-            startedAt = min(startedAt, timestamp);
-            endedAt = max(endedAt, timestamp);
+            timestamps.add(timestamp);
+        }
+
+        long activeSeconds() {
+            if (timestamps.size() < 2) {
+                return 0L;
+            }
+            timestamps.sort(Comparator.naturalOrder());
+            long total = 0L;
+            Instant previous = timestamps.get(0);
+            for (int i = 1; i < timestamps.size(); i++) {
+                Instant current = timestamps.get(i);
+                long gapSeconds = TeamReportService.activeSeconds(previous, current);
+                if (gapSeconds <= MAX_ACTIVE_GAP_SECONDS) {
+                    total += gapSeconds;
+                }
+                previous = current;
+            }
+            return total;
         }
     }
 

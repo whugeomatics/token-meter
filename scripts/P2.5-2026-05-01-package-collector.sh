@@ -18,6 +18,7 @@ fi
 
 mkdir -p "$PACKAGE"
 rm -f "$PACKAGE/agent-dashboard-0.1.0-SNAPSHOT.jar"
+rm -f "$PACKAGE/agent-dashboard-app-0.1.0-SNAPSHOT.jar"
 cp "$JAR" "$PACKAGE/agent-dashboard-collector-0.1.0-SNAPSHOT.jar"
 cp "$ROOT/scripts/P2.5-2026-05-01-run-collector.sh" "$PACKAGE/"
 cp "$ROOT/scripts/P2.5-2026-05-01-run-collector-service.sh" "$PACKAGE/"

@@ -24,6 +24,8 @@ import java.util.Map;
 import java.util.Set;
 
 public final class ReportService {
+    private static final long MAX_ACTIVE_GAP_SECONDS = 30L * 60L;
+
     private final UsageStore usageStore;
     private final ZoneId zone;
 
@@ -234,19 +236,35 @@ public final class ReportService {
         long activeSeconds() {
             long total = 0L;
             for (ActiveWindow window : windows.values()) {
-                total += ReportService.activeSeconds(window.startedAt, window.endedAt);
+                total += window.activeSeconds();
             }
             return total;
         }
     }
 
     private static final class ActiveWindow {
-        Instant startedAt;
-        Instant endedAt;
+        final List<Instant> timestamps = new ArrayList<>();
 
         void add(Instant timestamp) {
-            startedAt = min(startedAt, timestamp);
-            endedAt = max(endedAt, timestamp);
+            timestamps.add(timestamp);
+        }
+
+        long activeSeconds() {
+            if (timestamps.size() < 2) {
+                return 0L;
+            }
+            timestamps.sort(Comparator.naturalOrder());
+            long total = 0L;
+            Instant previous = timestamps.get(0);
+            for (int i = 1; i < timestamps.size(); i++) {
+                Instant current = timestamps.get(i);
+                long gapSeconds = ReportService.activeSeconds(previous, current);
+                if (gapSeconds <= MAX_ACTIVE_GAP_SECONDS) {
+                    total += gapSeconds;
+                }
+                previous = current;
+            }
+            return total;
         }
     }
 

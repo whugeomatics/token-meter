@@ -2,7 +2,7 @@
 set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-JAR="$ROOT/agent-dashboard-app/target/agent-dashboard-0.1.0-SNAPSHOT.jar"
+JAR="$ROOT/agent-dashboard-app/target/agent-dashboard-app-0.1.0-SNAPSHOT.jar"
 COLLECTOR_JAR="$ROOT/agent-dashboard-collector/target/agent-dashboard-collector-0.1.0-SNAPSHOT.jar"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/agent-dashboard-p25.XXXXXX")"
 SESSIONS="$WORK/sessions/2026/04/30"
@@ -52,7 +52,8 @@ test -f "$SERVER_DB/agent-dashboard-team-registry.sqlite"
 cat > "$PAYLOAD" <<'JSON'
 {"collector_version":"0.1.0","client_user_id":"user-alice","client_device_id":"device-alice","events":[
 {"event_key":"codex|p25-smoke-session|fixture|1|130|100|30","tool":"codex","session_id":"p25-smoke-session","model":"gpt-5-team-smoke","timestamp":"2026-04-30T01:00:02Z","input_tokens":100,"cached_input_tokens":20,"output_tokens":30,"reasoning_output_tokens":5,"total_tokens":130},
-{"event_key":"codex|p25-smoke-session|fixture|2|220|150|70","tool":"codex","session_id":"p25-smoke-session","model":"gpt-5-team-smoke","timestamp":"2026-04-30T01:00:03Z","input_tokens":50,"cached_input_tokens":0,"output_tokens":40,"reasoning_output_tokens":5,"total_tokens":90}
+{"event_key":"codex|p25-smoke-session|fixture|2|220|150|70","tool":"codex","session_id":"p25-smoke-session","model":"gpt-5-team-smoke","timestamp":"2026-04-30T01:00:03Z","input_tokens":50,"cached_input_tokens":0,"output_tokens":40,"reasoning_output_tokens":5,"total_tokens":90},
+{"event_key":"codex|p25-smoke-session|fixture|3|230|160|70","tool":"codex","session_id":"p25-smoke-session","model":"gpt-5-team-smoke","timestamp":"2026-05-08T06:23:03Z","input_tokens":10,"cached_input_tokens":0,"output_tokens":0,"reasoning_output_tokens":0,"total_tokens":10}
 ]}
 JSON
 
@@ -64,16 +65,18 @@ java -jar "$JAR" --register-device-token --db="$DIRECT_DB" --timezone=Asia/Shang
   --device-token="$TOKEN" --team-id=team-smoke --user-id=user-alice --device-id=device-alice \
   --device-name="Alice MacBook" 2>&1 | grep '"registered":true' >/dev/null
 direct1="$(java -jar "$JAR" --db="$DIRECT_DB" --timezone=Asia/Shanghai --device-token="$TOKEN" --team-ingest-file="$PAYLOAD" 2>&1)"
-printf '%s\n' "$direct1" | grep '"accepted":2' >/dev/null
+printf '%s\n' "$direct1" | grep '"accepted":3' >/dev/null
 test -f "$DIRECT_DB/agent-dashboard-team-registry.sqlite"
 test -f "$DIRECT_DB/agent-dashboard-team-2026-04.sqlite"
 direct2="$(java -jar "$JAR" --db="$DIRECT_DB" --timezone=Asia/Shanghai --device-token="$TOKEN" --team-ingest-file="$PAYLOAD" 2>&1)"
-printf '%s\n' "$direct2" | grep '"duplicate":2' >/dev/null
+printf '%s\n' "$direct2" | grep '"duplicate":3' >/dev/null
 direct_report="$(java -jar "$JAR" --team-report --days=30 --db="$DIRECT_DB" --timezone=Asia/Shanghai 2>&1)"
-printf '%s\n' "$direct_report" | grep '"total_tokens":220' >/dev/null
-printf '%s\n' "$direct_report" | grep '"usage_event_count":2' >/dev/null
-printf '%s\n' "$direct_report" | grep '"avg_tokens_per_call":110.00' >/dev/null
+printf '%s\n' "$direct_report" | grep '"total_tokens":230' >/dev/null
+printf '%s\n' "$direct_report" | grep '"usage_event_count":3' >/dev/null
+printf '%s\n' "$direct_report" | grep '"avg_tokens_per_call":76.67' >/dev/null
 printf '%s\n' "$direct_report" | grep '"reasoning_ratio":0.142857' >/dev/null
+printf '%s\n' "$direct_report" | grep -E '"summary":\{[^}]*"active_seconds":1' >/dev/null
+printf '%s\n' "$direct_report" | grep -E '"user_id":"user-alice"[^}]*"active_seconds":1' >/dev/null
 printf '%s\n' "$direct_report" | grep '"upload_health":' >/dev/null
 printf '%s\n' "$direct_report" | grep '"user_id":"user-alice"' >/dev/null
 printf '%s\n' "$direct_report" | grep '"device_id":"device-alice"' >/dev/null

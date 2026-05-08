@@ -157,6 +157,7 @@ Codex 沙箱记录：
 变更：
 
 - dashboard 服务启动前自动执行一次 Codex ingestion，避免页面只读取空 SQLite。
+- Local 页面加载、切换时间范围和 Refresh 会先执行一次增量 ingestion，再读取 `/api/report`；服务启动后新增的 session 应能通过 `/api/ingest` 刷入 SQLite。
 - 默认 SQLite 存储调整为月分片目录 `~/.agent-dashboard/sqlite/agent-dashboard-YYYY-MM.sqlite`。
 - `--db` 指向 `.sqlite` / `.db` 文件时保持单文件兼容。
 - `/api/report` 在分片模式下按查询日期范围读取相关月分片。

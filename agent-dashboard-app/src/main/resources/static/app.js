@@ -1,4 +1,4 @@
-const state = { localRange: 'days=1', teamRange: 'days=7', view: 'local', localSection: 'sessions', teamId: '', teamOptions: [], teamSection: 'users', teamModelSort: 'total_tokens', teamModelDir: 'desc', teamReport: null };
+const state = { localRange: 'days=1', teamRange: 'days=7', view: 'local', localSection: 'sessions', teamId: '', teamOptions: [], teamSection: 'users', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
 const fmt = new Intl.NumberFormat();
 const qs = (id) => document.getElementById(id);
 const tokens = (n) => fmt.format(n || 0);
@@ -39,7 +39,7 @@ document.querySelectorAll('[data-team-section-tab]').forEach((button) => {
     renderTeamSections();
   });
 });
-qs('refresh').addEventListener('click', () => load({ showToast: true, ingestLocal: state.view === 'local' }));
+qs('refresh').addEventListener('click', () => load({ showToast: true }));
 qs('teamFilter').addEventListener('change', () => {
   state.teamId = qs('teamFilter').value;
   load();
@@ -61,7 +61,7 @@ async function load(options = {}) {
   statusEl().textContent = 'Loading...';
   statusEl().className = 'status';
   try {
-    if (options.ingestLocal) {
+    if (state.view === 'local') {
       const ingestResponse = await fetch('/api/ingest', { method: 'POST', cache: 'no-store' });
       if (!ingestResponse.ok) throw new Error(`Ingest HTTP ${ingestResponse.status}`);
       const ingestResult = await ingestResponse.json();

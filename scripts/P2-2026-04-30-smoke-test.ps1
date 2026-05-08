@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$jar = Join-Path $root "agent-dashboard-app\target\agent-dashboard-0.1.0-SNAPSHOT.jar"
+$jar = Join-Path $root "agent-dashboard-app\target\agent-dashboard-app-0.1.0-SNAPSHOT.jar"
 $runId = [Guid]::NewGuid().ToString("N")
 $work = Join-Path ([System.IO.Path]::GetTempPath()) "agent-dashboard-p2-$runId"
 $sessions = Join-Path $work "sessions\2026\04\30"

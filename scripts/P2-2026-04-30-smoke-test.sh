@@ -2,7 +2,7 @@
 set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-JAR="$ROOT/agent-dashboard-app/target/agent-dashboard-0.1.0-SNAPSHOT.jar"
+JAR="$ROOT/agent-dashboard-app/target/agent-dashboard-app-0.1.0-SNAPSHOT.jar"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/agent-dashboard-p2.XXXXXX")"
 SESSIONS="$WORK/sessions/2026/04/30"
 DB_FILE="$WORK/agent-dashboard.sqlite"
@@ -79,10 +79,22 @@ java -jar "$JAR" --sessions-dir="$SESSIONS" --db="$SERVER_DB_DIR" --timezone=Asi
 SERVER_PID=$!
 sleep 2
 if server_report="$(curl --noproxy '*' -fsS "http://127.0.0.1:$PORT/api/report?days=30" 2>/dev/null)"; then
+    printf '%s\n' "$server_report" | grep '"total_tokens":500' >/dev/null
+    test -f "$SERVER_DB_DIR/agent-dashboard-2026-04.sqlite"
+    POST_START_JSONL="$SESSIONS/rollout-post-start-session.jsonl"
+    cat > "$POST_START_JSONL" <<'JSONL'
+{"timestamp":"2026-04-30T03:00:00Z","type":"session_meta","payload":{"id":"p2-post-start-session"}}
+{"timestamp":"2026-04-30T03:00:01Z","type":"turn_context","payload":{"model":"gpt-5-refresh"}}
+{"timestamp":"2026-04-30T03:00:02Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":40,"cached_input_tokens":10,"output_tokens":20,"reasoning_output_tokens":5,"total_tokens":60}}}}
+JSONL
+    refresh_result="$(curl --noproxy '*' -fsS -X POST "http://127.0.0.1:$PORT/api/ingest")"
+    printf '%s\n' "$refresh_result" | grep '"status":"ok"' >/dev/null
+    printf '%s\n' "$refresh_result" | grep '"events_inserted":1' >/dev/null
+    refreshed_report="$(curl --noproxy '*' -fsS "http://127.0.0.1:$PORT/api/report?days=30")"
+    printf '%s\n' "$refreshed_report" | grep '"total_tokens":560' >/dev/null
+    printf '%s\n' "$refreshed_report" | grep '"model":"gpt-5-refresh"' >/dev/null
     kill "$SERVER_PID" >/dev/null 2>&1 || true
     wait "$SERVER_PID" >/dev/null 2>&1 || true
-    printf '%s\n' "$server_report" | grep '"total_tokens":220' >/dev/null
-    test -f "$SERVER_DB_DIR/agent-dashboard-2026-04.sqlite"
 else
     kill "$SERVER_PID" >/dev/null 2>&1 || true
     wait "$SERVER_PID" >/dev/null 2>&1 || true

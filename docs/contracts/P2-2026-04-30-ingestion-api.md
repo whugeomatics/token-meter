@@ -53,7 +53,7 @@ POST /api/ingest
 
 用途：
 
-- Local 页面点击 Refresh 时，先触发一次 Codex session 增量采集，再重新请求 `/api/report`。
+- Local 页面加载、切换 Local 时间范围或点击 Refresh 时，先触发一次 Codex session 增量采集，再重新请求 `/api/report`。
 - endpoint 复用 P2 `CodexIngestionService` 和现有 SQLite 去重规则。
 - 只随 dashboard 服务绑定在 `127.0.0.1`，不作为 team collector 或远程 ingest API。
 - 不读取、返回或持久化 prompt / response 正文。
