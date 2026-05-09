@@ -8,7 +8,7 @@ import java.time.Duration;
 import java.util.List;
 
 public final class AdminAuth {
-    private static final String COOKIE_NAME = "agent_dashboard_admin";
+    private static final String COOKIE_NAME = "token_meter_admin";
     private static final Duration COOKIE_MAX_AGE = Duration.ofHours(8);
 
     private final String adminTokenHash;
