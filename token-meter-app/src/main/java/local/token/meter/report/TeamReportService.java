@@ -6,6 +6,7 @@ import local.token.meter.domain.Snapshot;
 import local.token.meter.domain.StoredTeamUsageEvent;
 import local.token.meter.domain.TeamUploadRecord;
 import local.token.meter.domain.TokenTotals;
+import local.token.meter.http.BadRequestException;
 import local.token.meter.store.TeamUsageStore;
 import local.token.meter.util.Json;
 
@@ -15,6 +16,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -40,6 +42,18 @@ public final class TeamReportService {
         return zone;
     }
 
+    public Report report(Map<String, String> query) throws SQLException {
+        String period = query.getOrDefault("period", "");
+        String compare = query.getOrDefault("compare", "");
+        if (period.isBlank() && compare.isBlank()) {
+            return report(ReportQuery.from(query, zone));
+        }
+        if ("week".equals(period) && "previous".equals(compare)) {
+            return weekComparison(query);
+        }
+        throw new BadRequestException("period and compare must be period=week&compare=previous");
+    }
+
     public Report report(ReportQuery query) throws SQLException {
         Aggregator aggregator = new Aggregator(query);
         for (StoredTeamUsageEvent event : store.loadTeamEvents(query.startDate(), query.endDate())) {
@@ -53,6 +67,37 @@ public final class TeamReportService {
             }
         }
         return aggregator.toReport();
+    }
+
+    private Report weekComparison(Map<String, String> params) throws SQLException {
+        LocalDate today = LocalDate.now(zone);
+        LocalDate currentStart = today.minusDays(today.getDayOfWeek().getValue() - 1L);
+        LocalDate currentEnd = today;
+        long elapsedDays = ChronoUnit.DAYS.between(currentStart, currentEnd);
+        LocalDate previousStart = currentStart.minusWeeks(1);
+        LocalDate previousEnd = previousStart.plusDays(elapsedDays);
+        String teamId = params.getOrDefault("team_id", "");
+        String userId = params.getOrDefault("user_id", "");
+        ReportQuery currentQuery = new ReportQuery("week", currentStart, currentEnd, zone, teamId, userId);
+        ReportQuery previousQuery = new ReportQuery("week", previousStart, previousEnd, zone, teamId, userId);
+        Aggregator current = new Aggregator(currentQuery);
+        Aggregator previous = new Aggregator(previousQuery);
+
+        for (StoredTeamUsageEvent event : store.loadTeamEvents(previousStart, currentEnd)) {
+            if (currentQuery.contains(event.timestamp()) && currentQuery.matchesTeam(event.teamId())
+                    && currentQuery.matchesUser(event.userId())) {
+                current.add(event);
+            } else if (previousQuery.contains(event.timestamp()) && previousQuery.matchesTeam(event.teamId())
+                    && previousQuery.matchesUser(event.userId())) {
+                previous.add(event);
+            }
+        }
+        for (TeamUploadRecord upload : store.loadTeamUploads(currentStart, currentEnd)) {
+            if (currentQuery.matchesTeam(upload.teamId()) && currentQuery.matchesUser(upload.userId())) {
+                current.add(upload);
+            }
+        }
+        return current.toReport(comparisonJson(current, previous, currentQuery, previousQuery));
     }
 
     private static final class Aggregator {
@@ -115,10 +160,14 @@ public final class TeamReportService {
         }
 
         Report toReport() {
+            return toReport("");
+        }
+
+        Report toReport(String comparisonJson) {
             return new TeamReportPayload(query, teamId, summary, users.size(), devices.size(), sessions.size(),
                     eventCount, activeWindows.activeSeconds(), sortedTeams(), sortedUsers(), sortedDevices(),
                     sortedModels(), sortedTeamModels(), new ArrayList<>(dailyBuckets.values()), sortedUserDaily(),
-                    sortedUploadHealth(), sortedUploads());
+                    sortedUploadHealth(), sortedUploads(), comparisonJson);
         }
 
         private List<TeamBucket> sortedTeams() {
@@ -420,6 +469,133 @@ public final class TeamReportService {
         }
     }
 
+    private static String comparisonJson(Aggregator current, Aggregator previous, ReportQuery currentQuery,
+                                         ReportQuery previousQuery) {
+        return ",\"comparison\":{\"period\":\"natural_week\","
+                + "\"current\":" + comparisonSummaryJson("This Week", current, currentQuery) + ","
+                + "\"previous\":" + comparisonSummaryJson("Previous Week", previous, previousQuery) + ","
+                + "\"delta\":" + comparisonDeltaJson(current, previous) + ","
+                + "\"daily\":" + comparisonDailyJson(current, previous, currentQuery, previousQuery) + ","
+                + "\"users\":" + comparisonUsersJson(current, previous) + ","
+                + "\"models\":" + comparisonModelsJson(current, previous)
+                + "}";
+    }
+
+    private static String comparisonSummaryJson(String label, Aggregator aggregator, ReportQuery query) {
+        return "{\"label\":\"" + label + "\",\"start_date\":\"" + query.startDate() + "\",\"end_date\":\""
+                + query.endDate() + "\",\"total_tokens\":" + aggregator.summary.totalTokens
+                + ",\"usage_event_count\":" + aggregator.eventCount
+                + ",\"sessions\":" + aggregator.sessions.size()
+                + ",\"users\":" + aggregator.users.size()
+                + ",\"devices\":" + aggregator.devices.size() + "}";
+    }
+
+    private static String comparisonDeltaJson(Aggregator current, Aggregator previous) {
+        long tokenDelta = current.summary.totalTokens - previous.summary.totalTokens;
+        return "{\"total_tokens\":" + tokenDelta
+                + ",\"total_tokens_rate\":" + decimal(rate(tokenDelta, previous.summary.totalTokens))
+                + ",\"usage_event_count\":" + (current.eventCount - previous.eventCount)
+                + ",\"sessions\":" + (current.sessions.size() - previous.sessions.size())
+                + ",\"users\":" + (current.users.size() - previous.users.size())
+                + ",\"devices\":" + (current.devices.size() - previous.devices.size()) + "}";
+    }
+
+    private static String comparisonDailyJson(Aggregator current, Aggregator previous, ReportQuery currentQuery,
+                                              ReportQuery previousQuery) {
+        List<String> rows = new ArrayList<>();
+        long days = ChronoUnit.DAYS.between(currentQuery.startDate(), currentQuery.endDate());
+        for (int index = 0; index <= days; index++) {
+            LocalDate currentDate = currentQuery.startDate().plusDays(index);
+            LocalDate previousDate = previousQuery.startDate().plusDays(index);
+            DailyBucket currentBucket = current.dailyBuckets.get(currentDate);
+            DailyBucket previousBucket = previous.dailyBuckets.get(previousDate);
+            long currentTokens = currentBucket == null ? 0L : currentBucket.totals.totalTokens;
+            long previousTokens = previousBucket == null ? 0L : previousBucket.totals.totalTokens;
+            long delta = currentTokens - previousTokens;
+            rows.add("{\"day_index\":" + index
+                    + ",\"label\":\"" + dayLabel(currentDate) + "\""
+                    + ",\"current_date\":\"" + currentDate + "\""
+                    + ",\"previous_date\":\"" + previousDate + "\""
+                    + ",\"current_total_tokens\":" + currentTokens
+                    + ",\"previous_total_tokens\":" + previousTokens
+                    + ",\"delta_total_tokens\":" + delta
+                    + ",\"delta_total_tokens_rate\":" + decimal(rate(delta, previousTokens)) + "}");
+        }
+        return "[" + String.join(",", rows) + "]";
+    }
+
+    private static String comparisonUsersJson(Aggregator current, Aggregator previous) {
+        Set<String> keys = new HashSet<>();
+        keys.addAll(current.userBuckets.keySet());
+        keys.addAll(previous.userBuckets.keySet());
+        return "[" + keys.stream()
+                .map(key -> {
+                    UserBucket currentBucket = current.userBuckets.get(key);
+                    UserBucket previousBucket = previous.userBuckets.get(key);
+                    UserBucket identity = currentBucket == null ? previousBucket : currentBucket;
+                    long currentTokens = currentBucket == null ? 0L : currentBucket.totals.totalTokens;
+                    long previousTokens = previousBucket == null ? 0L : previousBucket.totals.totalTokens;
+                    long delta = currentTokens - previousTokens;
+                    String json = "{\"team_id\":\"" + Json.escape(identity.teamId)
+                            + "\",\"user_id\":\"" + Json.escape(identity.userId)
+                            + "\",\"display_name\":\"" + Json.escape(identity.displayName)
+                            + "\",\"current_total_tokens\":" + currentTokens
+                            + ",\"previous_total_tokens\":" + previousTokens
+                            + ",\"delta_total_tokens\":" + delta
+                            + ",\"delta_total_tokens_rate\":" + decimal(rate(delta, previousTokens)) + "}";
+                    return new ComparisonRow(json, delta);
+                })
+                .sorted(Comparator.comparingLong((ComparisonRow row) -> Math.abs(row.delta)).reversed())
+                .limit(8)
+                .map(row -> row.json)
+                .reduce((left, right) -> left + "," + right)
+                .orElse("") + "]";
+    }
+
+    private static String comparisonModelsJson(Aggregator current, Aggregator previous) {
+        Set<String> keys = new HashSet<>();
+        keys.addAll(current.modelBuckets.keySet());
+        keys.addAll(previous.modelBuckets.keySet());
+        return "[" + keys.stream()
+                .map(key -> {
+                    ModelBucket currentBucket = current.modelBuckets.get(key);
+                    ModelBucket previousBucket = previous.modelBuckets.get(key);
+                    long currentTokens = currentBucket == null ? 0L : currentBucket.totals.totalTokens;
+                    long previousTokens = previousBucket == null ? 0L : previousBucket.totals.totalTokens;
+                    long delta = currentTokens - previousTokens;
+                    String json = "{\"model\":\"" + Json.escape(key)
+                            + "\",\"current_total_tokens\":" + currentTokens
+                            + ",\"previous_total_tokens\":" + previousTokens
+                            + ",\"delta_total_tokens\":" + delta
+                            + ",\"delta_total_tokens_rate\":" + decimal(rate(delta, previousTokens)) + "}";
+                    return new ComparisonRow(json, delta);
+                })
+                .sorted(Comparator.comparingLong((ComparisonRow row) -> Math.abs(row.delta)).reversed())
+                .limit(8)
+                .map(row -> row.json)
+                .reduce((left, right) -> left + "," + right)
+                .orElse("") + "]";
+    }
+
+    private record ComparisonRow(String json, long delta) {
+    }
+
+    private static String dayLabel(LocalDate date) {
+        String value = date.getDayOfWeek().toString().substring(0, 3).toLowerCase(Locale.ROOT);
+        return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);
+    }
+
+    private static double rate(long delta, long previous) {
+        if (previous == 0L) {
+            return delta == 0L ? 0.0d : 1.0d;
+        }
+        return (double) delta / (double) previous;
+    }
+
+    private static String decimal(double value) {
+        return String.format(Locale.ROOT, "%.6f", value);
+    }
+
     private record TeamReportPayload(ReportQuery query, String teamId, TokenTotals summary, int users, int devices,
                                      int sessions, int eventCount, long activeSeconds, List<TeamBucket> teamBuckets,
                                      List<UserBucket> userBuckets, List<DeviceBucket> deviceBuckets,
@@ -427,7 +603,7 @@ public final class TeamReportService {
                                      List<DailyBucket> dailyBuckets,
                                      List<UserDailyBucket> userDailyBuckets,
                                      List<UploadHealthBucket> uploadHealthBuckets,
-                                     List<TeamUploadRecord> uploads) implements Report {
+                                     List<TeamUploadRecord> uploads, String comparisonJson) implements Report {
         public String toJson() {
             return "{"
                     + "\"range\":{\"days\":" + rangeDays() + ",\"timezone\":\"" + Json.escape(query.zone().getId())
@@ -444,6 +620,7 @@ public final class TeamReportService {
                     + "\"user_daily\":" + Json.array(userDailyBuckets, this::userDailyJson) + ","
                     + "\"upload_health\":" + Json.array(uploadHealthBuckets, this::uploadHealthJson) + ","
                     + "\"uploads\":" + Json.array(uploads, this::uploadJson)
+                    + comparisonJson
                     + "}";
         }
 

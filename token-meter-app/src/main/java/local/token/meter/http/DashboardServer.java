@@ -149,8 +149,7 @@ public final class DashboardServer {
         }
         Map<String, String> query = parseQuery(exchange.getRequestURI().getRawQuery());
         try {
-            ReportQuery reportQuery = ReportQuery.from(query, teamReportService.zone());
-            writeJson(exchange, 200, teamReportService.report(reportQuery).toJson());
+            writeJson(exchange, 200, teamReportService.report(query).toJson());
         } catch (BadRequestException e) {
             writeJson(exchange, 400, error("invalid_query", e.getMessage()));
         } catch (Exception e) {

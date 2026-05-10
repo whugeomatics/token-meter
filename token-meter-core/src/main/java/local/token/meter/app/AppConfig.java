@@ -53,6 +53,14 @@ public record AppConfig(Path sessionsDir, Path dbPath, ZoneId zone, int port,
                 query.put("days", arg.substring("--days=".length()));
             } else if (arg.startsWith("--month=")) {
                 query.put("month", arg.substring("--month=".length()));
+            } else if (arg.startsWith("--period=")) {
+                query.put("period", arg.substring("--period=".length()));
+            } else if (arg.startsWith("--compare=")) {
+                query.put("compare", arg.substring("--compare=".length()));
+            } else if (arg.startsWith("--team-id=")) {
+                query.put("team_id", arg.substring("--team-id=".length()));
+            } else if (arg.startsWith("--user-id=")) {
+                query.put("user_id", arg.substring("--user-id=".length()));
             }
         }
         return query;

@@ -7,29 +7,45 @@
   <link rel="stylesheet" href="/app.css">
 </head>
 <body>
-  <main id="app" class="app">
-    <header class="toolbar">
-      <div>
-        <h1>Codex Usage Dashboard</h1>
-        <div id="rangeMeta" class="meta">Loading usage data...</div>
+  <main id="app" class="app app-shell">
+    <aside class="side-nav" aria-label="Dashboard views">
+      <div class="brand-mark">TM</div>
+      <div class="brand-copy">
+        <div class="brand-title">Token Meter</div>
+        <div class="brand-note">Usage dashboard</div>
       </div>
-      <div class="controls">
-        <div class="tabs" role="tablist" aria-label="Usage view">
-          <button type="button" data-view="local" class="active" role="tab" aria-selected="true">Local</button>
-          <button type="button" data-view="team" role="tab" aria-selected="false">Team</button>
-        </div>
-        <select id="teamFilter" class="hidden" aria-label="Team filter">
-          <option value="">All Teams</option>
-        </select>
-        <button type="button" data-range="days=1" class="active">Today</button>
-        <button type="button" data-range="days=7">7D</button>
-        <button type="button" data-range="days=30">30D</button>
-        <button type="button" data-range="month=current">This Month</button>
-        <button id="refresh" type="button">Refresh</button>
+      <div class="view-tabs" role="tablist" aria-label="Usage view">
+        <button type="button" data-view="local" class="active" role="tab" aria-selected="true">
+          <span class="nav-icon">L</span>
+          <span><strong>Local</strong><small>This machine</small></span>
+        </button>
+        <button type="button" data-view="team" role="tab" aria-selected="false">
+          <span class="nav-icon">T</span>
+          <span><strong>Team</strong><small>All teams by default</small></span>
+        </button>
       </div>
-    </header>
+    </aside>
 
-    <div id="localPanel" role="tabpanel">
+    <div class="content">
+      <header class="toolbar">
+        <div>
+          <h1>Codex Usage Dashboard</h1>
+          <div id="rangeMeta" class="meta">Loading usage data...</div>
+          <div id="loadStatus" class="status"></div>
+        </div>
+        <div class="controls">
+          <select id="teamFilter" class="hidden" aria-label="Team filter">
+            <option value="">All Teams</option>
+          </select>
+          <button type="button" data-range="days=1" class="active">Today</button>
+          <button type="button" data-range="days=7">7D</button>
+          <button type="button" data-range="days=30">30D</button>
+          <button type="button" data-range="month=current">This Month</button>
+          <button id="refresh" type="button">Refresh</button>
+        </div>
+      </header>
+
+      <div id="localPanel" role="tabpanel">
       <section class="summary" aria-label="Local summary">
         <article class="metric"><div class="metric-label">Total Tokens</div><div id="localTotalTokens" class="metric-value">0</div><div class="metric-note">Usage event deltas</div></article>
         <article class="metric"><div class="metric-label">Net Usage</div><div id="localNetTokens" class="metric-value">0</div><div class="metric-note">Non-cached input + output</div></article>
@@ -42,10 +58,25 @@
       </section>
 
       <div class="section-tabs" role="tablist" aria-label="Local sections">
-        <button type="button" data-local-section-tab="sessions" class="active" role="tab" aria-selected="true">Sessions</button>
+        <button type="button" data-local-section-tab="overview" class="active" role="tab" aria-selected="true">Overview</button>
+        <button type="button" data-local-section-tab="sessions" role="tab" aria-selected="false">Sessions</button>
         <button type="button" data-local-section-tab="models" role="tab" aria-selected="false">Models</button>
-        <button type="button" data-local-section-tab="daily" role="tab" aria-selected="false">Daily</button>
+        <button type="button" data-local-section-tab="daily" role="tab" aria-selected="false">Daily Trend</button>
       </div>
+
+      <section class="section local-section" data-local-section="overview">
+        <div class="section-header"><div class="section-title">Local Overview</div><div id="localOverviewStatus" class="status"></div></div>
+        <div class="overview-grid">
+          <div class="insight-panel">
+            <div class="panel-title">Daily Trend</div>
+            <div id="localOverviewChart" class="chart compact-chart"></div>
+          </div>
+          <div class="insight-panel">
+            <div class="panel-title">Top Models</div>
+            <div class="table-wrap"><table class="compact-table"><thead><tr><th>Model</th><th>Total</th><th>Calls</th><th>Cache</th></tr></thead><tbody id="localOverviewModelsBody"></tbody></table></div>
+          </div>
+        </div>
+      </section>
 
       <section class="section local-section hidden" data-local-section="daily">
         <div class="section-header"><div class="section-title">Daily Usage</div><div id="localDailyStatus" class="status"></div></div>
@@ -58,13 +89,13 @@
         <div class="table-wrap"><table><thead><tr><th>Model</th><th>Total</th><th>Input</th><th>Cached</th><th>Output</th><th>Reasoning</th><th>Sessions</th><th>Calls</th><th>Avg / Session</th><th>Avg / Call</th><th>Cache</th><th>Reasoning %</th><th>Active</th></tr></thead><tbody id="localModelsBody"></tbody></table></div>
       </section>
 
-      <section class="section local-section" data-local-section="sessions">
+      <section class="section local-section hidden" data-local-section="sessions">
         <div class="section-header"><div class="section-title">Sessions</div><div id="localSessionsStatus" class="status"></div></div>
         <div class="table-wrap"><table><thead><tr><th>Session</th><th>Total</th><th>Net</th><th>Calls</th><th>Avg / Call</th><th>Active</th><th>Started</th><th>Ended</th><th>Models</th></tr></thead><tbody id="localSessionsBody"></tbody></table></div>
       </section>
-    </div>
+      </div>
 
-    <div id="teamPanel" class="hidden" role="tabpanel">
+      <div id="teamPanel" class="hidden" role="tabpanel">
       <section class="summary" aria-label="Team summary">
         <article class="metric"><div class="metric-label">Total Tokens</div><div id="teamTotalTokens" class="metric-value">0</div><div class="metric-note">Team usage event deltas</div></article>
         <article class="metric"><div class="metric-label">Net Usage</div><div id="teamNetTokens" class="metric-value">0</div><div class="metric-note">Non-cached input + output</div></article>
@@ -77,12 +108,41 @@
       </section>
 
       <div class="section-tabs" role="tablist" aria-label="Team sections">
-        <button type="button" data-team-section-tab="users" class="active" role="tab" aria-selected="true">Users</button>
+        <button type="button" data-team-section-tab="overview" class="active" role="tab" aria-selected="true">Overview</button>
+        <button type="button" data-team-section-tab="users" role="tab" aria-selected="false">Users</button>
         <button type="button" data-team-section-tab="models" role="tab" aria-selected="false">Models</button>
         <button type="button" data-team-section-tab="devices" role="tab" aria-selected="false">Devices</button>
         <button type="button" data-team-section-tab="uploads" role="tab" aria-selected="false">Upload Health</button>
-        <button type="button" data-team-section-tab="daily" role="tab" aria-selected="false">Daily</button>
+        <button type="button" data-team-section-tab="daily" role="tab" aria-selected="false">Daily Trend</button>
       </div>
+
+      <section class="section team-section" data-team-section="overview">
+        <div class="section-header"><div class="section-title">Week over Week</div><div id="teamOverviewStatus" class="status">All Teams</div></div>
+        <div class="trend-summary" aria-label="Team week comparison">
+          <article class="trend-card"><div class="metric-label">Tokens</div><div id="teamWeekTokens" class="metric-value">0</div><div id="teamWeekTokensDelta" class="trend-note">0%</div></article>
+          <article class="trend-card"><div class="metric-label">Calls</div><div id="teamWeekCalls" class="metric-value">0</div><div id="teamWeekCallsDelta" class="trend-note">0</div></article>
+          <article class="trend-card"><div class="metric-label">Sessions</div><div id="teamWeekSessions" class="metric-value">0</div><div id="teamWeekSessionsDelta" class="trend-note">0</div></article>
+          <article class="trend-card"><div class="metric-label">Active Users</div><div id="teamWeekUsers" class="metric-value">0</div><div id="teamWeekUsersDelta" class="trend-note">0</div></article>
+        </div>
+        <div class="overview-grid">
+          <div class="insight-panel wide-panel">
+            <div class="panel-title">This Week vs Previous Week</div>
+            <div id="teamWeekChart" class="chart compact-chart"></div>
+          </div>
+          <div class="insight-panel">
+            <div class="panel-title">User Change</div>
+            <div class="table-wrap"><table class="compact-table"><thead><tr><th>User</th><th>Current</th><th>Previous</th><th>Delta</th></tr></thead><tbody id="teamOverviewUsersBody"></tbody></table></div>
+          </div>
+          <div class="insight-panel">
+            <div class="panel-title">Model Change</div>
+            <div class="table-wrap"><table class="compact-table"><thead><tr><th>Model</th><th>Current</th><th>Previous</th><th>Delta</th></tr></thead><tbody id="teamOverviewModelsBody"></tbody></table></div>
+          </div>
+          <div class="insight-panel">
+            <div class="panel-title">Upload Health</div>
+            <div class="table-wrap"><table class="compact-table"><thead><tr><th>Device</th><th>User</th><th>Health</th><th>Gap</th></tr></thead><tbody id="teamOverviewHealthBody"></tbody></table></div>
+          </div>
+        </div>
+      </section>
 
       <section class="section team-section hidden" data-team-section="daily">
         <div class="section-header"><div class="section-title">Daily Usage</div><div id="teamDailyStatus" class="status"></div></div>
@@ -90,7 +150,7 @@
         <div class="table-wrap"><table class="daily-table"><thead><tr><th>Date</th><th>Total</th><th>Input</th><th>Output</th><th>Calls</th><th>Users</th><th>Avg / Call</th><th>Cache</th><th>Reasoning</th></tr></thead><tbody id="teamDailyBody"></tbody></table></div>
       </section>
 
-      <section class="section team-section" data-team-section="users">
+      <section class="section team-section hidden" data-team-section="users">
         <div class="section-header"><div class="section-title">Users</div></div>
         <div class="table-wrap"><table><thead><tr><th>Team</th><th>User</th><th>Total</th><th>Input</th><th>Output</th><th>Sessions</th><th>Calls</th><th>Avg / Session</th><th>Avg / Call</th><th>Cache</th><th>Reasoning</th><th>Active</th><th>Devices</th><th>Last Seen</th></tr></thead><tbody id="teamUsersBody"></tbody></table></div>
       </section>
@@ -127,6 +187,7 @@
         <div class="section-header"><div class="section-title">Upload Health</div><div id="teamUploadsStatus" class="status"></div></div>
         <div class="table-wrap"><table><thead><tr><th>Team</th><th>User</th><th>Device</th><th>Last Upload</th><th>Gap</th><th>Health</th><th>Latest Status</th><th>Accepted</th><th>Duplicate</th><th>Rejected</th><th>Recent Uploads</th></tr></thead><tbody id="teamUploadHealthBody"></tbody></table></div>
       </section>
+      </div>
     </div>
   </main>
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>

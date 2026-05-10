@@ -62,8 +62,7 @@ public final class TokenMeterApp {
         ReportService reportService = new ReportService(usageStore, config.zone());
         TeamReportService teamReportService = new TeamReportService(teamUsageStore, config.zone());
         if (config.teamReportMode()) {
-            ReportQuery query = ReportQuery.from(config.reportQuery(), config.zone());
-            CliOutput.writeLine(teamReportService.report(query).toJson());
+            CliOutput.writeLine(teamReportService.report(config.reportQuery()).toJson());
             return;
         }
 
