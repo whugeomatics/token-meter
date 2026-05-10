@@ -116,7 +116,7 @@ function renderLocal(report) {
   qs('localAvgCall').textContent = tokens(report.summary.avg_tokens_per_call);
   qs('localAvgSession').textContent = tokens(report.summary.avg_tokens_per_session);
   qs('localReasoningRatio').textContent = pct(report.summary.reasoning_ratio);
-  renderDaily(report.daily || [], 'localDailyChart', 'localDailyStatus');
+  renderDaily(report.daily || [], 'localDailyChart', 'localDailyStatus', 'localDailyBody');
   renderModels(report.models || [], 'localModelsBody');
   renderSessions(report.sessions || []);
   renderLocalSections();
@@ -134,7 +134,7 @@ function renderTeam(report) {
   qs('teamAvgCall').textContent = tokens(report.summary.avg_tokens_per_call);
   qs('teamCacheRate').textContent = pct(report.summary.cache_hit_rate);
   qs('teamReasoningRatio').textContent = pct(report.summary.reasoning_ratio);
-  renderDaily(report.daily || [], 'teamDailyChart', 'teamDailyStatus');
+  renderDaily(report.daily || [], 'teamDailyChart', 'teamDailyStatus', 'teamDailyBody');
   renderTeamModels(report.team_models || []);
   renderUsers(report.users || []);
   renderDevices(report.devices || []);
@@ -160,14 +160,57 @@ function renderTeamFilter(rows) {
   state.teamId = select.value;
 }
 
-function renderDaily(rows, chartId, statusId) {
-  const max = Math.max(1, ...rows.map((row) => row.total_tokens || 0));
+function renderDaily(rows, chartId, statusId, bodyId) {
   qs(statusId).textContent = rows.length ? `${rows.length} days` : 'No data';
   qs(statusId).className = 'status';
-  qs(chartId).innerHTML = rows.map((row) => {
-    const height = Math.max(2, Math.round(((row.total_tokens || 0) / max) * 150));
-    return `<div class="bar-wrap" title="${escapeHtml(row.date)}: ${tokens(row.total_tokens)}"><div class="bar" style="height:${height}px"></div><div class="bar-label">${escapeHtml(String(row.date).slice(5))}</div></div>`;
+  qs(chartId).innerHTML = renderDailyLineChart(rows);
+  renderDailyTable(rows, bodyId);
+}
+
+function renderDailyLineChart(rows) {
+  if (!rows.length) {
+    return '<div class="empty">No daily usage yet</div>';
+  }
+  const width = 640;
+  const height = 220;
+  const padX = 18;
+  const padTop = 18;
+  const padBottom = 34;
+  const plotWidth = width - padX * 2;
+  const plotHeight = height - padTop - padBottom;
+  const max = Math.max(1, ...rows.map((row) => row.total_tokens || 0));
+  const points = rows.map((row, index) => {
+    const x = rows.length === 1 ? width / 2 : padX + (index / (rows.length - 1)) * plotWidth;
+    const y = padTop + plotHeight - ((row.total_tokens || 0) / max) * plotHeight;
+    return { row, x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
+  });
+  const polyline = points.map((point) => `${point.x},${point.y}`).join(' ');
+  const labels = points.map((point, index) => {
+    if (rows.length > 12 && index % Math.ceil(rows.length / 6) !== 0 && index !== rows.length - 1) return '';
+    return `<text class="daily-axis-label" x="${point.x}" y="${height - 10}" text-anchor="middle">${escapeHtml(String(point.row.date).slice(5))}</text>`;
   }).join('');
+  const markers = points.map((point) => `<circle class="daily-point" cx="${point.x}" cy="${point.y}" r="4"><title>${escapeHtml(point.row.date)}: ${tokens(point.row.total_tokens)} tokens, ${tokens(point.row.usage_event_count)} calls</title></circle>`).join('');
+  return `<svg class="daily-line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Daily total token trend">
+    <line class="daily-axis" x1="${padX}" y1="${padTop + plotHeight}" x2="${width - padX}" y2="${padTop + plotHeight}"></line>
+    <line class="daily-grid" x1="${padX}" y1="${padTop}" x2="${width - padX}" y2="${padTop}"></line>
+    <polyline class="daily-line" points="${polyline}"></polyline>
+    ${markers}
+    ${labels}
+  </svg>`;
+}
+
+function renderDailyTable(rows, bodyId) {
+  qs(bodyId).innerHTML = rows.length ? rows.map((row) => `<tr>
+    <td>${escapeHtml(row.date)}</td>
+    <td>${tokens(row.total_tokens)}</td>
+    <td>${tokens(row.input_tokens)}</td>
+    <td>${tokens(row.output_tokens)}</td>
+    <td>${tokens(row.usage_event_count)}</td>
+    <td>${tokens(row.users ?? row.sessions)}</td>
+    <td>${tokens(row.avg_tokens_per_call)}</td>
+    <td>${pct(row.cache_hit_rate)}</td>
+    <td>${pct(row.reasoning_ratio)}</td>
+  </tr>`).join('') : '<tr><td colspan="9" class="empty">No daily usage yet</td></tr>';
 }
 
 function renderModels(rows, bodyId) {

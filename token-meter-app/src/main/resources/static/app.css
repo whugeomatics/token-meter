@@ -120,16 +120,15 @@ select {
   color: var(--danger);
 }
 .chart {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(34px, 1fr));
-  align-items: end;
-  gap: 8px;
-  min-height: 210px;
-  padding: 18px 14px 12px;
+  min-height: 240px;
+  padding: 12px 14px 8px;
 }
-.bar-wrap { display: grid; grid-template-rows: 1fr auto; gap: 8px; min-height: 172px; }
-.bar { align-self: end; min-height: 2px; border-radius: 4px 4px 0 0; background: var(--accent); }
-.bar-label { color: var(--muted); font-size: 11px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.daily-line-chart { display: block; width: 100%; min-height: 220px; }
+.daily-axis, .daily-grid { stroke: var(--line); stroke-width: 1; }
+.daily-line { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.daily-point { fill: var(--panel); stroke: var(--accent); stroke-width: 2; }
+.daily-axis-label { fill: var(--muted); font-size: 11px; }
+.daily-table { min-width: 760px; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; min-width: 840px; border-collapse: collapse; }
 th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
