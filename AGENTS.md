@@ -60,6 +60,12 @@ P2.5 module 细节见：
 
 - `docs/milestones/P2.5-codex-team-collection/P2.5-2026-05-08-module-architecture.md`
 
+分发包约束：
+
+- `dist/` 下保持两个 teammate 制品包目录：macOS/Linux 使用 `token-meter-collector-mac-linux/`，Windows 使用 `token-meter-collector-windows/`。
+- `dist/` 制品包内的 collector jar 名称必须为 `token-meter-collector.jar`，不包含 `SNAPSHOT`；Maven target 和源码脚本仍保持项目版本命名。
+- 打包脚本按目标平台拆分：总入口 `scripts/P2.5-2026-05-01-package-collector.sh` 接收 `unix`、`windows` 或 `all`；平台脚本分别为 `scripts/P2.5-2026-05-01-package-collector-unix.sh` 和 `scripts/P2.5-2026-05-01-package-collector-windows.sh`。
+
 ## 4. 当前阶段必读
 
 进入 P3 设计前至少先读：
