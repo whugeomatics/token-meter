@@ -9,11 +9,13 @@ CONFIG_DIR="$HOME/.token-meter"
 LOG_DIR="$CONFIG_DIR/logs"
 CONFIG="$CONFIG_DIR/collector.env"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
-if [ -f "$SCRIPT_DIR/P2.5-2026-05-01-run-collector-service.sh" ]; then
-  RUNNER="$SCRIPT_DIR/P2.5-2026-05-01-run-collector-service.sh"
-else
-  RUNNER="$ROOT/scripts/P2.5-2026-05-01-run-collector-service.sh"
-fi
+RUNNER=""
+for candidate in "$SCRIPT_DIR/run-collector-service.sh" "$ROOT"/scripts/*-run-collector-service.sh; do
+  if [ -f "$candidate" ]; then
+    RUNNER="$candidate"
+    break
+  fi
+done
 if [ -f "$SCRIPT_DIR/token-meter-collector-0.1.0-SNAPSHOT.jar" ]; then
   DEFAULT_JAR="$SCRIPT_DIR/token-meter-collector-0.1.0-SNAPSHOT.jar"
 else
