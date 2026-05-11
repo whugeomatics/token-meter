@@ -1,8 +1,12 @@
-const state = { localRange: 'days=1', teamRange: 'days=7', view: 'local', localSection: 'sessions', teamId: '', teamOptions: [], teamSection: 'users', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
+const state = { localRange: 'days=1', teamRange: 'days=7', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
 const fmt = new Intl.NumberFormat();
 const qs = (id) => document.getElementById(id);
 const tokens = (n) => fmt.format(n || 0);
 const pct = (n) => `${Math.round((n || 0) * 100)}%`;
+const signedPct = (n) => {
+  const value = Math.round((n || 0) * 100);
+  return `${value > 0 ? '+' : ''}${value}%`;
+};
 
 document.querySelectorAll('[data-range]').forEach((button) => {
   button.addEventListener('click', () => {
@@ -51,7 +55,7 @@ document.querySelectorAll('[data-team-model-sort]').forEach((button) => {
       state.teamModelDir = state.teamModelDir === 'asc' ? 'desc' : 'asc';
     } else {
       state.teamModelSort = field;
-      state.teamModelDir = field === 'user' || field === 'model' ? 'asc' : 'desc';
+      state.teamModelDir = field === 'user_id' || field === 'model' ? 'asc' : 'desc';
     }
     renderTeamModels(state.teamReport?.team_models || []);
   });
@@ -69,12 +73,14 @@ async function load(options = {}) {
     }
     const endpoint = state.view === 'team' ? '/api/team/report' : '/api/report';
     const query = state.view === 'team' && state.teamId
-      ? `${rangeForView()}&team_id=${encodeURIComponent(state.teamId)}`
-      : rangeForView();
+      ? `${queryForView()}&team_id=${encodeURIComponent(state.teamId)}`
+      : queryForView();
     const response = await fetch(`${endpoint}?${query}`, { cache: 'no-store' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const report = await response.json();
     state.view === 'team' ? renderTeam(report) : renderLocal(report);
+    statusEl().textContent = '';
+    statusEl().className = 'status';
     if (options.showToast) {
       showToast(`${viewLabel()} refreshed`);
     }
@@ -89,6 +95,13 @@ async function load(options = {}) {
 
 function rangeForView() {
   return state.view === 'team' ? state.teamRange : state.localRange;
+}
+
+function queryForView() {
+  if (state.view === 'team' && state.teamRange === 'days=7') {
+    return 'period=week&compare=previous';
+  }
+  return rangeForView();
 }
 
 function setRangeForView(range) {
@@ -116,6 +129,7 @@ function renderLocal(report) {
   qs('localAvgCall').textContent = tokens(report.summary.avg_tokens_per_call);
   qs('localAvgSession').textContent = tokens(report.summary.avg_tokens_per_session);
   qs('localReasoningRatio').textContent = pct(report.summary.reasoning_ratio);
+  renderLocalOverview(report);
   renderDaily(report.daily || [], 'localDailyChart', 'localDailyStatus', 'localDailyBody');
   renderModels(report.models || [], 'localModelsBody');
   renderSessions(report.sessions || []);
@@ -134,12 +148,128 @@ function renderTeam(report) {
   qs('teamAvgCall').textContent = tokens(report.summary.avg_tokens_per_call);
   qs('teamCacheRate').textContent = pct(report.summary.cache_hit_rate);
   qs('teamReasoningRatio').textContent = pct(report.summary.reasoning_ratio);
+  renderTeamOverview(report);
   renderDaily(report.daily || [], 'teamDailyChart', 'teamDailyStatus', 'teamDailyBody');
   renderTeamModels(report.team_models || []);
   renderUsers(report.users || []);
   renderDevices(report.devices || []);
   renderUploadHealth(report.upload_health || []);
   renderTeamSections();
+}
+
+function renderLocalOverview(report) {
+  const daily = report.daily || [];
+  const models = report.models || [];
+  qs('localOverviewStatus').textContent = daily.length ? `${daily.length} days` : 'No data';
+  qs('localOverviewChart').innerHTML = renderDailyLineChart(daily);
+  renderOverviewModels(models, 'localOverviewModelsBody');
+}
+
+function renderTeamOverview(report) {
+  const label = state.teamId ? `Team ${state.teamId}` : 'All Teams';
+  const comparison = report.comparison;
+  qs('teamOverviewStatus').textContent = comparison
+    ? `${label}: ${comparison.current.start_date} to ${comparison.current.end_date}`
+    : label;
+  renderWeekComparison(comparison);
+  renderOverviewHealth(report.upload_health || []);
+}
+
+function renderWeekComparison(comparison) {
+  if (!comparison) {
+    qs('teamWeekTokens').textContent = '0';
+    qs('teamWeekTokensDelta').textContent = 'No comparison data';
+    qs('teamWeekChart').innerHTML = '<div class="empty">No weekly trend yet</div>';
+    qs('teamOverviewUsersBody').innerHTML = '<tr><td colspan="4" class="empty">No user changes yet</td></tr>';
+    qs('teamOverviewModelsBody').innerHTML = '<tr><td colspan="4" class="empty">No model changes yet</td></tr>';
+    return;
+  }
+  qs('teamWeekTokens').textContent = tokens(comparison.current.total_tokens);
+  setTrendNote('teamWeekTokensDelta', comparison.delta.total_tokens, comparison.delta.total_tokens_rate);
+  qs('teamWeekCalls').textContent = tokens(comparison.current.usage_event_count);
+  setTrendNote('teamWeekCallsDelta', comparison.delta.usage_event_count);
+  qs('teamWeekSessions').textContent = tokens(comparison.current.sessions);
+  setTrendNote('teamWeekSessionsDelta', comparison.delta.sessions);
+  qs('teamWeekUsers').textContent = tokens(comparison.current.users);
+  setTrendNote('teamWeekUsersDelta', comparison.delta.users);
+  qs('teamWeekChart').innerHTML = renderWeekComparisonChart(comparison.daily || []);
+  renderComparisonRows(comparison.users || [], 'teamOverviewUsersBody', 'user');
+  renderComparisonRows(comparison.models || [], 'teamOverviewModelsBody', 'model');
+}
+
+function setTrendNote(id, delta, rate) {
+  const element = qs(id);
+  const sign = delta > 0 ? '+' : '';
+  element.textContent = rate === undefined
+    ? `${sign}${tokens(delta)} vs previous week`
+    : `${sign}${tokens(delta)} (${signedPct(rate)}) vs previous week`;
+  element.classList.toggle('trend-up', delta > 0);
+  element.classList.toggle('trend-down', delta < 0);
+}
+
+function renderComparisonRows(rows, bodyId, kind) {
+  const visibleRows = rows.slice(0, 6);
+  const empty = kind === 'user' ? 'No user changes yet' : 'No model changes yet';
+  qs(bodyId).innerHTML = visibleRows.length ? visibleRows.map((row) => `<tr>
+    <td>${escapeHtml(kind === 'user' ? (row.display_name || row.user_id) : row.model)}</td>
+    <td>${tokens(row.current_total_tokens)}</td>
+    <td>${tokens(row.previous_total_tokens)}</td>
+    <td class="${row.delta_total_tokens < 0 ? 'trend-down' : row.delta_total_tokens > 0 ? 'trend-up' : ''}">${row.delta_total_tokens > 0 ? '+' : ''}${tokens(row.delta_total_tokens)}</td>
+  </tr>`).join('') : '<tr><td colspan="4" class="empty">No users yet</td></tr>';
+  if (!visibleRows.length) {
+    qs(bodyId).innerHTML = `<tr><td colspan="4" class="empty">${empty}</td></tr>`;
+  }
+}
+
+function renderOverviewModels(rows, bodyId) {
+  const visibleRows = rows.slice(0, 6);
+  qs(bodyId).innerHTML = visibleRows.length ? visibleRows.map((row) => `<tr>
+    <td>${escapeHtml(row.model)}</td>
+    <td>${tokens(row.total_tokens)}</td>
+    <td>${tokens(row.usage_event_count)}</td>
+    <td>${pct(row.cache_hit_rate)}</td>
+  </tr>`).join('') : '<tr><td colspan="4" class="empty">No model usage yet</td></tr>';
+}
+
+function renderWeekComparisonChart(rows) {
+  if (!rows.length) {
+    return '<div class="empty">No weekly trend yet</div>';
+  }
+  const width = 720;
+  const height = 240;
+  const padX = 34;
+  const padTop = 20;
+  const padBottom = 38;
+  const plotWidth = width - padX * 2;
+  const plotHeight = height - padTop - padBottom;
+  const max = Math.max(1, ...rows.flatMap((row) => [row.current_total_tokens || 0, row.previous_total_tokens || 0]));
+  const xFor = (index) => rows.length === 1 ? width / 2 : padX + (index / (rows.length - 1)) * plotWidth;
+  const yFor = (value) => padTop + plotHeight - ((value || 0) / max) * plotHeight;
+  const lineFor = (field) => rows.map((row, index) => `${Math.round(xFor(index) * 100) / 100},${Math.round(yFor(row[field]) * 100) / 100}`).join(' ');
+  const labels = rows.map((row, index) => `<text class="daily-axis-label" x="${xFor(index)}" y="${height - 12}" text-anchor="middle">${escapeHtml(row.label)}</text>`).join('');
+  const markers = rows.map((row, index) => {
+    const x = xFor(index);
+    return `<circle class="daily-point" cx="${x}" cy="${yFor(row.current_total_tokens)}" r="4"><title>${escapeHtml(row.current_date)}: ${tokens(row.current_total_tokens)} tokens</title></circle>
+      <circle class="daily-point previous-point" cx="${x}" cy="${yFor(row.previous_total_tokens)}" r="4"><title>${escapeHtml(row.previous_date)}: ${tokens(row.previous_total_tokens)} tokens</title></circle>`;
+  }).join('');
+  return `<svg class="daily-line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Week over week total token trend">
+    <line class="daily-axis" x1="${padX}" y1="${padTop + plotHeight}" x2="${width - padX}" y2="${padTop + plotHeight}"></line>
+    <line class="daily-grid" x1="${padX}" y1="${padTop}" x2="${width - padX}" y2="${padTop}"></line>
+    <polyline class="daily-line" points="${lineFor('current_total_tokens')}"></polyline>
+    <polyline class="daily-line previous-line" points="${lineFor('previous_total_tokens')}"></polyline>
+    ${markers}
+    ${labels}
+  </svg>`;
+}
+
+function renderOverviewHealth(rows) {
+  const visibleRows = rows.slice(0, 6);
+  qs('teamOverviewHealthBody').innerHTML = visibleRows.length ? visibleRows.map((row) => `<tr>
+    <td>${escapeHtml(row.device_id)}</td>
+    <td>${escapeHtml(row.user_id)}</td>
+    <td><span class="health health-${escapeHtml(row.health_status)}">${escapeHtml(row.health_status)}</span></td>
+    <td>${formatDuration(row.upload_gap_seconds)}</td>
+  </tr>`).join('') : '<tr><td colspan="4" class="empty">No upload data yet</td></tr>';
 }
 
 function renderTeamFilter(rows) {
@@ -315,7 +445,7 @@ function renderTeamSections() {
 }
 
 function statusEl() {
-  return state.view === 'team' ? qs('teamDailyStatus') : qs('localDailyStatus');
+  return qs('loadStatus');
 }
 
 let toastTimer;
