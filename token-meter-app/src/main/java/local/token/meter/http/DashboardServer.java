@@ -46,7 +46,7 @@ public final class DashboardServer {
     }
 
     public void start() throws IOException {
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
+        HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
         server.createContext("/api/report", this::handleReport);
         server.createContext("/api/ingest", this::handleLocalIngest);
         server.createContext("/api/team/ingest", this::handleTeamIngest);
