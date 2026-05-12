@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 
 public final class DashboardServer {
+    public static final String BIND_ADDRESS = "0.0.0.0";
     private final int port;
     private final ReportService reportService;
     private final CodexIngestionService localIngestionService;
@@ -46,7 +47,7 @@ public final class DashboardServer {
     }
 
     public void start() throws IOException {
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
+        HttpServer server = HttpServer.create(new InetSocketAddress(BIND_ADDRESS, port), 0);
         server.createContext("/api/report", this::handleReport);
         server.createContext("/api/ingest", this::handleLocalIngest);
         server.createContext("/api/team/ingest", this::handleTeamIngest);
