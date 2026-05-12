@@ -57,7 +57,7 @@ if errorlevel 1 exit /b 1
   echo call "%PACKAGE_RUNNER%"
 ) > "%RUNNER%"
 
-schtasks /Create /TN "%TASK_NAME%" /SC MINUTE /MO "%INTERVAL_MINUTES%" /TR "\"%RUNNER%\"" /F
+schtasks /Create /TN "%TASK_NAME%" /SC MINUTE /MO "%INTERVAL_MINUTES%" /TR "%RUNNER%" /F
 if errorlevel 1 exit /b 1
 
 echo collector task installed: %TASK_NAME%
