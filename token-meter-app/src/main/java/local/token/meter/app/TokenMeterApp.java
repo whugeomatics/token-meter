@@ -84,12 +84,12 @@ public final class TokenMeterApp {
         IngestionResult startupIngestion = localIngestionService.ingest();
         LOG.info("Startup ingestion: " + startupIngestion.toJson());
 
-        DashboardServer server = new DashboardServer(config.port(), reportService, localIngestionService,
+        DashboardServer server = new DashboardServer(config.bindHost(), config.port(), reportService, localIngestionService,
                 new TeamIngestionService(teamUsageStore, config.zone()), teamReportService,
                 teamUsageStore, config.options().get("admin-token"));
         server.start();
 
-        LOG.info("Token Meter listening on http://127.0.0.1:" + config.port());
+        LOG.info("Token Meter listening on http://" + config.bindHost() + ":" + config.port());
         LOG.info("Codex sessions dir: " + config.sessionsDir());
         LOG.info("Token Meter DB: " + config.dbPath());
         LOG.info("Token Meter Team registry DB: " + TeamUsageStores.resolveTeamRegistryPath(config.dbPath()));

@@ -10,6 +10,25 @@ PACKAGE="$DIST_ROOT/token-meter-collector-windows"
 LEGACY_PACKAGE_UNDATED="$DIST_ROOT/token-meter-collector"
 LEGACY_PACKAGE="$DIST_ROOT/token-meter-collector-P2.5-2026-05-01"
 
+cleanup_package_dir() {
+  dir="$1"
+  shift
+  if [ ! -d "$dir" ]; then
+    return
+  fi
+  for name in "$@"; do
+    path="$dir/$name"
+    if [ -f "$path" ]; then
+      rm "$path"
+    fi
+  done
+  if ! rmdir "$dir" 2>/dev/null; then
+    printf '%s\n' "package directory is not empty: $dir" >&2
+    printf '%s\n' "Remove unexpected files manually, then rerun this script." >&2
+    exit 1
+  fi
+}
+
 if [ ! -f "$JAR" ]; then
   printf '%s\n' "collector jar not found: $JAR" >&2
   printf '%s\n' "Run: mvn -DskipTests package" >&2
@@ -20,7 +39,17 @@ if jar tf "$JAR" | grep -E '(^static/|local/token/meter/http/|local/token/meter/
   exit 1
 fi
 
-rm -rf "$LEGACY_PACKAGE" "$LEGACY_PACKAGE_UNDATED" "$PACKAGE"
+cleanup_package_dir "$LEGACY_PACKAGE" \
+  README.md token-meter-collector.jar run-collector.sh run-collector-service.sh \
+  install-collector-service.sh uninstall-collector-service.sh run-collector.cmd \
+  install-collector-task.cmd uninstall-collector-task.cmd
+cleanup_package_dir "$LEGACY_PACKAGE_UNDATED" \
+  README.md token-meter-collector.jar run-collector.sh run-collector-service.sh \
+  install-collector-service.sh uninstall-collector-service.sh run-collector.cmd \
+  install-collector-task.cmd uninstall-collector-task.cmd
+cleanup_package_dir "$PACKAGE" \
+  README.md token-meter-collector.jar run-collector.cmd install-collector-task.cmd \
+  uninstall-collector-task.cmd
 mkdir -p "$PACKAGE"
 
 cp "$JAR" "$PACKAGE/$DIST_JAR_NAME"
@@ -87,38 +116,49 @@ if "%TASK_NAME%"=="" set "TASK_NAME=TokenMeterCollector"
 set "INTERVAL_MINUTES=%TOKEN_METER_COLLECTOR_INTERVAL_MINUTES%"
 if "%INTERVAL_MINUTES%"=="" set "INTERVAL_MINUTES=5"
 set "CONFIG_DIR=%USERPROFILE%\.token-meter"
+set "LOG_DIR=%CONFIG_DIR%\logs"
 set "CONFIG=%CONFIG_DIR%\collector.env.cmd"
 set "RUNNER=%CONFIG_DIR%\run-collector-task.cmd"
+set "INSTALL_LOG=%LOG_DIR%\install.log"
 set "PACKAGE_RUNNER=%SCRIPT_DIR%run-collector.cmd"
 set "PACKAGE_JAR=%SCRIPT_DIR%token-meter-collector.jar"
 
+if not exist "%CONFIG_DIR%" mkdir "%CONFIG_DIR%"
+if errorlevel 1 exit /b 1
+if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
+if errorlevel 1 exit /b 1
+echo %DATE% %TIME% install started > "%INSTALL_LOG%"
+
 if "%TOKEN_METER_SERVER_URL%"=="" (
+  echo TOKEN_METER_SERVER_URL is required >> "%INSTALL_LOG%"
   echo TOKEN_METER_SERVER_URL is required 1>&2
   exit /b 1
 )
 if "%TOKEN_METER_DEVICE_TOKEN%"=="" (
+  echo TOKEN_METER_DEVICE_TOKEN is required >> "%INSTALL_LOG%"
   echo TOKEN_METER_DEVICE_TOKEN is required 1>&2
   exit /b 1
 )
 if "%TOKEN_METER_USER_ID%"=="" (
+  echo TOKEN_METER_USER_ID is required >> "%INSTALL_LOG%"
   echo TOKEN_METER_USER_ID is required 1>&2
   exit /b 1
 )
 if "%TOKEN_METER_DEVICE_ID%"=="" (
+  echo TOKEN_METER_DEVICE_ID is required >> "%INSTALL_LOG%"
   echo TOKEN_METER_DEVICE_ID is required 1>&2
   exit /b 1
 )
 if not exist "%PACKAGE_RUNNER%" (
+  echo collector runner not found: %PACKAGE_RUNNER% >> "%INSTALL_LOG%"
   echo collector runner not found: %PACKAGE_RUNNER% 1>&2
   exit /b 1
 )
 if not exist "%PACKAGE_JAR%" (
+  echo collector jar not found: %PACKAGE_JAR% >> "%INSTALL_LOG%"
   echo collector jar not found: %PACKAGE_JAR% 1>&2
   exit /b 1
 )
-
-if not exist "%CONFIG_DIR%" mkdir "%CONFIG_DIR%"
-if errorlevel 1 exit /b 1
 
 (
   echo @echo off
@@ -133,16 +173,37 @@ if errorlevel 1 exit /b 1
 
 (
   echo @echo off
+  echo echo %%DATE%% %%TIME%% collector task started ^>^> "%LOG_DIR%\collector.out.log"
   echo call "%CONFIG%"
-  echo call "%PACKAGE_RUNNER%"
+  echo call "%PACKAGE_RUNNER%" ^>^> "%LOG_DIR%\collector.out.log" 2^>^> "%LOG_DIR%\collector.err.log"
+  echo set "EXIT_CODE=%%ERRORLEVEL%%"
+  echo echo %%DATE%% %%TIME%% collector task exited with %%EXIT_CODE%% ^>^> "%LOG_DIR%\collector.out.log"
+  echo exit /b %%EXIT_CODE%%
 ) > "%RUNNER%"
 
-schtasks /Create /TN "%TASK_NAME%" /SC MINUTE /MO "%INTERVAL_MINUTES%" /TR "\"%RUNNER%\"" /F
-if errorlevel 1 exit /b 1
+schtasks /Create /TN "%TASK_NAME%" /SC MINUTE /MO "%INTERVAL_MINUTES%" /TR "%RUNNER%" /F
+if errorlevel 1 (
+  echo schtasks create failed >> "%INSTALL_LOG%"
+  exit /b 1
+)
+
+echo %DATE% %TIME% running collector once >> "%INSTALL_LOG%"
+call "%RUNNER%"
+set "FIRST_RUN_EXIT_CODE=%ERRORLEVEL%"
+echo %DATE% %TIME% collector first run exited with %FIRST_RUN_EXIT_CODE% >> "%INSTALL_LOG%"
+
+schtasks /Run /TN "%TASK_NAME%"
+if errorlevel 1 (
+  echo schtasks run failed >> "%INSTALL_LOG%"
+  echo warning: scheduled task was created but immediate task trigger failed 1>&2
+)
 
 echo collector task installed: %TASK_NAME%
 echo config: %CONFIG%
 echo runner: %RUNNER%
+echo logs: %LOG_DIR%
+echo first run triggered
+if not "%FIRST_RUN_EXIT_CODE%"=="0" echo warning: first collector run failed, check %LOG_DIR%\collector.err.log
 CMD
 cat > "$PACKAGE/uninstall-collector-task.cmd" <<'CMD'
 @echo off
@@ -217,6 +278,8 @@ set TOKEN_METER_DEVICE_ID=your-device-id
 install-collector-task.cmd
 ```
 
+The installer triggers the first upload immediately after the scheduled task is created.
+
 Optional settings:
 
 ```bat
@@ -231,6 +294,9 @@ Installed files:
 ```text
 %USERPROFILE%\.token-meter\collector.env.cmd
 %USERPROFILE%\.token-meter\run-collector-task.cmd
+%USERPROFILE%\.token-meter\logs\install.log
+%USERPROFILE%\.token-meter\logs\collector.out.log
+%USERPROFILE%\.token-meter\logs\collector.err.log
 ```
 
 `collector.env.cmd` contains the device token. Do not share this file.
@@ -240,6 +306,13 @@ Installed files:
 ```bat
 schtasks /Query /TN TokenMeterCollector
 schtasks /Run /TN TokenMeterCollector
+```
+
+Task output is written to:
+
+```text
+%USERPROFILE%\.token-meter\logs\collector.out.log
+%USERPROFILE%\.token-meter\logs\collector.err.log
 ```
 
 ## Uninstall

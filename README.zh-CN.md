@@ -118,6 +118,12 @@ java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --port=18080
 - Report API: <http://127.0.0.1:18080/api/report?days=7>
 - Health: <http://127.0.0.1:18080/health>
 
+如果需要让局域网内其他机器访问 dashboard，启动时显式指定 bind host：
+
+```powershell
+java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --port=18080 --bind=0.0.0.0
+```
+
 Smoke test：
 
 ```powershell

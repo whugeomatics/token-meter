@@ -118,6 +118,12 @@ Open:
 - Report API: <http://127.0.0.1:18080/api/report?days=7>
 - Health: <http://127.0.0.1:18080/health>
 
+To allow other machines on the LAN to access the dashboard, start the app with an explicit bind host:
+
+```powershell
+java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --port=18080 --bind=0.0.0.0
+```
+
 Smoke test:
 
 ```powershell

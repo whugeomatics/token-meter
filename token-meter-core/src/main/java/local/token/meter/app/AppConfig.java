@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public record AppConfig(Path sessionsDir, Path dbPath, ZoneId zone, int port,
+public record AppConfig(Path sessionsDir, Path dbPath, ZoneId zone, int port, String bindHost,
                         boolean ingestMode, boolean reportMode, boolean teamReportMode,
                         boolean registerDeviceTokenMode, boolean collectTeamMode,
                         boolean createDeviceTokenMode,
@@ -26,6 +26,7 @@ public record AppConfig(Path sessionsDir, Path dbPath, ZoneId zone, int port,
                 dbPath(args),
                 zone,
                 port(args),
+                bindHost(args),
                 hasFlag(args, "--ingest"),
                 hasFlag(args, "--report"),
                 hasFlag(args, "--team-report"),
@@ -136,6 +137,11 @@ public record AppConfig(Path sessionsDir, Path dbPath, ZoneId zone, int port,
         }
         String value = System.getenv("PORT");
         return value == null || value.isBlank() ? 18080 : Integer.parseInt(value);
+    }
+
+    private static String bindHost(String[] args) {
+        String value = option(args, "--bind").orElse(System.getenv("TOKEN_METER_BIND"));
+        return value == null || value.isBlank() ? "127.0.0.1" : value;
     }
 
     private static Optional<ZoneId> detectCodexTimezone(Path sessionsDir) {
