@@ -2,6 +2,7 @@ package local.token.meter.report;
 
 import local.token.meter.domain.Report;
 import local.token.meter.domain.ReportQuery;
+import local.token.meter.domain.PeriodComparison;
 import local.token.meter.domain.Snapshot;
 import local.token.meter.domain.StoredTeamUsageEvent;
 import local.token.meter.domain.TeamUploadRecord;
@@ -48,10 +49,10 @@ public final class TeamReportService {
         if (period.isBlank() && compare.isBlank()) {
             return report(ReportQuery.from(query, zone));
         }
-        if ("week".equals(period) && "previous".equals(compare)) {
-            return weekComparison(query);
+        if ("previous".equals(compare)) {
+            return periodComparison(query, period);
         }
-        throw new BadRequestException("period and compare must be period=week&compare=previous");
+        throw new BadRequestException("period and compare must use compare=previous");
     }
 
     public Report report(ReportQuery query) throws SQLException {
@@ -69,21 +70,16 @@ public final class TeamReportService {
         return aggregator.toReport();
     }
 
-    private Report weekComparison(Map<String, String> params) throws SQLException {
-        LocalDate today = LocalDate.now(zone);
-        LocalDate currentStart = today.minusDays(today.getDayOfWeek().getValue() - 1L);
-        LocalDate currentEnd = today;
-        long elapsedDays = ChronoUnit.DAYS.between(currentStart, currentEnd);
-        LocalDate previousStart = currentStart.minusWeeks(1);
-        LocalDate previousEnd = previousStart.plusDays(elapsedDays);
+    private Report periodComparison(Map<String, String> params, String period) throws SQLException {
         String teamId = params.getOrDefault("team_id", "");
         String userId = params.getOrDefault("user_id", "");
-        ReportQuery currentQuery = new ReportQuery("week", currentStart, currentEnd, zone, teamId, userId);
-        ReportQuery previousQuery = new ReportQuery("week", previousStart, previousEnd, zone, teamId, userId);
+        PeriodComparison comparison = PeriodComparison.previous(period, LocalDate.now(zone), zone, teamId, userId);
+        ReportQuery currentQuery = comparison.current();
+        ReportQuery previousQuery = comparison.previous();
         Aggregator current = new Aggregator(currentQuery);
         Aggregator previous = new Aggregator(previousQuery);
 
-        for (StoredTeamUsageEvent event : store.loadTeamEvents(previousStart, currentEnd)) {
+        for (StoredTeamUsageEvent event : store.loadTeamEvents(previousQuery.startDate(), currentQuery.endDate())) {
             if (currentQuery.contains(event.timestamp()) && currentQuery.matchesTeam(event.teamId())
                     && currentQuery.matchesUser(event.userId())) {
                 current.add(event);
@@ -92,12 +88,12 @@ public final class TeamReportService {
                 previous.add(event);
             }
         }
-        for (TeamUploadRecord upload : store.loadTeamUploads(currentStart, currentEnd)) {
+        for (TeamUploadRecord upload : store.loadTeamUploads(currentQuery.startDate(), currentQuery.endDate())) {
             if (currentQuery.matchesTeam(upload.teamId()) && currentQuery.matchesUser(upload.userId())) {
                 current.add(upload);
             }
         }
-        return current.toReport(comparisonJson(current, previous, currentQuery, previousQuery));
+        return current.toReport(comparisonJson(comparison, current, previous, currentQuery, previousQuery));
     }
 
     private static final class Aggregator {
@@ -469,11 +465,11 @@ public final class TeamReportService {
         }
     }
 
-    private static String comparisonJson(Aggregator current, Aggregator previous, ReportQuery currentQuery,
+    private static String comparisonJson(PeriodComparison comparison, Aggregator current, Aggregator previous, ReportQuery currentQuery,
                                          ReportQuery previousQuery) {
-        return ",\"comparison\":{\"period\":\"natural_week\","
-                + "\"current\":" + comparisonSummaryJson("This Week", current, currentQuery) + ","
-                + "\"previous\":" + comparisonSummaryJson("Previous Week", previous, previousQuery) + ","
+        return ",\"comparison\":{\"period\":\"" + Json.escape(comparison.period()) + "\","
+                + "\"current\":" + comparisonSummaryJson(comparison.currentLabel(), current, currentQuery) + ","
+                + "\"previous\":" + comparisonSummaryJson(comparison.previousLabel(), previous, previousQuery) + ","
                 + "\"delta\":" + comparisonDeltaJson(current, previous) + ","
                 + "\"daily\":" + comparisonDailyJson(current, previous, currentQuery, previousQuery) + ","
                 + "\"users\":" + comparisonUsersJson(current, previous) + ","

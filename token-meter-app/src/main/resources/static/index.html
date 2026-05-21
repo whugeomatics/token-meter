@@ -37,10 +37,9 @@
           <select id="teamFilter" class="hidden" aria-label="Team filter">
             <option value="">All Teams</option>
           </select>
-          <button type="button" data-range="days=1" class="active">Today</button>
-          <button type="button" data-range="days=7">7D</button>
-          <button type="button" data-range="days=30">30D</button>
-          <button type="button" data-range="month=current">This Month</button>
+          <button type="button" data-period="day" class="active">Day</button>
+          <button type="button" data-period="week">Week</button>
+          <button type="button" data-period="month">Month</button>
           <button id="refresh" type="button">Refresh</button>
         </div>
       </header>
@@ -73,7 +72,7 @@
           </div>
           <div class="insight-panel">
             <div class="panel-title">Top Models</div>
-            <div class="table-wrap"><table class="compact-table"><thead><tr><th>Model</th><th>Total</th><th>Calls</th><th>Cache</th></tr></thead><tbody id="localOverviewModelsBody"></tbody></table></div>
+            <div class="table-wrap"><table class="compact-table"><thead><tr><th>Model</th><th>Current</th><th>Previous</th><th>Delta</th></tr></thead><tbody id="localOverviewModelsBody"></tbody></table></div>
           </div>
         </div>
       </section>
@@ -117,8 +116,8 @@
       </div>
 
       <section class="section team-section" data-team-section="overview">
-        <div class="section-header"><div class="section-title">Week over Week</div><div id="teamOverviewStatus" class="status">All Teams</div></div>
-        <div class="trend-summary" aria-label="Team week comparison">
+        <div class="section-header"><div id="teamOverviewTitle" class="section-title">Period Comparison</div><div id="teamOverviewStatus" class="status">All Teams</div></div>
+        <div class="trend-summary" aria-label="Team period comparison">
           <article class="trend-card"><div class="metric-label">Tokens</div><div id="teamWeekTokens" class="metric-value">0</div><div id="teamWeekTokensDelta" class="trend-note">0%</div></article>
           <article class="trend-card"><div class="metric-label">Calls</div><div id="teamWeekCalls" class="metric-value">0</div><div id="teamWeekCallsDelta" class="trend-note">0</div></article>
           <article class="trend-card"><div class="metric-label">Sessions</div><div id="teamWeekSessions" class="metric-value">0</div><div id="teamWeekSessionsDelta" class="trend-note">0</div></article>
@@ -126,7 +125,7 @@
         </div>
         <div class="overview-grid">
           <div class="insight-panel wide-panel">
-            <div class="panel-title">This Week vs Previous Week</div>
+            <div id="teamComparisonChartTitle" class="panel-title">Current vs Previous</div>
             <div id="teamWeekChart" class="chart compact-chart"></div>
           </div>
           <div class="insight-panel">

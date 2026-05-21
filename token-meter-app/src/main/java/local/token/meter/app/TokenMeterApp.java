@@ -1,7 +1,6 @@
 package local.token.meter.app;
 
 import local.token.meter.domain.DeviceTokenBinding;
-import local.token.meter.domain.ReportQuery;
 import local.token.meter.http.DashboardServer;
 import local.token.meter.ingestion.CodexIngestionService;
 import local.token.meter.ingestion.IngestionResult;
@@ -75,8 +74,7 @@ public final class TokenMeterApp {
         }
 
         if (config.reportMode()) {
-            ReportQuery query = ReportQuery.from(config.reportQuery(), config.zone());
-            CliOutput.writeLine(reportService.report(query).toJson());
+            CliOutput.writeLine(reportService.report(config.reportQuery()).toJson());
             return;
         }
 

@@ -11,10 +11,13 @@ assert.match(html, /data-team-section-tab="overview"/, 'Team Overview tab is req
 assert.match(html, /data-local-section-tab="overview"/, 'Local Overview tab is required');
 assert.match(html, />All Teams</, 'Team selector must expose All Teams as the default aggregation');
 assert.match(html, /data-team-section="overview"/, 'Team Overview section is required');
-assert.match(js, /period=week&compare=previous/, 'Team view must request natural-week comparison data');
-assert.match(js, /teamRange:\s*'days=7'/, 'Team view must keep 7D as its default selected range');
-assert.match(js, /function queryForView\(\)/, 'Request query must be separate from selected range state');
-assert.match(html, /Week over Week/, 'Team Overview must lead with week-over-week trend language');
+assert.match(js, /period=\$\{encodeURIComponent\(periodForView\(\)\)\}&compare=previous/, 'Views must request selected period comparison data');
+assert.match(js, /teamPeriod:\s*'day'/, 'Team view must default to the Day period');
+assert.match(js, /function queryForView\(\)/, 'Request query must be separate from selected period state');
+assert.match(html, /data-period="day"/, 'Day period control is required');
+assert.match(html, /data-period="week"/, 'Week period control is required');
+assert.match(html, /data-period="month"/, 'Month period control is required');
+assert.match(html, /Period Comparison/, 'Team Overview must lead with period comparison language');
 assert.match(css, /\.app-shell/, 'Dashboard shell styling is required');
 assert.match(css, /\.side-nav\s*\{[^}]*position:\s*fixed/s, 'Desktop side navigation must stay fixed when Team tabs switch');
 assert.match(css, /\.side-nav\s*\{[^}]*left:\s*max\(16px,\s*calc\(\(100vw - 1360px\) \/ 2\)\)/s, 'Fixed side navigation must align to the dashboard shell');

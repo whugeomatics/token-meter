@@ -4,7 +4,6 @@ import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import local.token.meter.domain.Report;
-import local.token.meter.domain.ReportQuery;
 import local.token.meter.domain.TeamIngestResult;
 import local.token.meter.ingestion.CodexIngestionService;
 import local.token.meter.ingestion.IngestionResult;
@@ -118,9 +117,7 @@ public final class DashboardServer {
 
         Map<String, String> query = parseQuery(exchange.getRequestURI().getRawQuery());
         try {
-            ReportQuery reportQuery = ReportQuery.from(query, reportService.zone());
-            Report report = reportService.report(reportQuery);
-            writeJson(exchange, 200, report.toJson());
+            writeJson(exchange, 200, reportService.report(query).toJson());
         } catch (BadRequestException e) {
             writeJson(exchange, 400, error("invalid_query", e.getMessage()));
         } catch (Exception e) {
