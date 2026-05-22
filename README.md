@@ -4,13 +4,13 @@
 
 **English** | [中文](README.zh-CN.md)
 
-Token Meter is a local model usage dashboard and future routing tool. The project starts with Codex usage analytics, then evolves toward SQLite-backed incremental collection and, later, a local OpenAI-compatible model gateway.
+Token Meter is a local AI CLI usage dashboard and future routing tool. The project starts with Codex usage analytics, then evolves toward team collection across CLI tools and, later, a local OpenAI-compatible model gateway.
 
 ## Current Status
 
-Current phase: **P3 - OpenAI-compatible local gateway design preparation**.
+Current phase: **P4 - Claude Code teammate usage collection design preparation**.
 
-P1 and P2 have passed acceptance.
+P1, P2, and P3 have passed acceptance.
 
 P1, the Codex Dashboard MVP:
 
@@ -24,7 +24,14 @@ P2, SQLite persistence and incremental ingestion:
 - P2 smoke test passed with `P2 smoke test passed`.
 - `--ingest` can write Codex usage deltas to local SQLite and `/api/report` aggregates from SQLite.
 
-The next work is P3 design documentation: OpenAI-compatible gateway contracts, provider adapter contracts, usage event contracts, task breakdown, and acceptance criteria.
+P3, Codex team usage collection:
+
+- The project uses three Maven modules: `token-meter-core`, `token-meter-app`, and `token-meter-collector`.
+- The app provides Local and Team dashboard views.
+- The collector is a lightweight teammate-side uploader and does not include dashboard, admin, SQLite, or static UI code.
+- Local `/api/report` and Team `/api/team/report` both support Day, Week, and Month period comparison with `period=<day|week|month>&compare=previous`.
+
+The next work is P4 design documentation: Claude Code usage collection contracts, collector integration design, task breakdown, privacy rules, and acceptance criteria.
 
 ## Stage Results
 
@@ -34,7 +41,7 @@ Each completed phase should add links to its screenshots or result artifacts her
 
 ## Scope
 
-P1 and P2 focus only on Codex.
+P1, P2, and P3 focus only on Codex. P4 starts adding Claude Code usage collection to make the product useful across AI CLI tools.
 
 In scope now:
 
@@ -42,11 +49,13 @@ In scope now:
 - Aggregate token usage by day, model, and session.
 - Persist Codex usage metadata to local SQLite in P2.
 - Incrementally ingest newly appended Codex logs.
+- Collect teammate Codex usage through a lightweight collector in P3.
+- Design Claude Code teammate usage collection for P4.
+- Compare Local and Team usage by Day, Week, and Month.
 - Keep prompt and response bodies out of storage and reports.
 
 Out of scope for the current phase:
 
-- Claude Code integration.
 - Cursor integration.
 - Local model gateway.
 - Provider adapters.
@@ -57,6 +66,20 @@ Out of scope for the current phase:
 Current phase:
 
 - [Current AGENTS.md](AGENTS.md)
+
+Completed P3:
+
+- [P3 README](docs/P3-2026-04-30-README.md)
+- [Archived P3 AGENTS](docs/archive/P3-2026-04-30-AGENTS.md)
+- [P3 Device Token Contract](docs/contracts/P3-2026-04-30-device-token.md)
+- [P3 Team Ingestion Contract](docs/contracts/P3-2026-04-30-team-ingestion-api.md)
+- [P3 Team Report Contract](docs/contracts/P3-2026-04-30-team-report-api.md)
+- [P3 Team Usage Event Contract](docs/contracts/P3-2026-04-30-team-usage-event.md)
+- [P3 Module Architecture](docs/milestones/P3-codex-team-collection/P3-2026-05-08-module-architecture.md)
+- [P3 Period Comparison Design](docs/milestones/P3-codex-team-collection/P3-2026-05-21-period-comparison-design.md)
+- [P3 Admin Usage Guide](docs/guides/P3-2026-05-01-admin-usage-guide.md)
+- [P3 Acceptance](docs/acceptance/P3-2026-04-30-codex-team-collection.md)
+
 
 Completed P2:
 
@@ -87,6 +110,7 @@ Agent working rules:
 - [Current AGENTS.md](AGENTS.md)
 - [Archived P1 AGENTS](docs/archive/P1-2026-04-29-AGENTS.md)
 - [Archived P2 AGENTS](docs/archive/P2-2026-04-30-AGENTS.md)
+- [Archived P3 AGENTS](docs/archive/P3-2026-04-30-AGENTS.md)
 
 ## Build
 
@@ -104,7 +128,7 @@ cmd /c D:\Softwares\Maven-3.9.9\bin\mvn.cmd -DskipTests package
 
 Codex sandbox note: Windows `.cmd`, `cmd.exe /c`, and local Java service startup may be blocked by sandbox process permissions. When that happens, validation should be performed in the user's real Windows terminal and recorded in the acceptance document.
 
-## Run P1 Dashboard
+## Run Dashboard
 
 After packaging:
 
@@ -115,7 +139,8 @@ java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --port=18080
 Open:
 
 - Dashboard: <http://127.0.0.1:18080/>
-- Report API: <http://127.0.0.1:18080/api/report?days=7>
+- Local report API: <http://127.0.0.1:18080/api/report?period=day&compare=previous>
+- Team report API: <http://127.0.0.1:18080/api/team/report?period=day&compare=previous>
 - Health: <http://127.0.0.1:18080/health>
 
 To allow other machines on the LAN to access the dashboard, start the app with an explicit bind host:
@@ -132,12 +157,23 @@ powershell -ExecutionPolicy Bypass -File scripts\P1-2026-04-30-smoke-test.ps1
 
 ## API
 
-P1 and P2 keep the same report endpoint:
+P1 and P2 keep the same compatible report endpoint:
 
 ```text
 GET /api/report?days=7
 GET /api/report?days=30
 GET /api/report?month=2026-04
+```
+
+Current Local and Team dashboard controls use natural period comparisons:
+
+```text
+GET /api/report?period=day&compare=previous
+GET /api/report?period=week&compare=previous
+GET /api/report?period=month&compare=previous
+GET /api/team/report?period=day&compare=previous
+GET /api/team/report?period=week&compare=previous
+GET /api/team/report?period=month&compare=previous
 ```
 
 Response shape:
@@ -152,7 +188,7 @@ Response shape:
 }
 ```
 
-See [P1 Report API Contract](docs/contracts/P1-2026-04-29-report-api.md) for field definitions.
+See [P1 Report API Contract](docs/contracts/P1-2026-04-29-report-api.md) and [P3 Team Report Contract](docs/contracts/P3-2026-04-30-team-report-api.md) for field definitions.
 
 ## Privacy
 
@@ -163,7 +199,7 @@ The project must not store or display:
 - User source snippets.
 - API keys.
 
-P1 reads Codex JSONL metadata only. P2 persists usage delta metadata only.
+P1 reads Codex JSONL metadata only. P2 persists usage delta metadata only. P3 uploads normalized usage events only.
 
 ## Agent Workflow
 

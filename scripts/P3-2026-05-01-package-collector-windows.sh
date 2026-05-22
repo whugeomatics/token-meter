@@ -7,8 +7,8 @@ DIST_JAR_NAME="token-meter-collector.jar"
 JAR="$ROOT/token-meter-collector/target/$SOURCE_JAR_NAME"
 DIST_ROOT="$ROOT/dist"
 PACKAGE="$DIST_ROOT/token-meter-collector-windows"
-LEGACY_PACKAGE_UNDATED="$DIST_ROOT/token-meter-collector"
-LEGACY_PACKAGE="$DIST_ROOT/token-meter-collector-P2.5-2026-05-01"
+UNDATED_PACKAGE="$DIST_ROOT/token-meter-collector"
+DATED_PACKAGE="$DIST_ROOT/token-meter-collector-P3-2026-05-01"
 
 cleanup_package_dir() {
   dir="$1"
@@ -39,11 +39,11 @@ if jar tf "$JAR" | grep -E '(^static/|local/token/meter/http/|local/token/meter/
   exit 1
 fi
 
-cleanup_package_dir "$LEGACY_PACKAGE" \
+cleanup_package_dir "$DATED_PACKAGE" \
   README.md token-meter-collector.jar run-collector.sh run-collector-service.sh \
   install-collector-service.sh uninstall-collector-service.sh run-collector.cmd \
   install-collector-task.cmd uninstall-collector-task.cmd
-cleanup_package_dir "$LEGACY_PACKAGE_UNDATED" \
+cleanup_package_dir "$UNDATED_PACKAGE" \
   README.md token-meter-collector.jar run-collector.sh run-collector-service.sh \
   install-collector-service.sh uninstall-collector-service.sh run-collector.cmd \
   install-collector-task.cmd uninstall-collector-task.cmd

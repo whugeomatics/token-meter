@@ -1,4 +1,5 @@
-# P2.5 Period Comparison Design
+# P3 Period Comparison Design
+
 
 ## Goal
 

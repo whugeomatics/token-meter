@@ -1,8 +1,9 @@
-# P2.5 Codex Team Usage Collection Acceptance
+# P3 Codex Team Usage Collection Acceptance
 
 ## 目标
 
-定义 P2.5 Codex 团队用量采集的验收标准。
+定义 P3 Codex 团队用量采集的验收标准。
+
 
 ## 测试环境
 
@@ -22,10 +23,10 @@
 
 检查：
 
-- 根目录 `AGENTS.md` 当前阶段为 P2.5。
-- P2.5 README、design、contract、tasks、acceptance 文档存在。
-- P2.5 module 架构文档存在：`docs/milestones/P2.5-codex-team-collection/P2.5-2026-05-08-module-architecture.md`。
-- 管理员使用指南存在：`docs/guides/P2.5-2026-05-01-admin-usage-guide.md`。
+- 验收时根目录 `AGENTS.md` 当前阶段为 P3；当前根目录 `AGENTS.md` 已进入 P4 设计准备，并保留 P3 约束索引。
+- P3 README、design、contract、tasks、acceptance 文档存在。
+- P3 module 架构文档存在：`docs/milestones/P3-codex-team-collection/P3-2026-05-08-module-architecture.md`。
+- 管理员使用指南存在：`docs/guides/P3-2026-05-01-admin-usage-guide.md`。
 - 文档明确只做 Codex team usage collection。
 - 文档明确禁止上传 prompt、response、raw JSONL。
 - 文档明确 collector/app jar 分离，collector 不依赖 SQLite 或 dashboard 代码。
@@ -146,7 +147,7 @@
 - 页面有明确的 Local 和 Team 两个 Tab。
 - Local Tab 只展示本机 `/api/report`。
 - Team Tab 只展示团队 `/api/team/report`。
-- 页面可看到团队总 token、input token、output token、session、活跃用户、活跃设备。
+- 页面可看到团队总 token、net token、input token、output token、session、活跃用户、活跃设备。
 - 页面可按 `team_id` 筛选不同团队。
 - 页面可看到每个用户的 token、session、设备数、最近上报时间。
 - 页面可区分同一用户下的不同设备。
@@ -156,8 +157,9 @@
 - Last Seen、Started、Ended 使用当前 report timezone 展示，不直接显示 UTC `Z`。
 - Uploads 表格展示 team/user/device/upload date/upload time/event count/accepted/duplicate/rejected/status。
 - 页面可查看团队按天趋势。
-- Team Overview 默认展示自然周对比趋势：本周至今 vs 上周同期。
-- 自然周对比展示 token、calls、sessions、users、devices 的变化和 daily 对齐趋势。
+- Team Overview 默认展示 Day 对比趋势：今天 vs 昨天。
+- Team Overview 可切换 Day、Week、Month；Week 为本周至今 vs 上周同期，Month 为本月至今 vs 上月同期。
+- 周期对比展示 token、calls、sessions、users、devices 的变化和 daily 对齐趋势。
 - 页面可查看用户筛选后的按天趋势或等价用户明细。
 - 页面不展示 prompt、response、raw JSONL、完整 device token 或 token hash。
 
@@ -168,10 +170,10 @@
 检查：
 
 - `mvn -DskipTests package` 通过。
-- `sh scripts/P2.5-2026-04-30-smoke-test.sh` 通过核心验证。
-- P2.5 smoke test 覆盖 generated device token、registry/shard 文件、管理员登录、管理员创建 teammate token、管理列表 mask 展示且不泄漏完整 token/hash、管理员复制 token、管理员删除 token binding、collector/server DB 分离、collector 默认 sessions 路径、collector 不创建本地数据库、collector jar 边界、collector 不初始化 server team registry、合法上报、batch 上报、重复上报、身份冲突、隐私字段和 team report。
+- `sh scripts/P3-2026-04-30-smoke-test.sh` 通过核心验证。
+- P3 smoke test 覆盖 generated device token、registry/shard 文件、管理员登录、管理员创建 teammate token、管理列表 mask 展示且不泄漏完整 token/hash、管理员复制 token、管理员删除 token binding、collector/server DB 分离、collector 默认 sessions 路径、collector 不创建本地数据库、collector jar 边界、collector 不初始化 server team registry、合法上报、batch 上报、重复上报、身份冲突、隐私字段和 team report。
 - Codex mac 沙箱无法绑定本地 HTTP 端口时，脚本记录 `Operation not permitted` 并跳过 server bind 检查。
-- 使用真实端口权限执行 `sh scripts/P2.5-2026-04-30-smoke-test.sh`，结果 `P2.5 smoke test passed`。
+- 使用真实端口权限执行 `sh scripts/P3-2026-04-30-smoke-test.sh`，结果 `P3 smoke test passed`。
 
 ## 结论
 
@@ -189,7 +191,7 @@
 通过项：
   - Maven package 通过。
   - P2 smoke test 通过，说明 P2 本地 ingestion/report 未被破坏。
-  - P2.5 smoke test 通过：generated device token hash 绑定、registry/shard 拆分、team usage event 写入、batch upload、重复 event_key 去重、team report 用户/设备/模型聚合。
+  - P3 smoke test 通过：generated device token hash 绑定、registry/shard 拆分、team usage event 写入、batch upload、重复 event_key 去重、team report 用户/设备/模型聚合。
   - 管理员页面/API 验证通过：未登录被拒绝、登录后可创建 teammate token、列表只返回 token preview、可复制完整 token、可删除 token binding。
   - collector/server 分离验证通过：collector 日常命令无需传 `--sessions-dir`，不依赖数据库，不启动 HTTP server，不初始化 server team registry，collector jar 不包含 app/dashboard/SQLite 内容。
   - 真实 HTTP server bind 和 collector upload 链路已验证。
@@ -197,5 +199,5 @@
   - 前端静态资源拆分完成，并拆出 Local/Team 两个 Tab。
 失败项：无。
 未验证项：无。
-下一步建议：归档 P2.5 AGENTS.md，并在进入 P3 前保留 P2.5 长期约定。
+下一步建议：进入 P4 前保留 P3 长期约定。
 ```

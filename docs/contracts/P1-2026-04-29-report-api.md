@@ -17,12 +17,19 @@ GET /api/report
 - `days`: 正整数。支持 `1`、`7`、`30`。
 - `month`: `YYYY-MM` 格式，例如 `2026-04`。
 
+兼容扩展：
+
+- `period`: 可选。允许值为 `day`、`week`、`month`。
+- `compare`: 可选。当前仅支持 `compare=previous`。
+
 规则：
 
 - 如果同时传入 `days` 和 `month`，后端应返回 400。
 - 如果都不传，默认 `days=7`。
 - `days=1` 表示今日。
 - 日期聚合使用本地时区。
+- `period=<day|week|month>&compare=previous` 返回当前自然周期与上一同期的对比数据；该模式用于当前 Local dashboard 的 Day、Week、Month 控件。
+- 使用 `period` 时必须同时传 `compare=previous`。
 
 ## Response
 
@@ -54,6 +61,40 @@ GET /api/report
   "daily": [],
   "models": [],
   "sessions": []
+}
+```
+
+当请求 `period=<day|week|month>&compare=previous` 时，response 额外包含：
+
+```json
+{
+  "comparison": {
+    "period": "week",
+    "current": {
+      "label": "This Week",
+      "start_date": "2026-05-18",
+      "end_date": "2026-05-21",
+      "total_tokens": 0,
+      "usage_event_count": 0,
+      "sessions": 0
+    },
+    "previous": {
+      "label": "Previous Week",
+      "start_date": "2026-05-11",
+      "end_date": "2026-05-14",
+      "total_tokens": 0,
+      "usage_event_count": 0,
+      "sessions": 0
+    },
+    "delta": {
+      "total_tokens": 0,
+      "total_tokens_rate": 0,
+      "usage_event_count": 0,
+      "sessions": 0
+    },
+    "daily": [],
+    "models": []
+  }
 }
 ```
 

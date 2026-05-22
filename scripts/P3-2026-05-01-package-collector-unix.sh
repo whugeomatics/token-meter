@@ -7,8 +7,27 @@ DIST_JAR_NAME="token-meter-collector.jar"
 JAR="$ROOT/token-meter-collector/target/$SOURCE_JAR_NAME"
 DIST_ROOT="$ROOT/dist"
 PACKAGE="$DIST_ROOT/token-meter-collector-mac-linux"
-LEGACY_PACKAGE_UNDATED="$DIST_ROOT/token-meter-collector"
-LEGACY_PACKAGE="$DIST_ROOT/token-meter-collector-P2.5-2026-05-01"
+UNDATED_PACKAGE="$DIST_ROOT/token-meter-collector"
+DATED_PACKAGE="$DIST_ROOT/token-meter-collector-P3-2026-05-01"
+
+cleanup_package_dir() {
+  dir="$1"
+  shift
+  if [ ! -d "$dir" ]; then
+    return
+  fi
+  for name in "$@"; do
+    path="$dir/$name"
+    if [ -f "$path" ]; then
+      rm "$path"
+    fi
+  done
+  if ! rmdir "$dir" 2>/dev/null; then
+    printf '%s\n' "package directory is not empty: $dir" >&2
+    printf '%s\n' "Remove unexpected files manually, then rerun this script." >&2
+    exit 1
+  fi
+}
 
 if [ ! -f "$JAR" ]; then
   printf '%s\n' "collector jar not found: $JAR" >&2
@@ -20,14 +39,24 @@ if jar tf "$JAR" | grep -E '(^static/|local/token/meter/http/|local/token/meter/
   exit 1
 fi
 
-rm -rf "$LEGACY_PACKAGE" "$LEGACY_PACKAGE_UNDATED" "$PACKAGE"
+cleanup_package_dir "$DATED_PACKAGE" \
+  README.md token-meter-collector.jar run-collector.sh run-collector-service.sh \
+  install-collector-service.sh uninstall-collector-service.sh run-collector.cmd \
+  install-collector-task.cmd uninstall-collector-task.cmd
+cleanup_package_dir "$UNDATED_PACKAGE" \
+  README.md token-meter-collector.jar run-collector.sh run-collector-service.sh \
+  install-collector-service.sh uninstall-collector-service.sh run-collector.cmd \
+  install-collector-task.cmd uninstall-collector-task.cmd
+cleanup_package_dir "$PACKAGE" \
+  README.md token-meter-collector.jar run-collector.sh run-collector-service.sh \
+  install-collector-service.sh uninstall-collector-service.sh
 mkdir -p "$PACKAGE"
 
 cp "$JAR" "$PACKAGE/$DIST_JAR_NAME"
-cp "$ROOT/scripts/P2.5-2026-05-01-run-collector.sh" "$PACKAGE/run-collector.sh"
-cp "$ROOT/scripts/P2.5-2026-05-01-run-collector-service.sh" "$PACKAGE/run-collector-service.sh"
-cp "$ROOT/scripts/P2.5-2026-05-01-install-collector-service.sh" "$PACKAGE/install-collector-service.sh"
-cp "$ROOT/scripts/P2.5-2026-05-01-uninstall-collector-service.sh" "$PACKAGE/uninstall-collector-service.sh"
+cp "$ROOT/scripts/P3-2026-05-01-run-collector.sh" "$PACKAGE/run-collector.sh"
+cp "$ROOT/scripts/P3-2026-05-01-run-collector-service.sh" "$PACKAGE/run-collector-service.sh"
+cp "$ROOT/scripts/P3-2026-05-01-install-collector-service.sh" "$PACKAGE/install-collector-service.sh"
+cp "$ROOT/scripts/P3-2026-05-01-uninstall-collector-service.sh" "$PACKAGE/uninstall-collector-service.sh"
 sed -i '' "s/$SOURCE_JAR_NAME/$DIST_JAR_NAME/g" "$PACKAGE/run-collector.sh" "$PACKAGE/run-collector-service.sh" "$PACKAGE/install-collector-service.sh"
 chmod +x "$PACKAGE"/*.sh
 cat > "$PACKAGE/README.md" <<'README'
