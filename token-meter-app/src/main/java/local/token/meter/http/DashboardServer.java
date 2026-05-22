@@ -4,7 +4,6 @@ import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import local.token.meter.domain.Report;
-import local.token.meter.domain.ReportQuery;
 import local.token.meter.domain.TeamIngestResult;
 import local.token.meter.ingestion.CodexIngestionService;
 import local.token.meter.ingestion.IngestionResult;
@@ -25,6 +24,7 @@ import java.util.concurrent.Executors;
 
 public final class DashboardServer {
     private final int port;
+    private final String bindHost;
     private final ReportService reportService;
     private final CodexIngestionService localIngestionService;
     private final TeamIngestionService teamIngestionService;
@@ -33,9 +33,10 @@ public final class DashboardServer {
     private final AdminService adminService;
     private final Object localIngestionLock = new Object();
 
-    public DashboardServer(int port, ReportService reportService, CodexIngestionService localIngestionService,
+    public DashboardServer(String bindHost, int port, ReportService reportService, CodexIngestionService localIngestionService,
                            TeamIngestionService teamIngestionService, TeamReportService teamReportService,
                            TeamUsageStore teamUsageStore, String adminToken) {
+        this.bindHost = bindHost;
         this.port = port;
         this.reportService = reportService;
         this.localIngestionService = localIngestionService;
@@ -46,7 +47,7 @@ public final class DashboardServer {
     }
 
     public void start() throws IOException {
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
+        HttpServer server = HttpServer.create(new InetSocketAddress(bindHost, port), 0);
         server.createContext("/api/report", this::handleReport);
         server.createContext("/api/ingest", this::handleLocalIngest);
         server.createContext("/api/team/ingest", this::handleTeamIngest);
@@ -116,9 +117,7 @@ public final class DashboardServer {
 
         Map<String, String> query = parseQuery(exchange.getRequestURI().getRawQuery());
         try {
-            ReportQuery reportQuery = ReportQuery.from(query, reportService.zone());
-            Report report = reportService.report(reportQuery);
-            writeJson(exchange, 200, report.toJson());
+            writeJson(exchange, 200, reportService.report(query).toJson());
         } catch (BadRequestException e) {
             writeJson(exchange, 400, error("invalid_query", e.getMessage()));
         } catch (Exception e) {

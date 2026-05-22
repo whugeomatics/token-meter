@@ -70,7 +70,7 @@ node - "$REPORT" <<'NODE'
 const assert = require('assert/strict');
 const report = JSON.parse(process.argv[2]);
 
-assert.equal(report.comparison.period, 'natural_week');
+assert.equal(report.comparison.period, 'week');
 assert.equal(report.comparison.current.total_tokens, 3000);
 assert.equal(report.comparison.previous.total_tokens, 1000);
 assert.equal(report.comparison.delta.total_tokens, 2000);

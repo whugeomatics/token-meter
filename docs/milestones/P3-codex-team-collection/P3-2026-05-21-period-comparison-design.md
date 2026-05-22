@@ -1,0 +1,42 @@
+# P3 Period Comparison Design
+
+
+## Goal
+
+Local and Team dashboard views use the same primary period choices: Day, Week, and Month.
+
+The dashboard treats these as natural periods, not rolling ranges. Each period can show a current window, a previous comparable window, and a delta.
+
+## Period Windows
+
+- Day: current is today; previous is yesterday.
+- Week: current is Monday through today; previous is the previous Monday through the same elapsed weekday.
+- Month: current is the first day of this month through today; previous is the first day of the previous month through the same day number, capped at the previous month end.
+
+All windows use the server report timezone.
+
+## API Compatibility
+
+Existing `days` and `month` queries remain supported for compatibility.
+
+New comparison queries use:
+
+```text
+period=day&compare=previous
+period=week&compare=previous
+period=month&compare=previous
+```
+
+Local `/api/report` and Team `/api/team/report` both support these period comparison queries.
+
+## UI
+
+The main dashboard controls show `Day`, `Week`, and `Month`.
+
+Overview comparison labels change with the selected period:
+
+- Day: Today vs Yesterday
+- Week: This Week vs Previous Week
+- Month: This Month vs Previous Month
+
+The previous `30D` primary control is removed from the main navigation.

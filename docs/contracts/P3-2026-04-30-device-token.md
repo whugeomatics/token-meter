@@ -1,8 +1,9 @@
-# P2.5 Device Token Contract
+# P3 Device Token Contract
 
 ## 目标
 
-定义 P2.5 中设备 token、团队、使用人和设备之间的绑定关系。
+定义 P3 中设备 token、团队、使用人和设备之间的绑定关系。
+
 
 设备 token 用于 collector 向中央服务上报 Codex usage event。token 不是匿名凭证，服务端必须能从 token 查到它对应的使用人。
 
@@ -107,7 +108,7 @@ MVP CLI：
 
 ## 管理页面
 
-P2.5 必须提供管理员分配 teammate token 的页面。
+P3 必须提供管理员分配 teammate token 的页面。
 
 MVP 管理入口：
 
@@ -165,10 +166,10 @@ POST /api/admin/login
 
 ## 安全边界
 
-P2.5 不实现完整账号体系，但必须满足：
+P3 不实现完整账号体系，但必须满足：
 
 - token 明文存在于成员设备本地配置、HTTP header，以及服务端 registry 的 `token_secret` 字段。
-- `token_secret` 是为了满足管理员后续复制 token 的 P2.5 产品需求；因此 registry SQLite 必须按管理员机器的敏感数据处理。
+- `token_secret` 是为了满足管理员后续复制 token 的 P3 产品需求；因此 registry SQLite 必须按管理员机器的敏感数据处理。
 - admin 页面列表不返回完整 token 或 token hash，只返回 mask 后的 `token_preview`。
 - 完整 token 只通过受 admin 鉴权保护的复制 API 返回。
 - token 可禁用或吊销。

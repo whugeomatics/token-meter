@@ -1,10 +1,11 @@
-# P2.5 Team Report API Contract
+# P3 Team Report API Contract
 
 ## 目标
 
-定义 P2.5 团队 dashboard 使用的只读 report API。
+定义 P3 团队 dashboard 使用的只读 report API。
 
-P2.5 dashboard 必须同时展示团队总用量和每个用户的用量。前端不得自行定义统计口径，必须消费本 contract。
+P3 dashboard 必须同时展示团队总用量和每个用户的用量。前端不得自行定义统计口径，必须消费本 contract。
+
 
 ## Endpoint
 
@@ -24,20 +25,20 @@ user_id=<optional-user-id>
 
 参数规则：
 
-- `days`: 可选，默认 7。允许值建议为 1、7、30、90。
-- `period`: 可选。`period=week` 仅用于团队自然周趋势视图。
-- `compare`: 可选。`period=week&compare=previous` 返回本周至今和上周同期的对比数据。
+- `days`: 可选，默认 7。允许值为 1、7、30。
+- `period`: 可选。允许值为 `day`、`week`、`month`。用于团队自然周期趋势视图。
+- `compare`: 可选。`period=<day|week|month>&compare=previous` 返回当前周期和上一同期的对比数据。
 - `team_id`: MVP 可选。如果服务端只管理一个团队，可省略。
 - `user_id`: 可选。传入时返回该用户明细，同时保留团队总览。
 
-`period=week&compare=previous` 的自然周口径：
+`period=<day|week|month>&compare=previous` 的自然周期口径：
 
-- 周起始日为 Monday。
-- current 窗口为服务端时区下的本周 Monday 到今天。
-- previous 窗口为上周 Monday 到上周同一 weekday。
-- 例如今天是 2026-05-10，则 current 为 2026-05-04 到 2026-05-10，previous 为 2026-04-27 到 2026-05-03。
+- `day`: current 为今天，previous 为昨天。
+- `week`: 周起始日为 Monday。current 为服务端时区下的本周 Monday 到今天，previous 为上周 Monday 到上周同一 weekday。
+- `month`: current 为本月 1 日到今天，previous 为上月 1 日到同一 day-of-month；如果上月没有该日期，则 previous 截止到上月月末。
+- 例如今天是 2026-05-21，则 week current 为 2026-05-18 到 2026-05-21，previous 为 2026-05-11 到 2026-05-14。
 - `team_id` 和 `user_id` 筛选同时应用到 current 和 previous。
-- 该模式只扩展 `/api/team/report`，不得改变 P1/P2 `/api/report`。
+- Local `/api/report` 和 Team `/api/team/report` 都支持该模式；旧 `days` / `month` 查询继续兼容。
 
 ## Response
 
@@ -236,16 +237,16 @@ user_id=<optional-user-id>
 }
 ```
 
-当请求 `period=week&compare=previous` 时，response 额外包含：
+当请求 `period=<day|week|month>&compare=previous` 时，response 额外包含：
 
 ```json
 {
   "comparison": {
-    "period": "natural_week",
+    "period": "week",
     "current": {
       "label": "This Week",
-      "start_date": "2026-05-04",
-      "end_date": "2026-05-10",
+      "start_date": "2026-05-18",
+      "end_date": "2026-05-21",
       "total_tokens": 12000,
       "usage_event_count": 80,
       "sessions": 20,
@@ -254,8 +255,8 @@ user_id=<optional-user-id>
     },
     "previous": {
       "label": "Previous Week",
-      "start_date": "2026-04-27",
-      "end_date": "2026-05-03",
+      "start_date": "2026-05-11",
+      "end_date": "2026-05-14",
       "total_tokens": 9000,
       "usage_event_count": 60,
       "sessions": 18,
@@ -274,8 +275,8 @@ user_id=<optional-user-id>
       {
         "day_index": 0,
         "label": "Mon",
-        "current_date": "2026-05-04",
-        "previous_date": "2026-04-27",
+        "current_date": "2026-05-18",
+        "previous_date": "2026-05-11",
         "current_total_tokens": 1000,
         "previous_total_tokens": 800,
         "delta_total_tokens": 200,
@@ -311,6 +312,7 @@ user_id=<optional-user-id>
 dashboard 团队视角至少包含：
 
 - 团队总 token、input token、output token。
+- 团队 net token（`non_cached_input_tokens + output_tokens`）。
 - 团队总 session 数。
 - 活跃用户数。
 - 活跃设备数。
@@ -331,6 +333,7 @@ dashboard 团队视角至少包含：
 ## 统计口径
 
 - token 统计来自服务端已验权并写入的 normalized usage event。
+- 包含 token 聚合的对象都会输出 `input_tokens`、`cached_input_tokens`、`output_tokens`、`reasoning_output_tokens`、`total_tokens`、`non_cached_input_tokens`、`net_tokens`、`cache_hit_rate`、`reasoning_ratio`。
 - user、device 归属来自 device token 绑定。
 - team 维度来自 device token 绑定。
 - `sessions` 按 `team_id + user_id + device_id + session_id` 去重。
@@ -353,13 +356,13 @@ dashboard 团队视角至少包含：
 
 ## 与 P1/P2 兼容
 
-P2.5 新增 `/api/team/report`，不得改变 P1/P2 的：
+P3 新增 `/api/team/report`，并保留 P1/P2 旧查询的兼容行为：
 
 ```text
 GET /api/report
 ```
 
-本地视角继续使用 `/api/report`。团队视角使用 `/api/team/report`。
+本地视角继续使用 `/api/report`。团队视角使用 `/api/team/report`。当前 dashboard 在两个视角下都默认使用 `period=<day|week|month>&compare=previous`，旧 `days` / `month` 查询仍可用于脚本和兼容入口。
 
 ## 隐私
 

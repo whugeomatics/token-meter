@@ -2,8 +2,10 @@ package local.token.meter.report;
 
 import local.token.meter.domain.Report;
 import local.token.meter.domain.ReportQuery;
+import local.token.meter.domain.PeriodComparison;
 import local.token.meter.domain.TokenTotals;
 import local.token.meter.domain.UsageEvent;
+import local.token.meter.http.BadRequestException;
 import local.token.meter.store.UsageStore;
 import local.token.meter.util.Json;
 
@@ -13,6 +15,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -38,6 +41,18 @@ public final class ReportService {
         return zone;
     }
 
+    public Report report(Map<String, String> query) throws SQLException {
+        String period = query.getOrDefault("period", "");
+        String compare = query.getOrDefault("compare", "");
+        if (period.isBlank() && compare.isBlank()) {
+            return report(ReportQuery.from(query, zone));
+        }
+        if ("previous".equals(compare)) {
+            return periodComparison(period);
+        }
+        throw new BadRequestException("period and compare must use compare=previous");
+    }
+
     public Report report(ReportQuery query) throws SQLException {
         List<UsageEvent> events = usageStore.loadEvents(query.startDate(), query.endDate());
         Aggregator aggregator = new Aggregator(query);
@@ -47,6 +62,22 @@ public final class ReportService {
             }
         }
         return aggregator.toReport();
+    }
+
+    private Report periodComparison(String period) throws SQLException {
+        PeriodComparison comparison = PeriodComparison.previous(period, LocalDate.now(zone), zone, "", "");
+        ReportQuery currentQuery = comparison.current();
+        ReportQuery previousQuery = comparison.previous();
+        Aggregator current = new Aggregator(currentQuery);
+        Aggregator previous = new Aggregator(previousQuery);
+        for (UsageEvent event : usageStore.loadEvents(previousQuery.startDate(), currentQuery.endDate())) {
+            if (currentQuery.contains(event.timestamp())) {
+                current.add(event);
+            } else if (previousQuery.contains(event.timestamp())) {
+                previous.add(event);
+            }
+        }
+        return current.toReport(comparisonJson(comparison, current, previous, currentQuery, previousQuery));
     }
 
     private static final class Aggregator {
@@ -82,6 +113,10 @@ public final class ReportService {
         }
 
         Report toReport() {
+            return toReport("");
+        }
+
+        Report toReport(String comparisonJson) {
             return new ReportPayload(query, summary, eventCount, sessions.size(), activeWindows.activeSeconds(),
                     new ArrayList<>(daily.values()),
                     models.values().stream()
@@ -89,7 +124,8 @@ public final class ReportService {
                             .toList(),
                     sessions.values().stream()
                             .sorted(Comparator.comparing((SessionBucket bucket) -> bucket.startedAt, Comparator.nullsLast(Comparator.reverseOrder())))
-                            .toList());
+                            .toList(),
+                    comparisonJson);
         }
     }
 
@@ -162,7 +198,8 @@ public final class ReportService {
 
     private record ReportPayload(ReportQuery query, TokenTotals summary, int eventCount, int sessionCount,
                                  long activeSeconds, List<DailyBucket> daily,
-                                 List<ModelBucket> models, List<SessionBucket> sessions) implements Report {
+                                 List<ModelBucket> models, List<SessionBucket> sessions,
+                                 String comparisonJson) implements Report {
         public String toJson() {
             StringBuilder out = new StringBuilder();
             out.append('{');
@@ -203,6 +240,7 @@ public final class ReportService {
                     + "\"avg_tokens_per_call\":" + decimal(bucket.eventCount == 0 ? 0.0d : (double) bucket.totals.totalTokens / bucket.eventCount) + ","
                     + bucket.totals.jsonFields()
                     + "}"));
+            out.append(comparisonJson);
             out.append("}");
             return out.toString();
         }
@@ -217,6 +255,100 @@ public final class ReportService {
         private static String decimal(double value) {
             return String.format(Locale.ROOT, "%.2f", value);
         }
+    }
+
+    private static String comparisonJson(PeriodComparison comparison, Aggregator current, Aggregator previous,
+                                         ReportQuery currentQuery, ReportQuery previousQuery) {
+        return ",\"comparison\":{\"period\":\"" + Json.escape(comparison.period()) + "\","
+                + "\"current\":" + comparisonSummaryJson(comparison.currentLabel(), current, currentQuery) + ","
+                + "\"previous\":" + comparisonSummaryJson(comparison.previousLabel(), previous, previousQuery) + ","
+                + "\"delta\":" + comparisonDeltaJson(current, previous) + ","
+                + "\"daily\":" + comparisonDailyJson(current, previous, currentQuery, previousQuery) + ","
+                + "\"models\":" + comparisonModelsJson(current, previous)
+                + "}";
+    }
+
+    private static String comparisonSummaryJson(String label, Aggregator aggregator, ReportQuery query) {
+        return "{\"label\":\"" + Json.escape(label) + "\",\"start_date\":\"" + query.startDate()
+                + "\",\"end_date\":\"" + query.endDate() + "\",\"total_tokens\":" + aggregator.summary.totalTokens
+                + ",\"usage_event_count\":" + aggregator.eventCount
+                + ",\"sessions\":" + aggregator.sessions.size() + "}";
+    }
+
+    private static String comparisonDeltaJson(Aggregator current, Aggregator previous) {
+        long tokenDelta = current.summary.totalTokens - previous.summary.totalTokens;
+        return "{\"total_tokens\":" + tokenDelta
+                + ",\"total_tokens_rate\":" + decimal(rate(tokenDelta, previous.summary.totalTokens))
+                + ",\"usage_event_count\":" + (current.eventCount - previous.eventCount)
+                + ",\"sessions\":" + (current.sessions.size() - previous.sessions.size()) + "}";
+    }
+
+    private static String comparisonDailyJson(Aggregator current, Aggregator previous, ReportQuery currentQuery,
+                                              ReportQuery previousQuery) {
+        List<String> rows = new ArrayList<>();
+        long days = ChronoUnit.DAYS.between(currentQuery.startDate(), currentQuery.endDate());
+        for (int index = 0; index <= days; index++) {
+            LocalDate currentDate = currentQuery.startDate().plusDays(index);
+            LocalDate previousDate = previousQuery.startDate().plusDays(index);
+            DailyBucket currentBucket = current.daily.get(currentDate);
+            DailyBucket previousBucket = previous.daily.get(previousDate);
+            long currentTokens = currentBucket == null ? 0L : currentBucket.totals.totalTokens;
+            long previousTokens = previousBucket == null ? 0L : previousBucket.totals.totalTokens;
+            long delta = currentTokens - previousTokens;
+            rows.add("{\"day_index\":" + index
+                    + ",\"label\":\"" + dayLabel(currentDate) + "\""
+                    + ",\"current_date\":\"" + currentDate + "\""
+                    + ",\"previous_date\":\"" + previousDate + "\""
+                    + ",\"current_total_tokens\":" + currentTokens
+                    + ",\"previous_total_tokens\":" + previousTokens
+                    + ",\"delta_total_tokens\":" + delta
+                    + ",\"delta_total_tokens_rate\":" + decimal(rate(delta, previousTokens)) + "}");
+        }
+        return "[" + String.join(",", rows) + "]";
+    }
+
+    private static String comparisonModelsJson(Aggregator current, Aggregator previous) {
+        Set<String> keys = new HashSet<>();
+        keys.addAll(current.models.keySet());
+        keys.addAll(previous.models.keySet());
+        return "[" + keys.stream()
+                .map(key -> {
+                    ModelBucket currentBucket = current.models.get(key);
+                    ModelBucket previousBucket = previous.models.get(key);
+                    long currentTokens = currentBucket == null ? 0L : currentBucket.totals.totalTokens;
+                    long previousTokens = previousBucket == null ? 0L : previousBucket.totals.totalTokens;
+                    long delta = currentTokens - previousTokens;
+                    String json = "{\"model\":\"" + Json.escape(key)
+                            + "\",\"current_total_tokens\":" + currentTokens
+                            + ",\"previous_total_tokens\":" + previousTokens
+                            + ",\"delta_total_tokens\":" + delta
+                            + ",\"delta_total_tokens_rate\":" + decimal(rate(delta, previousTokens)) + "}";
+                    return new ComparisonRow(json, delta);
+                })
+                .sorted(Comparator.comparingLong((ComparisonRow row) -> Math.abs(row.delta)).reversed())
+                .limit(8)
+                .map(row -> row.json)
+                .reduce((left, right) -> left + "," + right)
+                .orElse("") + "]";
+    }
+
+    private static String dayLabel(LocalDate date) {
+        String value = date.getDayOfWeek().toString().substring(0, 3).toLowerCase(Locale.ROOT);
+        return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);
+    }
+
+    private static double rate(long delta, long previous) {
+        if (previous == 0L) {
+            return delta == 0L ? 0.0d : 1.0d;
+        }
+        return (double) delta / (double) previous;
+    }
+
+    private static String decimal(double value) {
+        return String.format(Locale.ROOT, "%.6f", value);
+    }
+
+    private record ComparisonRow(String json, long delta) {
     }
 
     private static long activeSeconds(Instant startedAt, Instant endedAt) {

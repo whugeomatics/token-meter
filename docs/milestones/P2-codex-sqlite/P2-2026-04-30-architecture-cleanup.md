@@ -4,7 +4,7 @@
 
 P2 已跑通 SQLite 持久化与增量采集，但实现过程中为了快速闭环，入口、HTTP、前端 HTML、Codex ingestion、SQLite repository、report aggregation 和 JSON 工具曾集中在 `TokenMeterApp.java` 一个类中。
 
-这会增加 P3 本地网关阶段的维护成本，因此在进入 P3 设计开发前先完成结构性整理。
+这会增加后续 Claude Code 采集、CLI 统一统计和本地网关阶段的维护成本，因此在进入后续阶段前先完成结构性整理。
 
 ## 决策
 
@@ -73,7 +73,8 @@ DriverManager.getConnection("jdbc:sqlite:" + dbPath)
 
 本次 cleanup 不提前实现：
 
-- P3 本地模型网关。
+- P4 Claude Code 团队用量采集。
+- P6 本地模型网关。
 - Claude Code / Cursor 接入。
 - provider adapter。
 

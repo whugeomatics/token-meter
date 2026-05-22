@@ -1,10 +1,11 @@
-# P2.5 Team Usage Event Contract
+# P3 Team Usage Event Contract
 
 ## 目标
 
 定义 collector 上传给中央服务的标准化 Codex usage event。
 
-P2.5 复用 P2 统计口径：Codex `total_token_usage` 相邻累计快照转成非负 delta。上传的是 delta event，不是 cumulative snapshot。
+P3 复用 P2 统计口径：Codex `total_token_usage` 相邻累计快照转成非负 delta。上传的是 delta event，不是 cumulative snapshot。
+
 
 ## Event 字段
 
@@ -29,7 +30,7 @@ P2.5 复用 P2 统计口径：Codex `total_token_usage` 相邻累计快照转成
 字段规则：
 
 - `event_key`: 必填。全局幂等键，服务端对同一 `team_id + user_id + device_id + event_key` 去重。
-- `tool`: 必填。P2.5 固定为 `codex`。
+- `tool`: 必填。P3 固定为 `codex`。
 - `session_id`: 必填。Codex session 标识。
 - `model`: 必填。模型名称，缺失时使用 `unknown`。
 - `timestamp`: 必填。事件时间，ISO-8601 UTC。
@@ -108,4 +109,4 @@ token-meter-team-2026-04.sqlite
 - model。
 - session。
 
-P2.5 只要求 `tool=codex`。
+P3 只要求 `tool=codex`。

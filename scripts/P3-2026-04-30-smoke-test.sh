@@ -95,7 +95,7 @@ if ! curl --noproxy '*' -fsS "http://127.0.0.1:$PORT/health" >/dev/null 2>&1; th
   kill "$SERVER_PID" >/dev/null 2>&1 || true
   wait "$SERVER_PID" >/dev/null 2>&1 || true
   if grep 'Operation not permitted' "$WORK/server.log" >/dev/null; then
-    printf '%s\n' "P2.5 smoke test skipped server bind check: sandbox Operation not permitted"
+    printf '%s\n' "P3 smoke test skipped server bind check: sandbox Operation not permitted"
     exit 0
   fi
   cat "$WORK/server.log" >&2
@@ -213,4 +213,4 @@ printf '%s\n' "$filtered_team_report" | grep '"total_tokens":250' >/dev/null
 kill "$SERVER_PID" >/dev/null 2>&1 || true
 wait "$SERVER_PID" >/dev/null 2>&1 || true
 
-printf '%s\n' "P2.5 smoke test passed"
+printf '%s\n' "P3 smoke test passed"

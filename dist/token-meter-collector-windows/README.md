@@ -57,6 +57,8 @@ set TOKEN_METER_DEVICE_ID=your-device-id
 install-collector-task.cmd
 ```
 
+The installer triggers the first upload immediately after the scheduled task is created.
+
 Optional settings:
 
 ```bat
@@ -71,6 +73,9 @@ Installed files:
 ```text
 %USERPROFILE%\.token-meter\collector.env.cmd
 %USERPROFILE%\.token-meter\run-collector-task.cmd
+%USERPROFILE%\.token-meter\logs\install.log
+%USERPROFILE%\.token-meter\logs\collector.out.log
+%USERPROFILE%\.token-meter\logs\collector.err.log
 ```
 
 `collector.env.cmd` contains the device token. Do not share this file.
@@ -80,6 +85,13 @@ Installed files:
 ```bat
 schtasks /Query /TN TokenMeterCollector
 schtasks /Run /TN TokenMeterCollector
+```
+
+Task output is written to:
+
+```text
+%USERPROFILE%\.token-meter\logs\collector.out.log
+%USERPROFILE%\.token-meter\logs\collector.err.log
 ```
 
 ## Uninstall

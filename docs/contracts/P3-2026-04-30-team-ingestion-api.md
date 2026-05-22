@@ -1,10 +1,11 @@
-# P2.5 Team Ingestion API Contract
+# P3 Team Ingestion API Contract
 
 ## 目标
 
 定义 collector 向中央服务上报 Codex usage event 的 HTTP API。
 
-P2.5 只新增团队采集 ingestion API，不改变 P1/P2 `/api/report` contract。
+P3 只新增团队采集 ingestion API，不改变 P1/P2 `/api/report` contract。
+
 
 ## Endpoint
 
@@ -30,7 +31,7 @@ Content-Type: application/json
 - `collector_version`: 必填，用于排查兼容问题。
 - `client_user_id`: 可选，只做 token 绑定一致性校验。
 - `client_device_id`: 可选，只做 token 绑定一致性校验。
-- `events`: 必填数组，元素遵守 `P2.5-2026-04-30-team-usage-event.md`。
+- `events`: 必填数组，元素遵守 `P3-2026-04-30-team-usage-event.md`。
 
 ## 成功响应
 

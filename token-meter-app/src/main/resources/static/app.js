@@ -1,4 +1,4 @@
-const state = { localRange: 'days=1', teamRange: 'days=7', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
+const state = { localPeriod: 'day', teamPeriod: 'day', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
 const fmt = new Intl.NumberFormat();
 const qs = (id) => document.getElementById(id);
 const tokens = (n) => fmt.format(n || 0);
@@ -8,10 +8,10 @@ const signedPct = (n) => {
   return `${value > 0 ? '+' : ''}${value}%`;
 };
 
-document.querySelectorAll('[data-range]').forEach((button) => {
+document.querySelectorAll('[data-period]').forEach((button) => {
   button.addEventListener('click', () => {
-    setRangeForView(button.dataset.range);
-    renderRangeButtons();
+    setPeriodForView(button.dataset.period);
+    renderPeriodButtons();
     load();
   });
 });
@@ -27,7 +27,7 @@ document.querySelectorAll('[data-view]').forEach((button) => {
     qs('localPanel').classList.toggle('hidden', state.view !== 'local');
     qs('teamPanel').classList.toggle('hidden', state.view !== 'team');
     qs('teamFilter').classList.toggle('hidden', state.view !== 'team');
-    renderRangeButtons();
+    renderPeriodButtons();
     load();
   });
 });
@@ -93,29 +93,26 @@ async function load(options = {}) {
   }
 }
 
-function rangeForView() {
-  return state.view === 'team' ? state.teamRange : state.localRange;
+function periodForView() {
+  return state.view === 'team' ? state.teamPeriod : state.localPeriod;
 }
 
 function queryForView() {
-  if (state.view === 'team' && state.teamRange === 'days=7') {
-    return 'period=week&compare=previous';
-  }
-  return rangeForView();
+  return `period=${encodeURIComponent(periodForView())}&compare=previous`;
 }
 
-function setRangeForView(range) {
+function setPeriodForView(period) {
   if (state.view === 'team') {
-    state.teamRange = range;
+    state.teamPeriod = period;
   } else {
-    state.localRange = range;
+    state.localPeriod = period;
   }
 }
 
-function renderRangeButtons() {
-  const activeRange = rangeForView();
-  document.querySelectorAll('[data-range]').forEach((button) => {
-    button.classList.toggle('active', button.dataset.range === activeRange);
+function renderPeriodButtons() {
+  const activePeriod = periodForView();
+  document.querySelectorAll('[data-period]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.period === activePeriod);
   });
 }
 
@@ -159,10 +156,18 @@ function renderTeam(report) {
 
 function renderLocalOverview(report) {
   const daily = report.daily || [];
-  const models = report.models || [];
-  qs('localOverviewStatus').textContent = daily.length ? `${daily.length} days` : 'No data';
-  qs('localOverviewChart').innerHTML = renderDailyLineChart(daily);
-  renderOverviewModels(models, 'localOverviewModelsBody');
+  const comparison = report.comparison;
+  qs('localOverviewStatus').textContent = comparison
+    ? `${comparison.current.label}: ${comparison.current.start_date} to ${comparison.current.end_date}`
+    : (daily.length ? `${daily.length} days` : 'No data');
+  qs('localOverviewChart').innerHTML = comparison
+    ? renderPeriodComparisonChart(comparison.daily || [])
+    : renderDailyLineChart(daily);
+  if (comparison) {
+    renderComparisonRows(comparison.models || [], 'localOverviewModelsBody', 'model');
+  } else {
+    renderOverviewModels(report.models || [], 'localOverviewModelsBody');
+  }
 }
 
 function renderTeamOverview(report) {
@@ -171,11 +176,17 @@ function renderTeamOverview(report) {
   qs('teamOverviewStatus').textContent = comparison
     ? `${label}: ${comparison.current.start_date} to ${comparison.current.end_date}`
     : label;
-  renderWeekComparison(comparison);
+  qs('teamOverviewTitle').textContent = comparison
+    ? `${comparison.current.label} vs ${comparison.previous.label}`
+    : 'Period Comparison';
+  qs('teamComparisonChartTitle').textContent = comparison
+    ? `${comparison.current.label} vs ${comparison.previous.label}`
+    : 'Current vs Previous';
+  renderPeriodComparison(comparison);
   renderOverviewHealth(report.upload_health || []);
 }
 
-function renderWeekComparison(comparison) {
+function renderPeriodComparison(comparison) {
   if (!comparison) {
     qs('teamWeekTokens').textContent = '0';
     qs('teamWeekTokensDelta').textContent = 'No comparison data';
@@ -185,24 +196,24 @@ function renderWeekComparison(comparison) {
     return;
   }
   qs('teamWeekTokens').textContent = tokens(comparison.current.total_tokens);
-  setTrendNote('teamWeekTokensDelta', comparison.delta.total_tokens, comparison.delta.total_tokens_rate);
+  setTrendNote('teamWeekTokensDelta', comparison.delta.total_tokens, comparison.delta.total_tokens_rate, comparison.previous.label);
   qs('teamWeekCalls').textContent = tokens(comparison.current.usage_event_count);
-  setTrendNote('teamWeekCallsDelta', comparison.delta.usage_event_count);
+  setTrendNote('teamWeekCallsDelta', comparison.delta.usage_event_count, undefined, comparison.previous.label);
   qs('teamWeekSessions').textContent = tokens(comparison.current.sessions);
-  setTrendNote('teamWeekSessionsDelta', comparison.delta.sessions);
+  setTrendNote('teamWeekSessionsDelta', comparison.delta.sessions, undefined, comparison.previous.label);
   qs('teamWeekUsers').textContent = tokens(comparison.current.users);
-  setTrendNote('teamWeekUsersDelta', comparison.delta.users);
-  qs('teamWeekChart').innerHTML = renderWeekComparisonChart(comparison.daily || []);
+  setTrendNote('teamWeekUsersDelta', comparison.delta.users, undefined, comparison.previous.label);
+  qs('teamWeekChart').innerHTML = renderPeriodComparisonChart(comparison.daily || []);
   renderComparisonRows(comparison.users || [], 'teamOverviewUsersBody', 'user');
   renderComparisonRows(comparison.models || [], 'teamOverviewModelsBody', 'model');
 }
 
-function setTrendNote(id, delta, rate) {
+function setTrendNote(id, delta, rate, previousLabel = 'previous') {
   const element = qs(id);
   const sign = delta > 0 ? '+' : '';
   element.textContent = rate === undefined
-    ? `${sign}${tokens(delta)} vs previous week`
-    : `${sign}${tokens(delta)} (${signedPct(rate)}) vs previous week`;
+    ? `${sign}${tokens(delta)} vs ${previousLabel}`
+    : `${sign}${tokens(delta)} (${signedPct(rate)}) vs ${previousLabel}`;
   element.classList.toggle('trend-up', delta > 0);
   element.classList.toggle('trend-down', delta < 0);
 }
@@ -231,9 +242,9 @@ function renderOverviewModels(rows, bodyId) {
   </tr>`).join('') : '<tr><td colspan="4" class="empty">No model usage yet</td></tr>';
 }
 
-function renderWeekComparisonChart(rows) {
+function renderPeriodComparisonChart(rows) {
   if (!rows.length) {
-    return '<div class="empty">No weekly trend yet</div>';
+    return '<div class="empty">No comparison trend yet</div>';
   }
   const width = 720;
   const height = 240;
@@ -252,7 +263,7 @@ function renderWeekComparisonChart(rows) {
     return `<circle class="daily-point" cx="${x}" cy="${yFor(row.current_total_tokens)}" r="4"><title>${escapeHtml(row.current_date)}: ${tokens(row.current_total_tokens)} tokens</title></circle>
       <circle class="daily-point previous-point" cx="${x}" cy="${yFor(row.previous_total_tokens)}" r="4"><title>${escapeHtml(row.previous_date)}: ${tokens(row.previous_total_tokens)} tokens</title></circle>`;
   }).join('');
-  return `<svg class="daily-line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Week over week total token trend">
+  return `<svg class="daily-line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Period comparison total token trend">
     <line class="daily-axis" x1="${padX}" y1="${padTop + plotHeight}" x2="${width - padX}" y2="${padTop + plotHeight}"></line>
     <line class="daily-grid" x1="${padX}" y1="${padTop}" x2="${width - padX}" y2="${padTop}"></line>
     <polyline class="daily-line" points="${lineFor('current_total_tokens')}"></polyline>

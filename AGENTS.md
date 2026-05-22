@@ -13,28 +13,31 @@
 
 ## 2. 当前阶段
 
-当前阶段：P3 设计准备。
+当前阶段：P4 设计准备。
 
-P1、P2、P2.5 已通过验收。P3 只聚焦 OpenAI-compatible 本地模型网关的设计、contract、任务拆分和验收标准；在 P3 文档补齐前，不实现网关代码。
+P1、P2、P3 已通过验收。P4 聚焦 Claude Code teammate usage collection 的设计、contract、任务拆分和验收标准；在 P4 文档补齐前，不实现 Claude Code 采集代码。
 
-P3 文档待办：
+P4 文档待办：
 
-- `docs/P3-2026-05-01-README.md`
-- `docs/contracts/P3-2026-05-01-openai-compatible-gateway.md`
-- `docs/contracts/P3-2026-05-01-provider-adapter.md`
-- `docs/contracts/P3-2026-05-01-usage-event.md`
-- `docs/milestones/P3-local-gateway/P3-2026-05-01-design.md`
-- `docs/milestones/P3-local-gateway/P3-2026-05-01-tasks.md`
-- `docs/acceptance/P3-2026-05-01-local-gateway.md`
+- `docs/P4-2026-05-01-README.md`
+- `docs/contracts/P4-2026-05-01-claude-code-usage-event.md`
+- `docs/contracts/P4-2026-05-01-claude-code-ingestion-source.md`
+- `docs/contracts/P4-2026-05-01-tool-usage-report-extension.md`
+- `docs/milestones/P4-claude-code-team-collection/P4-2026-05-01-design.md`
+- `docs/milestones/P4-claude-code-team-collection/P4-2026-05-01-tasks.md`
+- `docs/acceptance/P4-2026-05-01-claude-code-team-collection.md`
 
-P3 禁止：
+P4 禁止：
 
-- 不接入 Claude Code、Cursor。
+- 不接入 Cursor。
+- 不实现本地模型网关。
 - 不实现多 provider 自动路由。
 - 不引入登录、云同步、计费系统。
 - 不存 prompt/response 正文。
+- 不采集 Claude prompt、response、raw API body 或 transcript 正文。
 - 不破坏 P1/P2 `/api/report` contract。
-- 不破坏 P2.5 `/api/team/report` 和 `/api/team/ingest` contract。
+- 不破坏 P3 `/api/team/report` 和 `/api/team/ingest` contract。
+- Local `/api/report` 与 Team `/api/team/report` 当前都支持 `period=<day|week|month>&compare=previous` 的自然周期对比；旧 `days` / `month` 查询继续作为兼容入口保留。
 
 ## 3. 项目架构硬约束
 
@@ -56,35 +59,36 @@ P3 禁止：
 - SQL DDL/DML 集中在 app module 的 `src/main/resources/db/*.sql`，Java 代码不内联建表或查询 SQL。
 - Java 入口和业务代码不得用 `System.out.print` / `System.err.print` 输出运行日志；日志使用日志 API。CLI 机器可读输出可使用专用 stdout writer。
 
-P2.5 module 细节见：
+P3 module 细节见：
 
-- `docs/milestones/P2.5-codex-team-collection/P2.5-2026-05-08-module-architecture.md`
+- `docs/milestones/P3-codex-team-collection/P3-2026-05-08-module-architecture.md`
 
 分发包约束：
 
 - `dist/` 下保持两个 teammate 制品包目录：macOS/Linux 使用 `token-meter-collector-mac-linux/`，Windows 使用 `token-meter-collector-windows/`。
 - `dist/` 制品包内的 collector jar 名称必须为 `token-meter-collector.jar`，不包含 `SNAPSHOT`；Maven target 和源码脚本仍保持项目版本命名。
-- 打包脚本按目标平台拆分：总入口 `scripts/P2.5-2026-05-01-package-collector.sh` 接收 `unix`、`windows` 或 `all`；平台脚本分别为 `scripts/P2.5-2026-05-01-package-collector-unix.sh` 和 `scripts/P2.5-2026-05-01-package-collector-windows.sh`。
+- 打包脚本按目标平台拆分：总入口 `scripts/P3-2026-05-01-package-collector.sh` 接收 `unix`、`windows` 或 `all`；平台脚本分别为 `scripts/P3-2026-05-01-package-collector-unix.sh` 和 `scripts/P3-2026-05-01-package-collector-windows.sh`。
 
 ## 4. 当前阶段必读
 
-进入 P3 设计前至少先读：
+进入 P4 设计前至少先读：
 
 - `docs/archive/P1-2026-04-29-AGENTS.md`
 - `docs/archive/P2-2026-04-30-AGENTS.md`
-- `docs/archive/P2.5-2026-04-30-AGENTS.md`
+- `docs/archive/P3-2026-04-30-AGENTS.md`
 - `docs/P2-2026-04-30-README.md`
-- `docs/P2.5-2026-04-30-README.md`
+- `docs/P3-2026-04-30-README.md`
 - `docs/contracts/P1-2026-04-29-report-api.md`
 - `docs/contracts/P2-2026-04-30-database-schema.md`
 - `docs/contracts/P2-2026-04-30-ingestion-api.md`
-- `docs/contracts/P2.5-2026-04-30-team-ingestion-api.md`
-- `docs/contracts/P2.5-2026-04-30-team-usage-event.md`
-- `docs/contracts/P2.5-2026-04-30-device-token.md`
-- `docs/contracts/P2.5-2026-04-30-team-report-api.md`
-- `docs/milestones/P2.5-codex-team-collection/P2.5-2026-05-08-module-architecture.md`
+- `docs/contracts/P3-2026-04-30-team-ingestion-api.md`
+- `docs/contracts/P3-2026-04-30-team-usage-event.md`
+- `docs/contracts/P3-2026-04-30-device-token.md`
+- `docs/contracts/P3-2026-04-30-team-report-api.md`
+- `docs/milestones/P3-codex-team-collection/P3-2026-05-08-module-architecture.md`
+- `docs/milestones/P3-codex-team-collection/P3-2026-05-21-period-comparison-design.md`
 - `docs/acceptance/P2-2026-04-30-codex-sqlite.md`
-- `docs/acceptance/P2.5-2026-04-30-codex-team-collection.md`
+- `docs/acceptance/P3-2026-04-30-codex-team-collection.md`
 
 ## 5. 阶段索引
 
@@ -107,26 +111,29 @@ P2：SQLite 持久化与增量采集，通过。
 - `docs/reviews/P2-2026-04-30-codex-sqlite-review.md`
 - `docs/acceptance/P2-2026-04-30-codex-sqlite.md`
 
-P2.5：Codex 团队用量采集，通过。
+P3：Codex 团队用量采集，通过。
 
-- `docs/archive/P2.5-2026-04-30-AGENTS.md`
-- `docs/P2.5-2026-04-30-README.md`
-- `docs/contracts/P2.5-2026-04-30-device-token.md`
-- `docs/contracts/P2.5-2026-04-30-team-ingestion-api.md`
-- `docs/contracts/P2.5-2026-04-30-team-report-api.md`
-- `docs/contracts/P2.5-2026-04-30-team-usage-event.md`
-- `docs/milestones/P2.5-codex-team-collection/P2.5-2026-04-30-design.md`
-- `docs/milestones/P2.5-codex-team-collection/P2.5-2026-05-08-module-architecture.md`
-- `docs/milestones/P2.5-codex-team-collection/P2.5-2026-04-30-tasks.md`
-- `docs/reviews/P2.5-2026-04-30-codex-team-collection-design-review.md`
-- `docs/acceptance/P2.5-2026-04-30-codex-team-collection.md`
-- `docs/guides/P2.5-2026-05-01-admin-usage-guide.md`
+
+- `docs/archive/P3-2026-04-30-AGENTS.md`
+- `docs/P3-2026-04-30-README.md`
+- `docs/contracts/P3-2026-04-30-device-token.md`
+- `docs/contracts/P3-2026-04-30-team-ingestion-api.md`
+- `docs/contracts/P3-2026-04-30-team-report-api.md`
+- `docs/contracts/P3-2026-04-30-team-usage-event.md`
+- `docs/milestones/P3-codex-team-collection/P3-2026-04-30-design.md`
+- `docs/milestones/P3-codex-team-collection/P3-2026-05-08-module-architecture.md`
+- `docs/milestones/P3-codex-team-collection/P3-2026-05-21-period-comparison-design.md`
+- `docs/milestones/P3-codex-team-collection/P3-2026-04-30-tasks.md`
+- `docs/reviews/P3-2026-04-30-codex-team-collection-design-review.md`
+- `docs/acceptance/P3-2026-04-30-codex-team-collection.md`
+- `docs/guides/P3-2026-05-01-admin-usage-guide.md`
 
 ## 6. 验证命令
 
-- 构建：`mvn -DskipTests package`
-- 完整清理构建：`mvn -DskipTests clean package`
+- 构建：`cmd /c D:\Softwares\Maven-3.9.9\bin\mvn.cmd -DskipTests package`
+- 完整清理构建：`cmd /c D:\Softwares\Maven-3.9.9\bin\mvn.cmd -DskipTests clean package`
+- 全量测试：`cmd /c D:\Softwares\Maven-3.9.9\bin\mvn.cmd test`
 - P2 smoke：`sh scripts/P2-2026-04-30-smoke-test.sh`
-- P2.5 smoke：`sh scripts/P2.5-2026-04-30-smoke-test.sh`
+- P3 smoke：`sh scripts/P3-2026-04-30-smoke-test.sh`
 
 如果 Codex 沙箱无法绑定本地 HTTP 端口，应在验收文档中记录为“沙箱执行受限”，不要判断为代码失败。
