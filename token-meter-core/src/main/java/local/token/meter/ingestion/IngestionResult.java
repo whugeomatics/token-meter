@@ -40,6 +40,10 @@ public final class IngestionResult {
         errors.addAll(newErrors);
     }
 
+    public int eventsInserted() {
+        return eventsInserted;
+    }
+
     public String toJson() {
         return "{"
                 + "\"status\":\"" + (errors.isEmpty() ? "ok" : "error") + "\","

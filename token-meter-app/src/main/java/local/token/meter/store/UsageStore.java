@@ -2,6 +2,7 @@ package local.token.meter.store;
 
 import local.token.meter.domain.UsageEvent;
 import local.token.meter.domain.ExportedUsageEvent;
+import local.token.meter.domain.TeamUsageEvent;
 import local.token.meter.ingestion.IngestedUsageEvent;
 import local.token.meter.ingestion.SourceFileRecord;
 import local.token.meter.ingestion.SourceFileState;
@@ -19,6 +20,8 @@ public interface UsageStore {
                           String status, String lastError) throws SQLException;
 
     boolean insertUsageEvent(long sourceFileId, IngestedUsageEvent event) throws SQLException;
+
+    boolean insertLocalUsageEvent(String tool, String sourcePath, int lineNumber, TeamUsageEvent event) throws SQLException;
 
     List<UsageEvent> loadEvents(LocalDate startDate, LocalDate endDate) throws SQLException;
 

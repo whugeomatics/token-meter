@@ -13,11 +13,11 @@
 
 ## 2. 当前阶段
 
-当前阶段：P4 设计准备。
+当前阶段：P4 实现验证。
 
-P1、P2、P3 已通过验收。P4 聚焦 Claude Code teammate usage collection 的设计、contract、任务拆分和验收标准；在 P4 文档补齐前，不实现 Claude Code 采集代码。
+P1、P2、P3 已通过验收。P4 聚焦 Claude Code teammate usage collection。P4 文档已落地，当前代码已进入实现验证阶段；后续改动仍需先对齐 contract、tasks 和 acceptance。
 
-P4 文档待办：
+P4 文档基线：
 
 - `docs/P4-2026-05-01-README.md`
 - `docs/contracts/P4-2026-05-01-claude-code-usage-event.md`

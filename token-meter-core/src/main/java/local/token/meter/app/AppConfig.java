@@ -16,7 +16,7 @@ import java.util.Optional;
 public record AppConfig(Path sessionsDir, Path dbPath, ZoneId zone, int port, String bindHost,
                         boolean ingestMode, boolean reportMode, boolean teamReportMode,
                         boolean registerDeviceTokenMode, boolean collectTeamMode,
-                        boolean createDeviceTokenMode,
+                        boolean createDeviceTokenMode, boolean collectClaudeCodeMode,
                         Map<String, String> reportQuery, Map<String, String> options) {
     public static AppConfig from(String[] args) {
         Path sessionsDir = sessionsDir(args);
@@ -33,6 +33,7 @@ public record AppConfig(Path sessionsDir, Path dbPath, ZoneId zone, int port, St
                 hasFlag(args, "--register-device-token"),
                 hasFlag(args, "--collect-team"),
                 hasFlag(args, "--create-device-token"),
+                hasFlag(args, "--collect-claude-code"),
                 reportQuery(args),
                 options(args)
         );
@@ -62,6 +63,8 @@ public record AppConfig(Path sessionsDir, Path dbPath, ZoneId zone, int port, St
                 query.put("team_id", arg.substring("--team-id=".length()));
             } else if (arg.startsWith("--user-id=")) {
                 query.put("user_id", arg.substring("--user-id=".length()));
+            } else if (arg.startsWith("--tool=")) {
+                query.put("tool", arg.substring("--tool=".length()));
             }
         }
         return query;
@@ -86,6 +89,10 @@ public record AppConfig(Path sessionsDir, Path dbPath, ZoneId zone, int port, St
         putEnv(result, "server-url", "TOKEN_METER_SERVER_URL");
         putEnv(result, "batch-size", "TOKEN_METER_BATCH_SIZE");
         putEnv(result, "admin-token", "TOKEN_METER_ADMIN_TOKEN");
+        putEnv(result, "claude-code-usage-file", "CLAUDE_CODE_USAGE_FILE");
+        putEnv(result, "claude-source", "TOKEN_METER_CLAUDE_SOURCE");
+        putEnv(result, "claude-otel-input", "TOKEN_METER_CLAUDE_OTEL_INPUT");
+        putEnv(result, "claude-hook-input", "TOKEN_METER_CLAUDE_HOOK_INPUT");
         return result;
     }
 

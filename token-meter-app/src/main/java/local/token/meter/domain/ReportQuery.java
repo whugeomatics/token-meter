@@ -9,15 +9,21 @@ import java.time.ZoneId;
 import java.util.Map;
 
 public record ReportQuery(String kind, LocalDate startDate, LocalDate endDate, ZoneId zone,
-                          String teamId, String userId) {
+                          String teamId, String userId, String tool) {
+    public ReportQuery(String kind, LocalDate startDate, LocalDate endDate, ZoneId zone,
+                       String teamId, String userId) {
+        this(kind, startDate, endDate, zone, teamId, userId, "");
+    }
+
     public static ReportQuery from(Map<String, String> query, ZoneId zone) {
         LocalDate today = LocalDate.now(zone);
         String teamId = query.getOrDefault("team_id", "");
         String userId = query.getOrDefault("user_id", "");
+        String tool = query.getOrDefault("tool", "");
         String month = query.get("month");
         if (month != null && !month.isBlank()) {
             YearMonth yearMonth = "current".equals(month) ? YearMonth.from(today) : YearMonth.parse(month);
-            return new ReportQuery("month", yearMonth.atDay(1), yearMonth.atEndOfMonth(), zone, teamId, userId);
+            return new ReportQuery("month", yearMonth.atDay(1), yearMonth.atEndOfMonth(), zone, teamId, userId, tool);
         }
 
         String days = query.get("days");
@@ -25,7 +31,7 @@ public record ReportQuery(String kind, LocalDate startDate, LocalDate endDate, Z
         if (dayCount != 1 && dayCount != 7 && dayCount != 30) {
             throw new BadRequestException("days must be one of 1, 7, or 30");
         }
-        return new ReportQuery("days", today.minusDays(dayCount - 1L), today, zone, teamId, userId);
+        return new ReportQuery("days", today.minusDays(dayCount - 1L), today, zone, teamId, userId, tool);
     }
 
     public boolean contains(Instant instant) {
@@ -39,5 +45,9 @@ public record ReportQuery(String kind, LocalDate startDate, LocalDate endDate, Z
 
     public boolean matchesUser(String value) {
         return userId == null || userId.isBlank() || userId.equals(value);
+    }
+
+    public boolean matchesTool(String value) {
+        return tool == null || tool.isBlank() || tool.equals(value);
     }
 }

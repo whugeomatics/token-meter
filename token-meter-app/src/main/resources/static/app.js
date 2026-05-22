@@ -1,4 +1,4 @@
-const state = { localPeriod: 'day', teamPeriod: 'day', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
+const state = { localPeriod: 'day', teamPeriod: 'day', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], teamTool: '', teamToolOptions: [], teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
 const fmt = new Intl.NumberFormat();
 const qs = (id) => document.getElementById(id);
 const tokens = (n) => fmt.format(n || 0);
@@ -27,6 +27,7 @@ document.querySelectorAll('[data-view]').forEach((button) => {
     qs('localPanel').classList.toggle('hidden', state.view !== 'local');
     qs('teamPanel').classList.toggle('hidden', state.view !== 'team');
     qs('teamFilter').classList.toggle('hidden', state.view !== 'team');
+    qs('teamToolFilter').classList.toggle('hidden', state.view !== 'team');
     renderPeriodButtons();
     load();
   });
@@ -46,6 +47,10 @@ document.querySelectorAll('[data-team-section-tab]').forEach((button) => {
 qs('refresh').addEventListener('click', () => load({ showToast: true }));
 qs('teamFilter').addEventListener('change', () => {
   state.teamId = qs('teamFilter').value;
+  load();
+});
+qs('teamToolFilter').addEventListener('change', () => {
+  state.teamTool = qs('teamToolFilter').value;
   load();
 });
 document.querySelectorAll('[data-team-model-sort]').forEach((button) => {
@@ -72,9 +77,13 @@ async function load(options = {}) {
       if (ingestResult.status !== 'ok') throw new Error('Ingest failed');
     }
     const endpoint = state.view === 'team' ? '/api/team/report' : '/api/report';
-    const query = state.view === 'team' && state.teamId
-      ? `${queryForView()}&team_id=${encodeURIComponent(state.teamId)}`
-      : queryForView();
+    let query = queryForView();
+    if (state.view === 'team' && state.teamId) {
+      query += `&team_id=${encodeURIComponent(state.teamId)}`;
+    }
+    if (state.view === 'team' && state.teamTool) {
+      query += `&tool=${encodeURIComponent(state.teamTool)}`;
+    }
     const response = await fetch(`${endpoint}?${query}`, { cache: 'no-store' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const report = await response.json();
@@ -137,6 +146,7 @@ function renderTeam(report) {
   state.teamReport = report;
   qs('rangeMeta').textContent = `Team: ${report.range.start_date} to ${report.range.end_date} (${report.range.timezone})`;
   renderTeamFilter(report.teams || []);
+  renderTeamToolFilter(report.tools || []);
   qs('teamTotalTokens').textContent = tokens(report.summary.total_tokens);
   qs('teamNetTokens').textContent = tokens(report.summary.net_tokens);
   qs('teamUsers').textContent = tokens(report.summary.users);
@@ -148,6 +158,7 @@ function renderTeam(report) {
   renderTeamOverview(report);
   renderDaily(report.daily || [], 'teamDailyChart', 'teamDailyStatus', 'teamDailyBody');
   renderTeamModels(report.team_models || []);
+  renderTools(report.tools || []);
   renderUsers(report.users || []);
   renderDevices(report.devices || []);
   renderUploadHealth(report.upload_health || []);
@@ -193,6 +204,7 @@ function renderPeriodComparison(comparison) {
     qs('teamWeekChart').innerHTML = '<div class="empty">No weekly trend yet</div>';
     qs('teamOverviewUsersBody').innerHTML = '<tr><td colspan="4" class="empty">No user changes yet</td></tr>';
     qs('teamOverviewModelsBody').innerHTML = '<tr><td colspan="4" class="empty">No model changes yet</td></tr>';
+    qs('teamOverviewToolsBody').innerHTML = '<tr><td colspan="4" class="empty">No tool changes yet</td></tr>';
     return;
   }
   qs('teamWeekTokens').textContent = tokens(comparison.current.total_tokens);
@@ -206,6 +218,7 @@ function renderPeriodComparison(comparison) {
   qs('teamWeekChart').innerHTML = renderPeriodComparisonChart(comparison.daily || []);
   renderComparisonRows(comparison.users || [], 'teamOverviewUsersBody', 'user');
   renderComparisonRows(comparison.models || [], 'teamOverviewModelsBody', 'model');
+  renderComparisonRows(comparison.tools || [], 'teamOverviewToolsBody', 'tool');
 }
 
 function setTrendNote(id, delta, rate, previousLabel = 'previous') {
@@ -220,9 +233,9 @@ function setTrendNote(id, delta, rate, previousLabel = 'previous') {
 
 function renderComparisonRows(rows, bodyId, kind) {
   const visibleRows = rows.slice(0, 6);
-  const empty = kind === 'user' ? 'No user changes yet' : 'No model changes yet';
+  const empty = kind === 'user' ? 'No user changes yet' : kind === 'tool' ? 'No tool changes yet' : 'No model changes yet';
   qs(bodyId).innerHTML = visibleRows.length ? visibleRows.map((row) => `<tr>
-    <td>${escapeHtml(kind === 'user' ? (row.display_name || row.user_id) : row.model)}</td>
+    <td>${escapeHtml(comparisonRowLabel(row, kind))}</td>
     <td>${tokens(row.current_total_tokens)}</td>
     <td>${tokens(row.previous_total_tokens)}</td>
     <td class="${row.delta_total_tokens < 0 ? 'trend-down' : row.delta_total_tokens > 0 ? 'trend-up' : ''}">${row.delta_total_tokens > 0 ? '+' : ''}${tokens(row.delta_total_tokens)}</td>
@@ -301,6 +314,29 @@ function renderTeamFilter(rows) {
   state.teamId = select.value;
 }
 
+function comparisonRowLabel(row, kind) {
+  if (kind === 'user') return row.display_name || row.user_id;
+  if (kind === 'tool') return toolLabel(row.tool);
+  return row.model;
+}
+
+function renderTeamToolFilter(rows) {
+  const select = qs('teamToolFilter');
+  const current = state.teamTool;
+  const known = new Set(state.teamToolOptions);
+  rows.forEach((row) => {
+    if (row.tool) {
+      known.add(row.tool);
+    }
+  });
+  state.teamToolOptions = [...known].sort();
+  select.innerHTML = '<option value="">All Tools</option>' + state.teamToolOptions
+    .map((tool) => `<option value="${escapeHtml(tool)}">${escapeHtml(toolLabel(tool))}</option>`)
+    .join('');
+  select.value = state.teamToolOptions.includes(current) ? current : '';
+  state.teamTool = select.value;
+}
+
 function renderDaily(rows, chartId, statusId, bodyId) {
   qs(statusId).textContent = rows.length ? `${rows.length} days` : 'No data';
   qs(statusId).className = 'status';
@@ -356,6 +392,25 @@ function renderDailyTable(rows, bodyId) {
 
 function renderModels(rows, bodyId) {
   qs(bodyId).innerHTML = rows.length ? rows.map((row) => `<tr><td>${escapeHtml(row.model)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.input_tokens)}</td><td>${tokens(row.cached_input_tokens)}</td><td>${tokens(row.output_tokens)}</td><td>${tokens(row.reasoning_output_tokens)}</td><td>${tokens(row.session_count ?? row.sessions)}</td><td>${tokens(row.usage_event_count)}</td><td>${tokens(row.avg_tokens_per_session)}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${pct(row.cache_hit_rate)}</td><td>${pct(row.reasoning_ratio)}</td><td>${formatDuration(row.active_seconds)}</td></tr>`).join('') : '<tr><td colspan="13" class="empty">No model usage yet</td></tr>';
+}
+
+function renderTools(rows) {
+  qs('teamToolsBody').innerHTML = rows.length ? rows.map((row) => `<tr>
+    <td>${escapeHtml(toolLabel(row.tool))}</td>
+    <td>${tokens(row.total_tokens)}</td>
+    <td>${tokens(row.input_tokens)}</td>
+    <td>${tokens(row.cached_input_tokens)}</td>
+    <td>${tokens(row.output_tokens)}</td>
+    <td>${tokens(row.reasoning_output_tokens)}</td>
+    <td>${tokens(row.sessions)}</td>
+    <td>${tokens(row.users)}</td>
+    <td>${tokens(row.devices)}</td>
+    <td>${tokens(row.usage_event_count)}</td>
+    <td>${tokens(row.avg_tokens_per_call)}</td>
+    <td>${pct(row.cache_hit_rate)}</td>
+    <td>${pct(row.reasoning_ratio)}</td>
+    <td>${formatDuration(row.active_seconds)}</td>
+  </tr>`).join('') : '<tr><td colspan="14" class="empty">No tool usage yet</td></tr>';
 }
 
 function renderTeamModels(rows) {
@@ -471,6 +526,12 @@ function showToast(message, type = 'success') {
 
 function viewLabel() {
   return state.view === 'team' ? 'Team' : 'Local';
+}
+
+function toolLabel(tool) {
+  if (tool === 'claude-code') return 'Claude Code';
+  if (tool === 'codex') return 'Codex';
+  return tool || 'Unknown';
 }
 
 function escapeHtml(value) {

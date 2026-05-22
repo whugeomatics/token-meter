@@ -16,7 +16,7 @@ public final class TeamUsagePayload {
         for (TeamUsageEvent event : events) {
             rows.add("{"
                     + "\"event_key\":\"" + Json.escape(event.eventKey()) + "\","
-                    + "\"tool\":\"codex\","
+                    + "\"tool\":\"" + Json.escape(event.tool()) + "\","
                     + "\"session_id\":\"" + Json.escape(event.sessionId()) + "\","
                     + "\"model\":\"" + Json.escape(event.model()) + "\","
                     + "\"timestamp\":\"" + event.timestamp() + "\","
@@ -25,6 +25,7 @@ public final class TeamUsagePayload {
                     + "\"output_tokens\":" + event.usage().outputTokens() + ","
                     + "\"reasoning_output_tokens\":" + event.usage().reasoningOutputTokens() + ","
                     + "\"total_tokens\":" + event.usage().totalTokens()
+                    + sourceMetadata(event)
                     + "}");
         }
         return "{"
@@ -33,5 +34,16 @@ public final class TeamUsagePayload {
                 + "\"client_device_id\":\"" + Json.escape(clientDeviceId) + "\","
                 + "\"events\":[" + String.join(",", rows) + "]"
                 + "}";
+    }
+
+    private static String sourceMetadata(TeamUsageEvent event) {
+        StringBuilder out = new StringBuilder();
+        if (event.sourceKind() != null && !event.sourceKind().isBlank()) {
+            out.append(",\"source_kind\":\"").append(Json.escape(event.sourceKind())).append('"');
+        }
+        if (event.sourceQuality() != null && !event.sourceQuality().isBlank()) {
+            out.append(",\"source_quality\":\"").append(Json.escape(event.sourceQuality())).append('"');
+        }
+        return out.toString();
     }
 }

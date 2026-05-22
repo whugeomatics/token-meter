@@ -37,7 +37,8 @@ The next work is P4 design documentation: Claude Code usage collection contracts
 
 Each completed phase should add links to its screenshots or result artifacts here.
 
-- P1 Codex Dashboard MVP: [2026-04-30](images/P1-2026-04-30-mvp.png)
+- P1 Codex Dashboard MVP: [2026-04-30](./images/P1-2026-04-30-mvp.png)
+- P3 Codex team usage collection: [2026-05-20](./images/P3-2026-05-20-team-usage.png)
 
 ## Scope
 
@@ -66,6 +67,16 @@ Out of scope for the current phase:
 Current phase:
 
 - [Current AGENTS.md](AGENTS.md)
+
+P4 design baseline:
+
+- [P4 README](docs/P4-2026-05-01-README.md)
+- [P4 Claude Code Usage Event Contract](docs/contracts/P4-2026-05-01-claude-code-usage-event.md)
+- [P4 Claude Code Ingestion Source Contract](docs/contracts/P4-2026-05-01-claude-code-ingestion-source.md)
+- [P4 Tool Usage Report Extension](docs/contracts/P4-2026-05-01-tool-usage-report-extension.md)
+- [P4 Design](docs/milestones/P4-claude-code-team-collection/P4-2026-05-01-design.md)
+- [P4 Tasks](docs/milestones/P4-claude-code-team-collection/P4-2026-05-01-tasks.md)
+- [P4 Acceptance](docs/acceptance/P4-2026-05-01-claude-code-team-collection.md)
 
 Completed P3:
 

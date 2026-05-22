@@ -55,6 +55,11 @@ public final class TeamCollector {
             events.add(new TeamUsageEvent(teamEventKey(event), "codex", event.sessionId(), event.model(), event.timestamp(),
                     eventDate, event.delta(), userId, deviceId));
         }
+        return uploadEvents(events, start, end, uploadTime);
+    }
+
+    public String uploadEvents(List<TeamUsageEvent> events, LocalDate start, LocalDate end, Instant uploadTime)
+            throws IOException {
         int accepted = 0;
         int duplicate = 0;
         int rejected = 0;

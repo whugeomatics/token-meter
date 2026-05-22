@@ -58,7 +58,8 @@ public final class TeamReportService {
     public Report report(ReportQuery query) throws SQLException {
         Aggregator aggregator = new Aggregator(query);
         for (StoredTeamUsageEvent event : store.loadTeamEvents(query.startDate(), query.endDate())) {
-            if (query.contains(event.timestamp()) && query.matchesTeam(event.teamId()) && query.matchesUser(event.userId())) {
+            if (query.contains(event.timestamp()) && query.matchesTeam(event.teamId())
+                    && query.matchesUser(event.userId()) && query.matchesTool(event.tool())) {
                 aggregator.add(event);
             }
         }
@@ -73,7 +74,8 @@ public final class TeamReportService {
     private Report periodComparison(Map<String, String> params, String period) throws SQLException {
         String teamId = params.getOrDefault("team_id", "");
         String userId = params.getOrDefault("user_id", "");
-        PeriodComparison comparison = PeriodComparison.previous(period, LocalDate.now(zone), zone, teamId, userId);
+        String tool = params.getOrDefault("tool", "");
+        PeriodComparison comparison = PeriodComparison.previous(period, LocalDate.now(zone), zone, teamId, userId, tool);
         ReportQuery currentQuery = comparison.current();
         ReportQuery previousQuery = comparison.previous();
         Aggregator current = new Aggregator(currentQuery);
@@ -81,10 +83,10 @@ public final class TeamReportService {
 
         for (StoredTeamUsageEvent event : store.loadTeamEvents(previousQuery.startDate(), currentQuery.endDate())) {
             if (currentQuery.contains(event.timestamp()) && currentQuery.matchesTeam(event.teamId())
-                    && currentQuery.matchesUser(event.userId())) {
+                    && currentQuery.matchesUser(event.userId()) && currentQuery.matchesTool(event.tool())) {
                 current.add(event);
             } else if (previousQuery.contains(event.timestamp()) && previousQuery.matchesTeam(event.teamId())
-                    && previousQuery.matchesUser(event.userId())) {
+                    && previousQuery.matchesUser(event.userId()) && previousQuery.matchesTool(event.tool())) {
                 previous.add(event);
             }
         }
@@ -106,6 +108,7 @@ public final class TeamReportService {
         private final Map<String, UserBucket> userBuckets = new HashMap<>();
         private final Map<String, DeviceBucket> deviceBuckets = new HashMap<>();
         private final Map<String, ModelBucket> modelBuckets = new HashMap<>();
+        private final Map<String, ToolBucket> toolBuckets = new HashMap<>();
         private final Map<String, TeamModelBucket> teamModelBuckets = new HashMap<>();
         private final Map<LocalDate, DailyBucket> dailyBuckets = new LinkedHashMap<>();
         private final Map<String, UserDailyBucket> userDailyBuckets = new HashMap<>();
@@ -143,6 +146,7 @@ public final class TeamReportService {
             deviceBuckets.computeIfAbsent(event.teamId() + "|" + event.deviceId(),
                     id -> new DeviceBucket(event.teamId(), event.deviceId(), event.userId(), event.deviceDisplayName())).add(event);
             modelBuckets.computeIfAbsent(event.model(), ModelBucket::new).add(event);
+            toolBuckets.computeIfAbsent(event.tool(), ToolBucket::new).add(event);
             teamModelBuckets.computeIfAbsent(date + "|" + event.teamId() + "|" + event.userId() + "|" + event.model(),
                     id -> new TeamModelBucket(date, event.teamId(), event.userId(), event.userDisplayName(), event.model())).add(event);
             userDailyBuckets.computeIfAbsent(date + "|" + event.teamId() + "|" + event.userId(),
@@ -162,8 +166,8 @@ public final class TeamReportService {
         Report toReport(String comparisonJson) {
             return new TeamReportPayload(query, teamId, summary, users.size(), devices.size(), sessions.size(),
                     eventCount, activeWindows.activeSeconds(), sortedTeams(), sortedUsers(), sortedDevices(),
-                    sortedModels(), sortedTeamModels(), new ArrayList<>(dailyBuckets.values()), sortedUserDaily(),
-                    sortedUploadHealth(), sortedUploads(), comparisonJson);
+                    sortedModels(), sortedTools(), sortedTeamModels(), new ArrayList<>(dailyBuckets.values()),
+                    sortedUserDaily(), sortedUploadHealth(), sortedUploads(), comparisonJson);
         }
 
         private List<TeamBucket> sortedTeams() {
@@ -187,6 +191,12 @@ public final class TeamReportService {
         private List<ModelBucket> sortedModels() {
             return modelBuckets.values().stream()
                     .sorted(Comparator.comparingLong((ModelBucket bucket) -> bucket.totals.totalTokens).reversed())
+                    .toList();
+        }
+
+        private List<ToolBucket> sortedTools() {
+            return toolBuckets.values().stream()
+                    .sorted(Comparator.comparingLong((ToolBucket bucket) -> bucket.totals.totalTokens).reversed())
                     .toList();
         }
 
@@ -345,6 +355,29 @@ public final class TeamReportService {
         }
     }
 
+    private static final class ToolBucket {
+        final String tool;
+        final TokenTotals totals = new TokenTotals();
+        final Set<String> sessions = new HashSet<>();
+        final Set<String> users = new HashSet<>();
+        final Set<String> devices = new HashSet<>();
+        final ActiveWindows activeWindows = new ActiveWindows();
+        int eventCount;
+
+        ToolBucket(String tool) {
+            this.tool = tool;
+        }
+
+        void add(StoredTeamUsageEvent event) {
+            totals.add(event.usage());
+            sessions.add(sessionKey(event));
+            users.add(event.userId());
+            devices.add(event.deviceId());
+            activeWindows.add(sessionKey(event), event.timestamp());
+            eventCount++;
+        }
+    }
+
     private static final class TeamModelBucket {
         final LocalDate date;
         final String teamId;
@@ -473,7 +506,8 @@ public final class TeamReportService {
                 + "\"delta\":" + comparisonDeltaJson(current, previous) + ","
                 + "\"daily\":" + comparisonDailyJson(current, previous, currentQuery, previousQuery) + ","
                 + "\"users\":" + comparisonUsersJson(current, previous) + ","
-                + "\"models\":" + comparisonModelsJson(current, previous)
+                + "\"models\":" + comparisonModelsJson(current, previous) + ","
+                + "\"tools\":" + comparisonToolsJson(current, previous)
                 + "}";
     }
 
@@ -573,6 +607,31 @@ public final class TeamReportService {
                 .orElse("") + "]";
     }
 
+    private static String comparisonToolsJson(Aggregator current, Aggregator previous) {
+        Set<String> keys = new HashSet<>();
+        keys.addAll(current.toolBuckets.keySet());
+        keys.addAll(previous.toolBuckets.keySet());
+        return "[" + keys.stream()
+                .map(key -> {
+                    ToolBucket currentBucket = current.toolBuckets.get(key);
+                    ToolBucket previousBucket = previous.toolBuckets.get(key);
+                    long currentTokens = currentBucket == null ? 0L : currentBucket.totals.totalTokens;
+                    long previousTokens = previousBucket == null ? 0L : previousBucket.totals.totalTokens;
+                    long delta = currentTokens - previousTokens;
+                    String json = "{\"tool\":\"" + Json.escape(key)
+                            + "\",\"current_total_tokens\":" + currentTokens
+                            + ",\"previous_total_tokens\":" + previousTokens
+                            + ",\"delta_total_tokens\":" + delta
+                            + ",\"delta_total_tokens_rate\":" + decimal(rate(delta, previousTokens)) + "}";
+                    return new ComparisonRow(json, delta);
+                })
+                .sorted(Comparator.comparingLong((ComparisonRow row) -> Math.abs(row.delta)).reversed())
+                .limit(8)
+                .map(row -> row.json)
+                .reduce((left, right) -> left + "," + right)
+                .orElse("") + "]";
+    }
+
     private record ComparisonRow(String json, long delta) {
     }
 
@@ -595,8 +654,8 @@ public final class TeamReportService {
     private record TeamReportPayload(ReportQuery query, String teamId, TokenTotals summary, int users, int devices,
                                      int sessions, int eventCount, long activeSeconds, List<TeamBucket> teamBuckets,
                                      List<UserBucket> userBuckets, List<DeviceBucket> deviceBuckets,
-                                     List<ModelBucket> modelBuckets, List<TeamModelBucket> teamModelBuckets,
-                                     List<DailyBucket> dailyBuckets,
+                                     List<ModelBucket> modelBuckets, List<ToolBucket> toolBuckets,
+                                     List<TeamModelBucket> teamModelBuckets, List<DailyBucket> dailyBuckets,
                                      List<UserDailyBucket> userDailyBuckets,
                                      List<UploadHealthBucket> uploadHealthBuckets,
                                      List<TeamUploadRecord> uploads, String comparisonJson) implements Report {
@@ -611,6 +670,7 @@ public final class TeamReportService {
                     + "\"users\":" + Json.array(userBuckets, this::userJson) + ","
                     + "\"devices\":" + Json.array(deviceBuckets, this::deviceJson) + ","
                     + "\"models\":" + Json.array(modelBuckets, this::modelJson) + ","
+                    + "\"tools\":" + Json.array(toolBuckets, this::toolJson) + ","
                     + "\"team_models\":" + Json.array(teamModelBuckets, this::teamModelJson) + ","
                     + "\"daily\":" + Json.array(dailyBuckets, this::dailyJson) + ","
                     + "\"user_daily\":" + Json.array(userDailyBuckets, this::userDailyJson) + ","
@@ -657,6 +717,15 @@ public final class TeamReportService {
         private String modelJson(ModelBucket bucket) {
             return "{\"model\":\"" + Json.escape(bucket.model) + "\"," + bucket.totals.jsonFields()
                     + ",\"sessions\":" + bucket.sessions.size()
+                    + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
+                    bucket.activeWindows.activeSeconds()) + "}";
+        }
+
+        private String toolJson(ToolBucket bucket) {
+            return "{\"tool\":\"" + Json.escape(bucket.tool) + "\"," + bucket.totals.jsonFields()
+                    + ",\"sessions\":" + bucket.sessions.size()
+                    + ",\"users\":" + bucket.users.size()
+                    + ",\"devices\":" + bucket.devices.size()
                     + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
                     bucket.activeWindows.activeSeconds()) + "}";
         }
