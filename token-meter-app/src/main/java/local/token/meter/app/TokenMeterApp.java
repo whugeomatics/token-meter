@@ -3,7 +3,9 @@ package local.token.meter.app;
 import local.token.meter.domain.DeviceTokenBinding;
 import local.token.meter.http.DashboardServer;
 import local.token.meter.ingestion.CodexIngestionService;
+import local.token.meter.ingestion.ClaudeCodeLocalIngestionService;
 import local.token.meter.ingestion.IngestionResult;
+import local.token.meter.ingestion.LocalIngestionService;
 import local.token.meter.ingestion.TeamIngestionService;
 import local.token.meter.report.ReportService;
 import local.token.meter.report.TeamReportService;
@@ -49,7 +51,7 @@ public final class TokenMeterApp {
 
         if (config.ingestMode()) {
             UsageStore usageStore = openUsageStore(config.dbPath());
-            IngestionResult result = new CodexIngestionService(config.sessionsDir(), config.zone(), usageStore).ingest();
+            IngestionResult result = localIngestionService(config, usageStore).ingest();
             CliOutput.writeLine(result.toJson());
             if (!result.errors().isEmpty()) {
                 System.exit(1);
@@ -78,7 +80,7 @@ public final class TokenMeterApp {
             return;
         }
 
-        CodexIngestionService localIngestionService = new CodexIngestionService(config.sessionsDir(), config.zone(), usageStore);
+        LocalIngestionService localIngestionService = localIngestionService(config, usageStore);
         IngestionResult startupIngestion = localIngestionService.ingest();
         LOG.info("Startup ingestion: " + startupIngestion.toJson());
 
@@ -98,6 +100,21 @@ public final class TokenMeterApp {
         UsageStore usageStore = UsageStores.open(path);
         usageStore.initialize();
         return usageStore;
+    }
+
+    private static LocalIngestionService localIngestionService(AppConfig config, UsageStore usageStore) {
+        return new LocalIngestionService(
+                new CodexIngestionService(config.sessionsDir(), config.zone(), usageStore),
+                new ClaudeCodeLocalIngestionService(claudeProjectsPath(config), config.zone(), usageStore)
+        );
+    }
+
+    private static Path claudeProjectsPath(AppConfig config) {
+        String override = config.options().get("claude-projects-dir");
+        if (override != null && !override.isBlank()) {
+            return Path.of(override);
+        }
+        return Path.of(System.getProperty("user.home"), ".claude", "projects");
     }
 
     private static TeamUsageStore openTeamStore(AppConfig config) throws Exception {

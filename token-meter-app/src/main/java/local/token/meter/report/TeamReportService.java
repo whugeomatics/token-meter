@@ -147,8 +147,10 @@ public final class TeamReportService {
                     id -> new DeviceBucket(event.teamId(), event.deviceId(), event.userId(), event.deviceDisplayName())).add(event);
             modelBuckets.computeIfAbsent(event.model(), ModelBucket::new).add(event);
             toolBuckets.computeIfAbsent(event.tool(), ToolBucket::new).add(event);
-            teamModelBuckets.computeIfAbsent(date + "|" + event.teamId() + "|" + event.userId() + "|" + event.model(),
-                    id -> new TeamModelBucket(date, event.teamId(), event.userId(), event.userDisplayName(), event.model())).add(event);
+            teamModelBuckets.computeIfAbsent(date + "|" + event.teamId() + "|" + event.userId() + "|"
+                            + event.tool() + "|" + event.model(),
+                    id -> new TeamModelBucket(date, event.teamId(), event.userId(), event.userDisplayName(),
+                            event.tool(), event.model())).add(event);
             userDailyBuckets.computeIfAbsent(date + "|" + event.teamId() + "|" + event.userId(),
                     id -> new UserDailyBucket(date, event.teamId(), event.userId(), event.userDisplayName())).add(event);
         }
@@ -205,6 +207,7 @@ public final class TeamReportService {
                     .sorted(Comparator.comparing((TeamModelBucket bucket) -> bucket.date, Comparator.reverseOrder())
                             .thenComparing(bucket -> bucket.teamId)
                             .thenComparing(bucket -> bucket.userId)
+                            .thenComparing(bucket -> bucket.tool)
                             .thenComparing(bucket -> bucket.model)
                             .thenComparing(Comparator.comparingLong((TeamModelBucket bucket) -> bucket.totals.totalTokens).reversed()))
                     .toList();
@@ -383,6 +386,7 @@ public final class TeamReportService {
         final String teamId;
         final String userId;
         final String displayName;
+        final String tool;
         final String model;
         final TokenTotals totals = new TokenTotals();
         final Set<String> sessions = new HashSet<>();
@@ -391,11 +395,12 @@ public final class TeamReportService {
         Instant startedAt;
         Instant endedAt;
 
-        TeamModelBucket(LocalDate date, String teamId, String userId, String displayName, String model) {
+        TeamModelBucket(LocalDate date, String teamId, String userId, String displayName, String tool, String model) {
             this.date = date;
             this.teamId = teamId;
             this.userId = userId;
             this.displayName = displayName;
+            this.tool = tool;
             this.model = model;
         }
 
@@ -733,7 +738,8 @@ public final class TeamReportService {
         private String teamModelJson(TeamModelBucket bucket) {
             return "{\"date\":\"" + bucket.date + "\",\"team_id\":\"" + Json.escape(bucket.teamId)
                     + "\",\"user_id\":\"" + Json.escape(bucket.userId)
-                    + "\",\"display_name\":\"" + Json.escape(bucket.displayName) + "\",\"model\":\""
+                    + "\",\"display_name\":\"" + Json.escape(bucket.displayName) + "\",\"tool\":\""
+                    + Json.escape(bucket.tool) + "\",\"model\":\""
                     + Json.escape(bucket.model) + "\"," + bucket.totals.jsonFields()
                     + ",\"sessions\":" + bucket.sessions.size()
                     + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),

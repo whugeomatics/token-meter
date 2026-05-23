@@ -91,6 +91,7 @@ public record AppConfig(Path sessionsDir, Path dbPath, ZoneId zone, int port, St
         putEnv(result, "admin-token", "TOKEN_METER_ADMIN_TOKEN");
         putEnv(result, "claude-code-usage-file", "CLAUDE_CODE_USAGE_FILE");
         putEnv(result, "claude-source", "TOKEN_METER_CLAUDE_SOURCE");
+        putEnv(result, "claude-projects-dir", "TOKEN_METER_CLAUDE_PROJECTS_DIR");
         putEnv(result, "claude-otel-input", "TOKEN_METER_CLAUDE_OTEL_INPUT");
         putEnv(result, "claude-hook-input", "TOKEN_METER_CLAUDE_HOOK_INPUT");
         return result;

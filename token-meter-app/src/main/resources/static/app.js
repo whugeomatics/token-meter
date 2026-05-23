@@ -1,4 +1,4 @@
-const state = { localPeriod: 'day', teamPeriod: 'day', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], teamTool: '', teamToolOptions: [], teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
+const state = { localPeriod: 'day', teamPeriod: 'day', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], localTool: '', teamTool: '', toolOptions: [], teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
 const fmt = new Intl.NumberFormat();
 const qs = (id) => document.getElementById(id);
 const tokens = (n) => fmt.format(n || 0);
@@ -27,7 +27,6 @@ document.querySelectorAll('[data-view]').forEach((button) => {
     qs('localPanel').classList.toggle('hidden', state.view !== 'local');
     qs('teamPanel').classList.toggle('hidden', state.view !== 'team');
     qs('teamFilter').classList.toggle('hidden', state.view !== 'team');
-    qs('teamToolFilter').classList.toggle('hidden', state.view !== 'team');
     renderPeriodButtons();
     load();
   });
@@ -49,8 +48,8 @@ qs('teamFilter').addEventListener('change', () => {
   state.teamId = qs('teamFilter').value;
   load();
 });
-qs('teamToolFilter').addEventListener('change', () => {
-  state.teamTool = qs('teamToolFilter').value;
+qs('toolFilter').addEventListener('change', () => {
+  setToolForView(qs('toolFilter').value);
   load();
 });
 document.querySelectorAll('[data-team-model-sort]').forEach((button) => {
@@ -60,7 +59,7 @@ document.querySelectorAll('[data-team-model-sort]').forEach((button) => {
       state.teamModelDir = state.teamModelDir === 'asc' ? 'desc' : 'asc';
     } else {
       state.teamModelSort = field;
-      state.teamModelDir = field === 'user_id' || field === 'model' ? 'asc' : 'desc';
+      state.teamModelDir = field === 'user_id' || field === 'tool' || field === 'model' ? 'asc' : 'desc';
     }
     renderTeamModels(state.teamReport?.team_models || []);
   });
@@ -81,8 +80,9 @@ async function load(options = {}) {
     if (state.view === 'team' && state.teamId) {
       query += `&team_id=${encodeURIComponent(state.teamId)}`;
     }
-    if (state.view === 'team' && state.teamTool) {
-      query += `&tool=${encodeURIComponent(state.teamTool)}`;
+    const tool = toolForView();
+    if (tool) {
+      query += `&tool=${encodeURIComponent(tool)}`;
     }
     const response = await fetch(`${endpoint}?${query}`, { cache: 'no-store' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -118,6 +118,18 @@ function setPeriodForView(period) {
   }
 }
 
+function toolForView() {
+  return state.view === 'team' ? state.teamTool : state.localTool;
+}
+
+function setToolForView(tool) {
+  if (state.view === 'team') {
+    state.teamTool = tool;
+  } else {
+    state.localTool = tool;
+  }
+}
+
 function renderPeriodButtons() {
   const activePeriod = periodForView();
   document.querySelectorAll('[data-period]').forEach((button) => {
@@ -127,6 +139,7 @@ function renderPeriodButtons() {
 
 function renderLocal(report) {
   qs('rangeMeta').textContent = `Local: ${report.range.start_date} to ${report.range.end_date} (${report.range.timezone})`;
+  renderToolFilter(report.tools || []);
   qs('localTotalTokens').textContent = tokens(report.summary.total_tokens);
   qs('localNetTokens').textContent = tokens(report.summary.net_tokens);
   qs('localCachedTokens').textContent = tokens(report.summary.cached_input_tokens);
@@ -138,6 +151,7 @@ function renderLocal(report) {
   renderLocalOverview(report);
   renderDaily(report.daily || [], 'localDailyChart', 'localDailyStatus', 'localDailyBody');
   renderModels(report.models || [], 'localModelsBody');
+  renderTools(report.tools || [], 'localToolsBody', false);
   renderSessions(report.sessions || []);
   renderLocalSections();
 }
@@ -146,7 +160,7 @@ function renderTeam(report) {
   state.teamReport = report;
   qs('rangeMeta').textContent = `Team: ${report.range.start_date} to ${report.range.end_date} (${report.range.timezone})`;
   renderTeamFilter(report.teams || []);
-  renderTeamToolFilter(report.tools || []);
+  renderToolFilter(report.tools || []);
   qs('teamTotalTokens').textContent = tokens(report.summary.total_tokens);
   qs('teamNetTokens').textContent = tokens(report.summary.net_tokens);
   qs('teamUsers').textContent = tokens(report.summary.users);
@@ -158,7 +172,7 @@ function renderTeam(report) {
   renderTeamOverview(report);
   renderDaily(report.daily || [], 'teamDailyChart', 'teamDailyStatus', 'teamDailyBody');
   renderTeamModels(report.team_models || []);
-  renderTools(report.tools || []);
+  renderTools(report.tools || [], 'teamToolsBody', true);
   renderUsers(report.users || []);
   renderDevices(report.devices || []);
   renderUploadHealth(report.upload_health || []);
@@ -320,21 +334,21 @@ function comparisonRowLabel(row, kind) {
   return row.model;
 }
 
-function renderTeamToolFilter(rows) {
-  const select = qs('teamToolFilter');
-  const current = state.teamTool;
-  const known = new Set(state.teamToolOptions);
+function renderToolFilter(rows) {
+  const select = qs('toolFilter');
+  const current = toolForView();
+  const known = new Set(state.toolOptions);
   rows.forEach((row) => {
     if (row.tool) {
       known.add(row.tool);
     }
   });
-  state.teamToolOptions = [...known].sort();
-  select.innerHTML = '<option value="">All Tools</option>' + state.teamToolOptions
+  state.toolOptions = [...known].sort();
+  select.innerHTML = '<option value="">All Tools</option>' + state.toolOptions
     .map((tool) => `<option value="${escapeHtml(tool)}">${escapeHtml(toolLabel(tool))}</option>`)
     .join('');
-  select.value = state.teamToolOptions.includes(current) ? current : '';
-  state.teamTool = select.value;
+  select.value = state.toolOptions.includes(current) ? current : '';
+  setToolForView(select.value);
 }
 
 function renderDaily(rows, chartId, statusId, bodyId) {
@@ -391,11 +405,11 @@ function renderDailyTable(rows, bodyId) {
 }
 
 function renderModels(rows, bodyId) {
-  qs(bodyId).innerHTML = rows.length ? rows.map((row) => `<tr><td>${escapeHtml(row.model)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.input_tokens)}</td><td>${tokens(row.cached_input_tokens)}</td><td>${tokens(row.output_tokens)}</td><td>${tokens(row.reasoning_output_tokens)}</td><td>${tokens(row.session_count ?? row.sessions)}</td><td>${tokens(row.usage_event_count)}</td><td>${tokens(row.avg_tokens_per_session)}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${pct(row.cache_hit_rate)}</td><td>${pct(row.reasoning_ratio)}</td><td>${formatDuration(row.active_seconds)}</td></tr>`).join('') : '<tr><td colspan="13" class="empty">No model usage yet</td></tr>';
+  qs(bodyId).innerHTML = rows.length ? rows.map((row) => `<tr><td>${toolList(row.tools)}</td><td>${escapeHtml(row.model)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.input_tokens)}</td><td>${tokens(row.cached_input_tokens)}</td><td>${tokens(row.output_tokens)}</td><td>${tokens(row.reasoning_output_tokens)}</td><td>${tokens(row.session_count ?? row.sessions)}</td><td>${tokens(row.usage_event_count)}</td><td>${tokens(row.avg_tokens_per_session)}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${pct(row.cache_hit_rate)}</td><td>${pct(row.reasoning_ratio)}</td><td>${formatDuration(row.active_seconds)}</td></tr>`).join('') : '<tr><td colspan="14" class="empty">No model usage yet</td></tr>';
 }
 
-function renderTools(rows) {
-  qs('teamToolsBody').innerHTML = rows.length ? rows.map((row) => `<tr>
+function renderTools(rows, bodyId, teamView) {
+  qs(bodyId).innerHTML = rows.length ? rows.map((row) => `<tr>
     <td>${escapeHtml(toolLabel(row.tool))}</td>
     <td>${tokens(row.total_tokens)}</td>
     <td>${tokens(row.input_tokens)}</td>
@@ -403,14 +417,13 @@ function renderTools(rows) {
     <td>${tokens(row.output_tokens)}</td>
     <td>${tokens(row.reasoning_output_tokens)}</td>
     <td>${tokens(row.sessions)}</td>
-    <td>${tokens(row.users)}</td>
-    <td>${tokens(row.devices)}</td>
+    ${teamView ? `<td>${tokens(row.users)}</td><td>${tokens(row.devices)}</td>` : ''}
     <td>${tokens(row.usage_event_count)}</td>
     <td>${tokens(row.avg_tokens_per_call)}</td>
     <td>${pct(row.cache_hit_rate)}</td>
     <td>${pct(row.reasoning_ratio)}</td>
     <td>${formatDuration(row.active_seconds)}</td>
-  </tr>`).join('') : '<tr><td colspan="14" class="empty">No tool usage yet</td></tr>';
+  </tr>`).join('') : `<tr><td colspan="${teamView ? 14 : 12}" class="empty">No tool usage yet</td></tr>`;
 }
 
 function renderTeamModels(rows) {
@@ -421,6 +434,7 @@ function renderTeamModels(rows) {
     <td>${escapeHtml(row.date)}</td>
     <td>${escapeHtml(row.team_id)}</td>
     <td>${escapeHtml(row.display_name || row.user_id)}</td>
+    <td>${toolPill(row.tool)}</td>
     <td>${escapeHtml(row.model)}</td>
     <td>${tokens(row.total_tokens)}</td>
     <td>${tokens(row.input_tokens)}</td>
@@ -435,7 +449,7 @@ function renderTeamModels(rows) {
     <td>${formatDuration(row.active_seconds)}</td>
     <td>${escapeHtml(formatDateTime(row.started_at))}</td>
     <td>${escapeHtml(formatDateTime(row.ended_at))}</td>
-  </tr>`).join('') : '<tr><td colspan="17" class="empty">No model usage yet</td></tr>';
+  </tr>`).join('') : '<tr><td colspan="18" class="empty">No model usage yet</td></tr>';
 }
 
 function teamModelComparator(left, right) {
@@ -446,6 +460,7 @@ function teamModelComparator(left, right) {
   if (a < b) return -1 * dir;
   if (a > b) return 1 * dir;
   if ((left.date || '') !== (right.date || '')) return String(right.date || '').localeCompare(String(left.date || ''));
+  if ((left.tool || '') !== (right.tool || '')) return String(left.tool || '').localeCompare(String(right.tool || ''));
   return String(left.model || '').localeCompare(String(right.model || ''));
 }
 
@@ -456,7 +471,7 @@ function comparable(value) {
 function renderSessions(rows) {
   const visibleRows = rows.slice(0, 50);
   qs('localSessionsStatus').textContent = rows.length > 50 ? `Latest 50 of ${tokens(rows.length)}` : `${tokens(rows.length)} rows`;
-  qs('localSessionsBody').innerHTML = visibleRows.length ? visibleRows.map((row) => `<tr><td>${escapeHtml(row.session_id)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.net_tokens)}</td><td>${tokens(row.usage_event_count)}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${formatDuration(row.active_seconds)}</td><td>${escapeHtml(formatDateTime(row.started_at))}</td><td>${escapeHtml(formatDateTime(row.ended_at))}</td><td>${escapeHtml((row.models || []).join(', '))}</td></tr>`).join('') : '<tr><td colspan="9" class="empty">No sessions yet</td></tr>';
+  qs('localSessionsBody').innerHTML = visibleRows.length ? visibleRows.map((row) => `<tr><td>${toolList(row.tools)}</td><td>${escapeHtml(row.session_id)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.net_tokens)}</td><td>${tokens(row.usage_event_count)}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${formatDuration(row.active_seconds)}</td><td>${escapeHtml(formatDateTime(row.started_at))}</td><td>${escapeHtml(formatDateTime(row.ended_at))}</td><td>${escapeHtml((row.models || []).join(', '))}</td></tr>`).join('') : '<tr><td colspan="10" class="empty">No sessions yet</td></tr>';
 }
 
 function renderLocalSections() {
@@ -532,6 +547,16 @@ function toolLabel(tool) {
   if (tool === 'claude-code') return 'Claude Code';
   if (tool === 'codex') return 'Codex';
   return tool || 'Unknown';
+}
+
+function toolPill(tool) {
+  const name = toolLabel(tool);
+  return `<span class="tool-pill tool-${escapeHtml(String(tool || 'unknown').replace(/[^a-z0-9-]/gi, '-'))}">${escapeHtml(name)}</span>`;
+}
+
+function toolList(tools) {
+  const values = Array.isArray(tools) && tools.length ? tools : [''];
+  return values.map((tool) => toolPill(tool)).join(' ');
 }
 
 function escapeHtml(value) {

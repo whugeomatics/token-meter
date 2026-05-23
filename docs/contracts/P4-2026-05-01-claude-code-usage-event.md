@@ -12,7 +12,7 @@ P4 event 必须能进入 P3 `/api/team/ingest` 链路，并在 `/api/team/report
 
 ```json
 {
-  "event_key": "claude-code|session|metric|timestamp|model",
+  "event_key": "claude-code|local_jsonl|session|source-identity-hash|model|token-fingerprint",
   "tool": "claude-code",
   "session_id": "session-id",
   "model": "claude-sonnet-4-5",
@@ -38,11 +38,11 @@ P4 event 必须能进入 P3 `/api/team/ingest` 链路，并在 `/api/team/report
 - `model`: 必填。缺失时使用 `unknown`。
 - `timestamp`: 必填。事件时间，ISO-8601 UTC。
 - `input_tokens`: 必填，非负整数。缺失时为 0。
-- `cached_input_tokens`: 必填，非负整数。缺失时为 0。
+- `cached_input_tokens`: 必填，非负整数。缺失时为 0。Claude Code 本地 JSONL 来源使用 `cache_read_input_tokens + cache_creation_input_tokens`。
 - `output_tokens`: 必填，非负整数。缺失时为 0。
 - `reasoning_output_tokens`: 必填，非负整数。Claude Code 来源缺失时为 0。
 - `total_tokens`: 必填，非负整数。优先使用来源上报总量；缺失时使用 `input_tokens + cached_input_tokens + output_tokens + reasoning_output_tokens`。
-- `source_kind`: 必填。允许值：`otel_metric`、`otel_log`、`hook_metadata`、`fixture`。
+- `source_kind`: 必填。允许值：`local_jsonl`、`otel_metric`、`otel_log`、`hook_metadata`、`fixture`。
 - `source_quality`: 必填。允许值：`reported`、`derived`、`estimated`。
 - `source_event_key`: 可选。保存本地来源事件键或 metric identity，不包含完整本地路径。
 - `client_user_id`: 可选，只用于服务端一致性校验，不决定归属。
@@ -71,12 +71,13 @@ event 不得包含：
 推荐格式：
 
 ```text
-claude-code|<source_kind>|<session_id>|<timestamp_bucket>|<model>|<token_fingerprint>
+claude-code|<source_kind>|<session_id>|<source_identity>|<model>|<token_fingerprint>
 ```
 
 说明：
 
-- `timestamp_bucket` 使用来源事件时间精度；如果来源只有累计指标，使用 metric export timestamp。
+- `local_jsonl` 来源优先使用 Claude `message.id` 的 hash 作为 source identity；缺失时才使用来源事件时间，避免同一 assistant message 的重复 JSONL 行被重复统计。
+- `source_identity` 使用来源自身稳定身份；如果来源只有累计指标，使用 metric export timestamp。
 - `token_fingerprint` 使用 token 数值、metric name 和 source identity 生成，不使用 prompt 或 response。
 - 如果来源包含本地文件路径，只能上传路径 hash。
 

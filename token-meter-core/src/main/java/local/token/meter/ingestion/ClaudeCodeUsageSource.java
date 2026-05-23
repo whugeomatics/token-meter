@@ -14,8 +14,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Set;
 
 public final class ClaudeCodeUsageSource {
     private final Path usagePath;
@@ -26,7 +28,7 @@ public final class ClaudeCodeUsageSource {
     private final String sourceQuality;
 
     public ClaudeCodeUsageSource(Path usagePath, ZoneId zone, String userId, String deviceId) {
-        this(usagePath, zone, userId, deviceId, "otel_metrics", "official");
+        this(usagePath, zone, userId, deviceId, "local_jsonl", "reported");
     }
 
     public ClaudeCodeUsageSource(Path usagePath, ZoneId zone, String userId, String deviceId,
@@ -45,54 +47,125 @@ public final class ClaudeCodeUsageSource {
 
     public List<ScannedClaudeCodeUsageEvent> scannedEvents() throws IOException {
         List<ScannedClaudeCodeUsageEvent> events = new ArrayList<>();
+        Set<String> eventKeys = new HashSet<>();
+        for (Path file : usageFiles()) {
+            scanFile(file, events, eventKeys);
+        }
+        return events;
+    }
+
+    private List<Path> usageFiles() throws IOException {
+        if (Files.isRegularFile(usagePath)) {
+            return List.of(usagePath);
+        }
+        if (!Files.isDirectory(usagePath)) {
+            return List.of();
+        }
+        try (var stream = Files.walk(usagePath)) {
+            return stream
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith(".jsonl"))
+                    .sorted()
+                    .toList();
+        }
+    }
+
+    private void scanFile(Path file, List<ScannedClaudeCodeUsageEvent> events, Set<String> eventKeys)
+            throws IOException {
         int lineNumber = 0;
-        for (String line : Files.readAllLines(usagePath, StandardCharsets.UTF_8)) {
+        for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
             lineNumber++;
             if (line.isBlank()) {
                 continue;
             }
             TeamUsageEvent event = parseLine(line);
-            if (event != null) {
-                events.add(new ScannedClaudeCodeUsageEvent(usagePath.toAbsolutePath().normalize().toString(),
+            if (event != null && eventKeys.add(event.eventKey())) {
+                events.add(new ScannedClaudeCodeUsageEvent(file.toAbsolutePath().normalize().toString(),
                         lineNumber, event));
             }
         }
-        return events;
     }
 
     private TeamUsageEvent parseLine(String json) {
         try {
-            String sessionId = Json.firstString(json, "session_id")
-                    .or(() -> Json.firstString(json, "sessionId"))
-                    .orElse("");
-            String model = Json.firstString(json, "model").orElse("unknown");
-            String timestampValue = Json.firstString(json, "timestamp")
-                    .or(() -> Json.firstString(json, "time"))
-                    .orElse("");
-            if (sessionId.isBlank() || timestampValue.isBlank()) {
-                return null;
+            TeamUsageEvent localEvent = parseClaudeProjectLine(json);
+            if (localEvent != null) {
+                return localEvent;
             }
-            Instant timestamp = Instant.parse(timestampValue);
-            Snapshot usage = new Snapshot(
-                    Json.longValue(json, "input_tokens").orElse(0L),
-                    Json.longValue(json, "cached_input_tokens").orElse(0L),
-                    Json.longValue(json, "output_tokens").orElse(0L),
-                    Json.longValue(json, "reasoning_output_tokens").orElse(0L),
-                    Json.longValue(json, "total_tokens").orElse(0L)
-            );
-            if (!usage.hasPositiveUsage()) {
-                return null;
-            }
-            LocalDate localDate = timestamp.atZone(zone).toLocalDate();
-            return new TeamUsageEvent(eventKey(sessionId, model, timestamp, usage), "claude-code", sessionId, model,
-                    timestamp, localDate, usage, userId, deviceId, sourceKind, sourceQuality);
+            return parseFlatUsageLine(json);
         } catch (RuntimeException e) {
             return null;
         }
     }
 
-    private String eventKey(String sessionId, String model, Instant timestamp, Snapshot usage) {
-        return "claude-code|" + sessionId + "|" + timestamp + "|" + model + "|" + hash(usageKey(usage));
+    private TeamUsageEvent parseClaudeProjectLine(String json) {
+        String sessionId = Json.firstString(json, "sessionId").orElse("");
+        String timestampValue = Json.firstString(json, "timestamp").orElse("");
+        var message = Json.objectSection(json, "message");
+        if (sessionId.isBlank() || timestampValue.isBlank() || message.isEmpty()) {
+            return null;
+        }
+        var usageJson = Json.objectSection(message.get(), "usage");
+        if (usageJson.isEmpty()) {
+            return null;
+        }
+        String messageId = Json.firstString(message.get(), "id").orElse("");
+        String model = Json.firstString(message.get(), "model").orElse("unknown");
+        Instant timestamp = Instant.parse(timestampValue);
+        Snapshot usage = usageFromClaudeUsage(usageJson.get());
+        if (!usage.hasPositiveUsage()) {
+            return null;
+        }
+        LocalDate localDate = timestamp.atZone(zone).toLocalDate();
+        String sourceIdentity = messageId.isBlank() ? timestamp.toString() : messageId;
+        return new TeamUsageEvent(eventKey(sessionId, model, sourceIdentity, usage), "claude-code", sessionId, model,
+                timestamp, localDate, usage, userId, deviceId, sourceKind, sourceQuality);
+    }
+
+    private TeamUsageEvent parseFlatUsageLine(String json) {
+        String sessionId = Json.firstString(json, "session_id")
+                .or(() -> Json.firstString(json, "sessionId"))
+                .orElse("");
+        String model = Json.firstString(json, "model").orElse("unknown");
+        String timestampValue = Json.firstString(json, "timestamp")
+                .or(() -> Json.firstString(json, "time"))
+                .orElse("");
+        if (sessionId.isBlank() || timestampValue.isBlank()) {
+            return null;
+        }
+        Instant timestamp = Instant.parse(timestampValue);
+        Snapshot usage = usageFromFlatLine(json);
+        if (!usage.hasPositiveUsage()) {
+            return null;
+        }
+        LocalDate localDate = timestamp.atZone(zone).toLocalDate();
+        return new TeamUsageEvent(eventKey(sessionId, model, timestamp.toString(), usage), "claude-code", sessionId,
+                model, timestamp, localDate, usage, userId, deviceId, sourceKind, sourceQuality);
+    }
+
+    private Snapshot usageFromFlatLine(String json) {
+        long input = Json.longValue(json, "input_tokens").orElse(0L);
+        long cached = Json.longValue(json, "cached_input_tokens").orElse(0L);
+        long output = Json.longValue(json, "output_tokens").orElse(0L);
+        long reasoning = Json.longValue(json, "reasoning_output_tokens").orElse(0L);
+        long total = Json.longValue(json, "total_tokens").orElse(input + cached + output + reasoning);
+        return new Snapshot(input, cached, output, reasoning, total);
+    }
+
+    private Snapshot usageFromClaudeUsage(String json) {
+        long input = Json.longValue(json, "input_tokens").orElse(0L);
+        long cacheCreation = Json.longValue(json, "cache_creation_input_tokens").orElse(0L);
+        long cacheRead = Json.longValue(json, "cache_read_input_tokens").orElse(0L);
+        long cached = cacheCreation + cacheRead;
+        long output = Json.longValue(json, "output_tokens").orElse(0L);
+        long reasoning = Json.longValue(json, "reasoning_output_tokens").orElse(0L);
+        long total = Json.longValue(json, "total_tokens").orElse(input + cached + output + reasoning);
+        return new Snapshot(input, cached, output, reasoning, total);
+    }
+
+    private String eventKey(String sessionId, String model, String sourceIdentity, Snapshot usage) {
+        return "claude-code|" + sourceKind + "|" + sessionId + "|" + hash(sourceIdentity) + "|" + model + "|"
+                + hash(usageKey(usage));
     }
 
     private String usageKey(Snapshot usage) {

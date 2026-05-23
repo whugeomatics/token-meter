@@ -20,11 +20,13 @@ final class ReportServiceToolTest {
 
     @Test
     void localReportCanFilterAndAggregateTools() throws Exception {
+        LocalDate today = LocalDate.now(ZoneId.of("UTC"));
         SqliteUsageStore store = new SqliteUsageStore(tempDir.resolve("local.sqlite"));
         store.initialize();
-        store.insertLocalUsageEvent("codex", "codex-source", 1, event("codex-1", "codex", "codex-session", 100));
+        store.insertLocalUsageEvent("codex", "codex-source", 1,
+                event("codex-1", "codex", "codex-session", 100, today));
         store.insertLocalUsageEvent("claude-code", "claude-source", 1,
-                event("claude-1", "claude-code", "claude-session", 200));
+                event("claude-1", "claude-code", "claude-session", 200, today));
 
         ReportService service = new ReportService(store, ZoneId.of("UTC"));
         String allJson = service.report(Map.of("days", "1")).toJson();
@@ -34,19 +36,23 @@ final class ReportServiceToolTest {
         assertTrue(allJson.contains("\"tools\""));
         assertTrue(allJson.contains("\"tool\":\"codex\""));
         assertTrue(allJson.contains("\"tool\":\"claude-code\""));
+        assertTrue(allJson.contains("\"tools\":[\"codex\"]"));
+        assertTrue(allJson.contains("\"tools\":[\"claude-code\"]"));
         assertTrue(claudeJson.contains("\"total_tokens\":200"));
         assertTrue(codexJson.contains("\"total_tokens\":100"));
     }
 
     @Test
     void localComparisonIncludesToolDeltas() throws Exception {
+        LocalDate today = LocalDate.now(ZoneId.of("UTC"));
+        LocalDate yesterday = today.minusDays(1);
         SqliteUsageStore store = new SqliteUsageStore(tempDir.resolve("local.sqlite"));
         store.initialize();
         store.insertLocalUsageEvent("claude-code", "claude-source", 1,
-                event("claude-today", "claude-code", "session-today", 200));
+                event("claude-today", "claude-code", "session-today", 200, today));
         store.insertLocalUsageEvent("claude-code", "claude-source", 2,
                 new TeamUsageEvent("claude-yesterday", "claude-code", "session-yesterday", "claude-sonnet",
-                        Instant.parse("2026-05-21T00:00:00Z"), LocalDate.parse("2026-05-21"),
+                        Instant.parse(yesterday + "T00:00:00Z"), yesterday,
                         new Snapshot(50, 0, 50, 0, 100), "", ""));
 
         ReportService service = new ReportService(store, ZoneId.of("UTC"));
@@ -57,9 +63,9 @@ final class ReportServiceToolTest {
         assertTrue(json.contains("\"delta_total_tokens\":100"));
     }
 
-    private static TeamUsageEvent event(String key, String tool, String session, long totalTokens) {
-        return new TeamUsageEvent(key, tool, session, "claude-sonnet", Instant.parse("2026-05-22T00:00:00Z"),
-                LocalDate.parse("2026-05-22"), new Snapshot(totalTokens / 2, 0, totalTokens / 2, 0, totalTokens),
+    private static TeamUsageEvent event(String key, String tool, String session, long totalTokens, LocalDate date) {
+        return new TeamUsageEvent(key, tool, session, "claude-sonnet", Instant.parse(date + "T00:00:00Z"),
+                date, new Snapshot(totalTokens / 2, 0, totalTokens / 2, 0, totalTokens),
                 "", "");
     }
 }

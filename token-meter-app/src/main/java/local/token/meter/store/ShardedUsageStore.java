@@ -2,6 +2,7 @@ package local.token.meter.store;
 
 import local.token.meter.domain.UsageEvent;
 import local.token.meter.domain.ExportedUsageEvent;
+import local.token.meter.domain.TeamUsageEvent;
 import local.token.meter.ingestion.IngestedUsageEvent;
 import local.token.meter.ingestion.SourceFileRecord;
 import local.token.meter.ingestion.SourceFileState;
@@ -60,6 +61,10 @@ public final class ShardedUsageStore implements UsageStore {
             throw new SQLException("unknown source file shard");
         }
         return store.insertUsageEvent(localId(sourceFileId), event);
+    }
+
+    public boolean insertLocalUsageEvent(String tool, String sourcePath, int lineNumber, TeamUsageEvent event) throws SQLException {
+        return store(YearMonth.from(event.localDate())).insertLocalUsageEvent(tool, sourcePath, lineNumber, event);
     }
 
     public List<UsageEvent> loadEvents(LocalDate startDate, LocalDate endDate) throws SQLException {

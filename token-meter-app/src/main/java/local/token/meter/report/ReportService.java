@@ -48,7 +48,7 @@ public final class ReportService {
             return report(ReportQuery.from(query, zone));
         }
         if ("previous".equals(compare)) {
-            return periodComparison(period);
+            return periodComparison(query, period);
         }
         throw new BadRequestException("period and compare must use compare=previous");
     }
@@ -57,23 +57,24 @@ public final class ReportService {
         List<UsageEvent> events = usageStore.loadEvents(query.startDate(), query.endDate());
         Aggregator aggregator = new Aggregator(query);
         for (UsageEvent event : events) {
-            if (query.contains(event.timestamp())) {
+            if (query.contains(event.timestamp()) && query.matchesTool(event.tool())) {
                 aggregator.add(event);
             }
         }
         return aggregator.toReport();
     }
 
-    private Report periodComparison(String period) throws SQLException {
-        PeriodComparison comparison = PeriodComparison.previous(period, LocalDate.now(zone), zone, "", "");
+    private Report periodComparison(Map<String, String> params, String period) throws SQLException {
+        String tool = params.getOrDefault("tool", "");
+        PeriodComparison comparison = PeriodComparison.previous(period, LocalDate.now(zone), zone, "", "", tool);
         ReportQuery currentQuery = comparison.current();
         ReportQuery previousQuery = comparison.previous();
         Aggregator current = new Aggregator(currentQuery);
         Aggregator previous = new Aggregator(previousQuery);
         for (UsageEvent event : usageStore.loadEvents(previousQuery.startDate(), currentQuery.endDate())) {
-            if (currentQuery.contains(event.timestamp())) {
+            if (currentQuery.contains(event.timestamp()) && currentQuery.matchesTool(event.tool())) {
                 current.add(event);
-            } else if (previousQuery.contains(event.timestamp())) {
+            } else if (previousQuery.contains(event.timestamp()) && previousQuery.matchesTool(event.tool())) {
                 previous.add(event);
             }
         }
@@ -85,6 +86,7 @@ public final class ReportService {
         private final TokenTotals summary = new TokenTotals();
         private final Map<LocalDate, DailyBucket> daily = new LinkedHashMap<>();
         private final Map<String, ModelBucket> models = new HashMap<>();
+        private final Map<String, ToolBucket> tools = new HashMap<>();
         private final Map<String, SessionBucket> sessions = new HashMap<>();
         private final ActiveWindows activeWindows = new ActiveWindows();
         private int eventCount;
@@ -109,6 +111,7 @@ public final class ReportService {
             LocalDate date = event.timestamp().atZone(query.zone()).toLocalDate();
             daily.computeIfAbsent(date, DailyBucket::new).add(event);
             models.computeIfAbsent(event.model(), ModelBucket::new).add(event);
+            tools.computeIfAbsent(event.tool(), ToolBucket::new).add(event);
             sessions.computeIfAbsent(event.sessionId(), SessionBucket::new).add(event);
         }
 
@@ -122,6 +125,9 @@ public final class ReportService {
                     models.values().stream()
                             .sorted(Comparator.comparingLong((ModelBucket bucket) -> bucket.totals.totalTokens).reversed())
                             .toList(),
+                    tools.values().stream()
+                            .sorted(Comparator.comparingLong((ToolBucket bucket) -> bucket.totals.totalTokens).reversed())
+                            .toList(),
                     sessions.values().stream()
                             .sorted(Comparator.comparing((SessionBucket bucket) -> bucket.startedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                             .toList(),
@@ -133,6 +139,7 @@ public final class ReportService {
         final String sessionId;
         final TokenTotals totals = new TokenTotals();
         final Set<String> models = new HashSet<>();
+        final Set<String> tools = new HashSet<>();
         int eventCount;
         Instant startedAt;
         Instant endedAt;
@@ -144,6 +151,7 @@ public final class ReportService {
         void add(UsageEvent event) {
             totals.add(event.usage());
             models.add(event.model());
+            tools.add(event.tool());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
@@ -154,6 +162,7 @@ public final class ReportService {
         final String model;
         final TokenTotals totals = new TokenTotals();
         final Set<String> sessions = new HashSet<>();
+        final Set<String> tools = new HashSet<>();
         final ActiveWindows activeWindows = new ActiveWindows();
         int eventCount;
         Instant startedAt;
@@ -166,10 +175,30 @@ public final class ReportService {
         void add(UsageEvent event) {
             totals.add(event.usage());
             sessions.add(event.sessionId());
+            tools.add(event.tool());
             activeWindows.add(event.sessionId(), event.timestamp());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
+        }
+    }
+
+    private static final class ToolBucket {
+        final String tool;
+        final TokenTotals totals = new TokenTotals();
+        final Set<String> sessions = new HashSet<>();
+        final ActiveWindows activeWindows = new ActiveWindows();
+        int eventCount;
+
+        ToolBucket(String tool) {
+            this.tool = tool;
+        }
+
+        void add(UsageEvent event) {
+            totals.add(event.usage());
+            sessions.add(event.sessionId());
+            activeWindows.add(event.sessionId(), event.timestamp());
+            eventCount++;
         }
     }
 
@@ -198,7 +227,7 @@ public final class ReportService {
 
     private record ReportPayload(ReportQuery query, TokenTotals summary, int eventCount, int sessionCount,
                                  long activeSeconds, List<DailyBucket> daily,
-                                 List<ModelBucket> models, List<SessionBucket> sessions,
+                                 List<ModelBucket> models, List<ToolBucket> tools, List<SessionBucket> sessions,
                                  String comparisonJson) implements Report {
         public String toJson() {
             StringBuilder out = new StringBuilder();
@@ -223,8 +252,18 @@ public final class ReportService {
             out.append("\"models\":");
             out.append(Json.array(models, bucket -> "{"
                     + "\"model\":\"" + Json.escape(bucket.model) + "\","
+                    + "\"tools\":" + Json.stringArray(bucket.tools.stream().sorted().toList()) + ","
                     + bucket.totals.jsonFields() + ","
                     + "\"session_count\":" + bucket.sessions.size()
+                    + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
+                    bucket.activeWindows.activeSeconds())
+                    + "}"));
+            out.append(',');
+            out.append("\"tools\":");
+            out.append(Json.array(tools, bucket -> "{"
+                    + "\"tool\":\"" + Json.escape(bucket.tool) + "\","
+                    + bucket.totals.jsonFields() + ","
+                    + "\"sessions\":" + bucket.sessions.size()
                     + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
                     bucket.activeWindows.activeSeconds())
                     + "}"));
@@ -235,6 +274,7 @@ public final class ReportService {
                     + "\"started_at\":\"" + formatInstant(bucket.startedAt, query.zone()) + "\","
                     + "\"ended_at\":\"" + formatInstant(bucket.endedAt, query.zone()) + "\","
                     + "\"active_seconds\":" + ReportService.activeSeconds(bucket.startedAt, bucket.endedAt) + ","
+                    + "\"tools\":" + Json.stringArray(bucket.tools.stream().sorted().toList()) + ","
                     + "\"models\":" + Json.stringArray(bucket.models.stream().sorted().toList()) + ","
                     + "\"usage_event_count\":" + bucket.eventCount + ","
                     + "\"avg_tokens_per_call\":" + decimal(bucket.eventCount == 0 ? 0.0d : (double) bucket.totals.totalTokens / bucket.eventCount) + ","
@@ -264,7 +304,8 @@ public final class ReportService {
                 + "\"previous\":" + comparisonSummaryJson(comparison.previousLabel(), previous, previousQuery) + ","
                 + "\"delta\":" + comparisonDeltaJson(current, previous) + ","
                 + "\"daily\":" + comparisonDailyJson(current, previous, currentQuery, previousQuery) + ","
-                + "\"models\":" + comparisonModelsJson(current, previous)
+                + "\"models\":" + comparisonModelsJson(current, previous) + ","
+                + "\"tools\":" + comparisonToolsJson(current, previous)
                 + "}";
     }
 
@@ -319,6 +360,31 @@ public final class ReportService {
                     long previousTokens = previousBucket == null ? 0L : previousBucket.totals.totalTokens;
                     long delta = currentTokens - previousTokens;
                     String json = "{\"model\":\"" + Json.escape(key)
+                            + "\",\"current_total_tokens\":" + currentTokens
+                            + ",\"previous_total_tokens\":" + previousTokens
+                            + ",\"delta_total_tokens\":" + delta
+                            + ",\"delta_total_tokens_rate\":" + decimal(rate(delta, previousTokens)) + "}";
+                    return new ComparisonRow(json, delta);
+                })
+                .sorted(Comparator.comparingLong((ComparisonRow row) -> Math.abs(row.delta)).reversed())
+                .limit(8)
+                .map(row -> row.json)
+                .reduce((left, right) -> left + "," + right)
+                .orElse("") + "]";
+    }
+
+    private static String comparisonToolsJson(Aggregator current, Aggregator previous) {
+        Set<String> keys = new HashSet<>();
+        keys.addAll(current.tools.keySet());
+        keys.addAll(previous.tools.keySet());
+        return "[" + keys.stream()
+                .map(key -> {
+                    ToolBucket currentBucket = current.tools.get(key);
+                    ToolBucket previousBucket = previous.tools.get(key);
+                    long currentTokens = currentBucket == null ? 0L : currentBucket.totals.totalTokens;
+                    long previousTokens = previousBucket == null ? 0L : previousBucket.totals.totalTokens;
+                    long delta = currentTokens - previousTokens;
+                    String json = "{\"tool\":\"" + Json.escape(key)
                             + "\",\"current_total_tokens\":" + currentTokens
                             + ",\"previous_total_tokens\":" + previousTokens
                             + ",\"delta_total_tokens\":" + delta

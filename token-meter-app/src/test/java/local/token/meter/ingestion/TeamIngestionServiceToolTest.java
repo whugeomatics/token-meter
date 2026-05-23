@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Map;
 
@@ -20,6 +21,8 @@ final class TeamIngestionServiceToolTest {
 
     @Test
     void acceptsClaudeCodeEventsAndReportCanFilterByTool() throws Exception {
+        LocalDate today = LocalDate.now(ZoneId.of("UTC"));
+        String timestamp = today + "T00:00:00Z";
         SqliteTeamUsageStore store = new SqliteTeamUsageStore(tempDir.resolve("team.sqlite"));
         store.initialize();
         store.upsertDeviceToken("secret-token",
@@ -31,18 +34,18 @@ final class TeamIngestionServiceToolTest {
                 + "\"client_user_id\":\"user-a\","
                 + "\"client_device_id\":\"device-a\","
                 + "\"events\":[{"
-                + "\"event_key\":\"claude-code|session-a|2026-05-22T00:00:00Z|100\","
+                + "\"event_key\":\"claude-code|session-a|" + timestamp + "|100\","
                 + "\"tool\":\"claude-code\","
                 + "\"session_id\":\"session-a\","
                 + "\"model\":\"claude-sonnet\","
-                + "\"timestamp\":\"2026-05-22T00:00:00Z\","
+                + "\"timestamp\":\"" + timestamp + "\","
                 + "\"input_tokens\":40,"
                 + "\"cached_input_tokens\":10,"
                 + "\"output_tokens\":50,"
                 + "\"reasoning_output_tokens\":0,"
                 + "\"total_tokens\":100,"
-                + "\"source_kind\":\"otel_metrics\","
-                + "\"source_quality\":\"official\""
+                + "\"source_kind\":\"otel_metric\","
+                + "\"source_quality\":\"reported\""
                 + "}]"
                 + "}");
 
@@ -56,6 +59,8 @@ final class TeamIngestionServiceToolTest {
 
         assertTrue(allJson.contains("\"tools\""));
         assertTrue(allJson.contains("\"tool\":\"claude-code\""));
+        assertTrue(allJson.contains("\"team_models\""));
+        assertTrue(allJson.contains("\"tool\":\"claude-code\",\"model\":\"claude-sonnet\""));
         assertTrue(claudeJson.contains("\"total_tokens\":100"));
         assertTrue(codexJson.contains("\"total_tokens\":0"));
     }

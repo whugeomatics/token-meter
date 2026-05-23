@@ -10,7 +10,7 @@
 - 时区：Asia/Shanghai。
 - Java 版本：Java 17 target。
 - 构建命令：`cmd /c D:\Softwares\Maven-3.9.9\bin\mvn.cmd -DskipTests package`。
-- Collector 输入：脱敏 Claude Code telemetry fixture。
+- Collector 输入：脱敏 Claude Code local JSONL fixture 和 telemetry fixture。
 - Server 存储：临时 SQLite 目录或文件。
 - 验收日期：2026-05-01。
 
@@ -34,6 +34,8 @@
 检查：
 
 - collector 可读取脱敏 OTel usage fixture。
+- local dashboard 和 collector 可读取本地 Claude Code JSONL fixture。
+- 本地 JSONL 只解析 `sessionId`、`timestamp`、`message.model` 和 `message.usage`。
 - collector 可读取受限 hook metadata fixture。
 - OTel token 字段优先于 hook metadata。
 - Hook 不读取 transcript 正文。
@@ -59,9 +61,13 @@
 
 检查：
 
-- `--collect-claude-code` 可触发 Claude Code 采集模式。
+- 默认 team collector 一次运行同时上传 Codex 和 Claude Code，客户端无需传 Claude 专用开关。
+- 默认 Claude Code 来源读取 `<user.home>/.claude/projects/**/*.jsonl`。
+- `--claude-source=local` 可读取本地 Claude Code JSONL。
+- `--claude-projects-dir` 可覆盖默认本地 Claude Code projects 目录。
 - `--claude-source=otel` 可读取 fixture。
 - `--claude-source=hook` 只读取允许 metadata。
+- `--collect-claude-code` 仅作为旧脚本兼容入口保留。
 - collector 继续复用 P3 `--server-url`、`--device-token`、`--user-id`、`--device-id`。
 - stdout 为机器可读 JSON。
 - stdout/stderr 不包含 device token、prompt、response、raw payload。
@@ -123,6 +129,7 @@
 
 - P3 Codex team ingestion/report 行为不变。
 - Local `/api/report` 行为不变。
+- Local `/api/report` 可通过 `tool=claude-code` 展示 Claude Code 本地 JSONL 用量。
 - Day、Week、Month period comparison 行为不变。
 - collector jar 仍不包含 dashboard、SQLite、admin 或静态资源。
 

@@ -42,6 +42,10 @@ public final class TeamCollector {
         LocalDate end = LocalDate.now(zone);
         LocalDate start = end.minusDays(days - 1L);
         Instant uploadTime = Instant.now();
+        return uploadEvents(collectRecentEvents(start, end), start, end, uploadTime);
+    }
+
+    public List<TeamUsageEvent> collectRecentEvents(LocalDate start, LocalDate end) throws IOException {
         SessionUsageScan scan = scanner.scan();
         if (!scan.result().errors().isEmpty()) {
             throw new IOException("collector session scan failed: " + scan.result().toJson());
@@ -55,7 +59,7 @@ public final class TeamCollector {
             events.add(new TeamUsageEvent(teamEventKey(event), "codex", event.sessionId(), event.model(), event.timestamp(),
                     eventDate, event.delta(), userId, deviceId));
         }
-        return uploadEvents(events, start, end, uploadTime);
+        return events;
     }
 
     public String uploadEvents(List<TeamUsageEvent> events, LocalDate start, LocalDate end, Instant uploadTime)

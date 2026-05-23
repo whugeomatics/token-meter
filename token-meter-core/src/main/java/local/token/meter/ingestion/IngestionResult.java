@@ -40,6 +40,14 @@ public final class IngestionResult {
         errors.addAll(newErrors);
     }
 
+    public void merge(IngestionResult other) {
+        filesScanned += other.filesScanned;
+        filesChanged += other.filesChanged;
+        eventsInserted += other.eventsInserted;
+        eventsSkipped += other.eventsSkipped;
+        errors.addAll(other.errors);
+    }
+
     public int eventsInserted() {
         return eventsInserted;
     }

@@ -5,8 +5,8 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import local.token.meter.domain.Report;
 import local.token.meter.domain.TeamIngestResult;
-import local.token.meter.ingestion.CodexIngestionService;
 import local.token.meter.ingestion.IngestionResult;
+import local.token.meter.ingestion.LocalIngestionService;
 import local.token.meter.ingestion.TeamIngestionService;
 import local.token.meter.report.ReportService;
 import local.token.meter.report.TeamReportService;
@@ -26,14 +26,14 @@ public final class DashboardServer {
     private final int port;
     private final String bindHost;
     private final ReportService reportService;
-    private final CodexIngestionService localIngestionService;
+    private final LocalIngestionService localIngestionService;
     private final TeamIngestionService teamIngestionService;
     private final TeamReportService teamReportService;
     private final AdminAuth adminAuth;
     private final AdminService adminService;
     private final Object localIngestionLock = new Object();
 
-    public DashboardServer(String bindHost, int port, ReportService reportService, CodexIngestionService localIngestionService,
+    public DashboardServer(String bindHost, int port, ReportService reportService, LocalIngestionService localIngestionService,
                            TeamIngestionService teamIngestionService, TeamReportService teamReportService,
                            TeamUsageStore teamUsageStore, String adminToken) {
         this.bindHost = bindHost;
