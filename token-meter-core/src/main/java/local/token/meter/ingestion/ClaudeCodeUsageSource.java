@@ -153,13 +153,14 @@ public final class ClaudeCodeUsageSource {
     }
 
     private Snapshot usageFromClaudeUsage(String json) {
-        long input = Json.longValue(json, "input_tokens").orElse(0L);
+        long rawInput = Json.longValue(json, "input_tokens").orElse(0L);
         long cacheCreation = Json.longValue(json, "cache_creation_input_tokens").orElse(0L);
         long cacheRead = Json.longValue(json, "cache_read_input_tokens").orElse(0L);
         long cached = cacheCreation + cacheRead;
+        long input = rawInput + cached;
         long output = Json.longValue(json, "output_tokens").orElse(0L);
         long reasoning = Json.longValue(json, "reasoning_output_tokens").orElse(0L);
-        long total = Json.longValue(json, "total_tokens").orElse(input + cached + output + reasoning);
+        long total = Json.longValue(json, "total_tokens").orElse(input + output + reasoning);
         return new Snapshot(input, cached, output, reasoning, total);
     }
 

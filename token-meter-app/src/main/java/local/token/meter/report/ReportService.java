@@ -84,6 +84,8 @@ public final class ReportService {
     private static final class Aggregator {
         private final ReportQuery query;
         private final TokenTotals summary = new TokenTotals();
+        private final Map<String, Integer> sourceKindCounts = new HashMap<>();
+        private final Map<String, Integer> sourceQualityCounts = new HashMap<>();
         private final Map<LocalDate, DailyBucket> daily = new LinkedHashMap<>();
         private final Map<String, ModelBucket> models = new HashMap<>();
         private final Map<String, ToolBucket> tools = new HashMap<>();
@@ -104,6 +106,8 @@ public final class ReportService {
 
         void add(UsageEvent event) {
             summary.add(event.tool(), event.usage());
+            addSourceDimension(sourceKindCounts, event.sourceKind());
+            addSourceQuality(sourceQualityCounts, event.sourceQuality());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
@@ -115,13 +119,22 @@ public final class ReportService {
             sessions.computeIfAbsent(event.sessionId(), SessionBucket::new).add(event);
         }
 
+        private static void addSourceQuality(Map<String, Integer> counts, String sourceQuality) {
+            addSourceDimension(counts, sourceQuality);
+        }
+
+        private static void addSourceDimension(Map<String, Integer> counts, String value) {
+            String normalized = value == null || value.isBlank() ? "unknown" : value;
+            counts.merge(normalized, 1, Integer::sum);
+        }
+
         Report toReport() {
             return toReport("");
         }
 
         Report toReport(String comparisonJson) {
             return new ReportPayload(query, summary, eventCount, sessions.size(), activeWindows.activeSeconds(),
-                    new ArrayList<>(daily.values()),
+                    sourceKindCounts, sourceQualityCounts, new ArrayList<>(daily.values()),
                     models.values().stream()
                             .sorted(Comparator.comparingLong((ModelBucket bucket) -> bucket.totals.totalTokens).reversed())
                             .toList(),
@@ -186,6 +199,8 @@ public final class ReportService {
     private static final class ToolBucket {
         final String tool;
         final TokenTotals totals = new TokenTotals();
+        final Map<String, Integer> sourceKindCounts = new HashMap<>();
+        final Map<String, Integer> sourceQualityCounts = new HashMap<>();
         final Set<String> sessions = new HashSet<>();
         final ActiveWindows activeWindows = new ActiveWindows();
         int eventCount;
@@ -196,6 +211,8 @@ public final class ReportService {
 
         void add(UsageEvent event) {
             totals.add(event.tool(), event.usage());
+            Aggregator.addSourceDimension(sourceKindCounts, event.sourceKind());
+            Aggregator.addSourceQuality(sourceQualityCounts, event.sourceQuality());
             sessions.add(event.sessionId());
             activeWindows.add(event.sessionId(), event.timestamp());
             eventCount++;
@@ -226,7 +243,8 @@ public final class ReportService {
     }
 
     private record ReportPayload(ReportQuery query, TokenTotals summary, int eventCount, int sessionCount,
-                                 long activeSeconds, List<DailyBucket> daily,
+                                 long activeSeconds, Map<String, Integer> sourceKindCounts,
+                                 Map<String, Integer> sourceQualityCounts, List<DailyBucket> daily,
                                  List<ModelBucket> models, List<ToolBucket> tools, List<SessionBucket> sessions,
                                  String comparisonJson) implements Report {
         public String toJson() {
@@ -239,6 +257,8 @@ public final class ReportService {
                     .append("\"timezone\":\"").append(Json.escape(query.zone().getId())).append("\"")
                     .append("},");
             out.append("\"summary\":{").append(summary.jsonFields())
+                    .append(",\"source_kind\":").append(sourceDimensionJson(sourceKindCounts))
+                    .append(",\"source_quality\":").append(sourceQualityJson(sourceQualityCounts))
                     .append(derivedJson(summary, eventCount, sessionCount, activeSeconds)).append("},");
             out.append("\"daily\":");
             out.append(Json.array(daily, bucket -> "{"
@@ -263,6 +283,8 @@ public final class ReportService {
             out.append(Json.array(tools, bucket -> "{"
                     + "\"tool\":\"" + Json.escape(bucket.tool) + "\","
                     + bucket.totals.jsonFields() + ","
+                    + "\"source_kind\":" + sourceDimensionJson(bucket.sourceKindCounts) + ","
+                    + "\"source_quality\":" + sourceQualityJson(bucket.sourceQualityCounts) + ","
                     + "\"sessions\":" + bucket.sessions.size()
                     + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
                     bucket.activeWindows.activeSeconds())
@@ -294,6 +316,21 @@ public final class ReportService {
 
         private static String decimal(double value) {
             return String.format(Locale.ROOT, "%.2f", value);
+        }
+
+        private static String sourceQualityJson(Map<String, Integer> counts) {
+            return sourceDimensionJson(counts);
+        }
+
+        private static String sourceDimensionJson(Map<String, Integer> counts) {
+            if (counts.isEmpty()) {
+                return "{\"unknown\":0}";
+            }
+            return "{" + counts.entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .map(entry -> "\"" + Json.escape(entry.getKey()) + "\":" + entry.getValue())
+                    .reduce((left, right) -> left + "," + right)
+                    .orElse("") + "}";
         }
     }
 

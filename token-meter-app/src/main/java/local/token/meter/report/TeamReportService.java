@@ -101,6 +101,8 @@ public final class TeamReportService {
     private static final class Aggregator {
         private final ReportQuery query;
         private final TokenTotals summary = new TokenTotals();
+        private final Map<String, Integer> sourceKindCounts = new HashMap<>();
+        private final Map<String, Integer> sourceQualityCounts = new HashMap<>();
         private final Set<String> users = new HashSet<>();
         private final Set<String> devices = new HashSet<>();
         private final Set<String> sessions = new HashSet<>();
@@ -131,6 +133,8 @@ public final class TeamReportService {
         void add(StoredTeamUsageEvent event) {
             teamId = event.teamId();
             summary.add(event.tool(), event.usage());
+            addSourceDimension(sourceKindCounts, event.sourceKind());
+            addSourceQuality(sourceQualityCounts, event.sourceQuality());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
@@ -155,6 +159,15 @@ public final class TeamReportService {
                     id -> new UserDailyBucket(date, event.teamId(), event.userId(), event.userDisplayName())).add(event);
         }
 
+        private static void addSourceQuality(Map<String, Integer> counts, String sourceQuality) {
+            addSourceDimension(counts, sourceQuality);
+        }
+
+        private static void addSourceDimension(Map<String, Integer> counts, String value) {
+            String normalized = value == null || value.isBlank() ? "unknown" : value;
+            counts.merge(normalized, 1, Integer::sum);
+        }
+
         void add(TeamUploadRecord upload) {
             teamBuckets.computeIfAbsent(upload.teamId(), TeamBucket::new).add(upload);
             uploadHealthBuckets.computeIfAbsent(upload.teamId() + "|" + upload.userId() + "|" + upload.deviceId(),
@@ -167,9 +180,10 @@ public final class TeamReportService {
 
         Report toReport(String comparisonJson) {
             return new TeamReportPayload(query, teamId, summary, users.size(), devices.size(), sessions.size(),
-                    eventCount, activeWindows.activeSeconds(), sortedTeams(), sortedUsers(), sortedDevices(),
-                    sortedModels(), sortedTools(), sortedTeamModels(), new ArrayList<>(dailyBuckets.values()),
-                    sortedUserDaily(), sortedUploadHealth(), sortedUploads(), comparisonJson);
+                    eventCount, activeWindows.activeSeconds(), sourceKindCounts, sourceQualityCounts,
+                    sortedTeams(), sortedUsers(), sortedDevices(), sortedModels(), sortedTools(), sortedTeamModels(),
+                    new ArrayList<>(dailyBuckets.values()), sortedUserDaily(), sortedUploadHealth(), sortedUploads(),
+                    comparisonJson);
         }
 
         private List<TeamBucket> sortedTeams() {
@@ -361,6 +375,8 @@ public final class TeamReportService {
     private static final class ToolBucket {
         final String tool;
         final TokenTotals totals = new TokenTotals();
+        final Map<String, Integer> sourceKindCounts = new HashMap<>();
+        final Map<String, Integer> sourceQualityCounts = new HashMap<>();
         final Set<String> sessions = new HashSet<>();
         final Set<String> users = new HashSet<>();
         final Set<String> devices = new HashSet<>();
@@ -373,6 +389,8 @@ public final class TeamReportService {
 
         void add(StoredTeamUsageEvent event) {
             totals.add(event.tool(), event.usage());
+            Aggregator.addSourceDimension(sourceKindCounts, event.sourceKind());
+            Aggregator.addSourceQuality(sourceQualityCounts, event.sourceQuality());
             sessions.add(sessionKey(event));
             users.add(event.userId());
             devices.add(event.deviceId());
@@ -657,7 +675,9 @@ public final class TeamReportService {
     }
 
     private record TeamReportPayload(ReportQuery query, String teamId, TokenTotals summary, int users, int devices,
-                                     int sessions, int eventCount, long activeSeconds, List<TeamBucket> teamBuckets,
+                                     int sessions, int eventCount, long activeSeconds,
+                                     Map<String, Integer> sourceKindCounts,
+                                     Map<String, Integer> sourceQualityCounts, List<TeamBucket> teamBuckets,
                                      List<UserBucket> userBuckets, List<DeviceBucket> deviceBuckets,
                                      List<ModelBucket> modelBuckets, List<ToolBucket> toolBuckets,
                                      List<TeamModelBucket> teamModelBuckets, List<DailyBucket> dailyBuckets,
@@ -669,6 +689,8 @@ public final class TeamReportService {
                     + "\"range\":{\"days\":" + rangeDays() + ",\"timezone\":\"" + Json.escape(query.zone().getId())
                     + "\",\"start_date\":\"" + query.startDate() + "\",\"end_date\":\"" + query.endDate() + "\"},"
                     + "\"summary\":{\"team_id\":\"" + Json.escape(teamId) + "\"," + summary.jsonFields()
+                    + ",\"source_kind\":" + sourceDimensionJson(sourceKindCounts)
+                    + ",\"source_quality\":" + sourceQualityJson(sourceQualityCounts)
                     + ",\"sessions\":" + sessions + ",\"users\":" + users + ",\"devices\":" + devices
                     + derivedJson(summary, eventCount, sessions, activeSeconds) + "},"
                     + "\"teams\":" + Json.array(teamBuckets, this::teamJson) + ","
@@ -728,6 +750,8 @@ public final class TeamReportService {
 
         private String toolJson(ToolBucket bucket) {
             return "{\"tool\":\"" + Json.escape(bucket.tool) + "\"," + bucket.totals.jsonFields()
+                    + ",\"source_kind\":" + sourceDimensionJson(bucket.sourceKindCounts)
+                    + ",\"source_quality\":" + sourceQualityJson(bucket.sourceQualityCounts)
                     + ",\"sessions\":" + bucket.sessions.size()
                     + ",\"users\":" + bucket.users.size()
                     + ",\"devices\":" + bucket.devices.size()
@@ -799,6 +823,21 @@ public final class TeamReportService {
 
         private static String decimal(double value) {
             return String.format(Locale.ROOT, "%.2f", value);
+        }
+
+        private static String sourceQualityJson(Map<String, Integer> counts) {
+            return sourceDimensionJson(counts);
+        }
+
+        private static String sourceDimensionJson(Map<String, Integer> counts) {
+            if (counts.isEmpty()) {
+                return "{\"unknown\":0}";
+            }
+            return "{" + counts.entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .map(entry -> "\"" + Json.escape(entry.getKey()) + "\":" + entry.getValue())
+                    .reduce((left, right) -> left + "," + right)
+                    .orElse("") + "}";
         }
 
         private static long uploadGapSeconds(Instant latestUploadAt) {
