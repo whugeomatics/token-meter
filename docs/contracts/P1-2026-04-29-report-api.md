@@ -21,6 +21,7 @@ GET /api/report
 
 - `period`: 可选。允许值为 `day`、`week`、`month`。
 - `compare`: 可选。当前仅支持 `compare=previous`。
+- `tool`: 可选。P4 起允许 `codex`、`claude-code`，缺省时返回所有工具聚合。
 
 规则：
 
@@ -30,6 +31,7 @@ GET /api/report
 - 日期聚合使用本地时区。
 - `period=<day|week|month>&compare=previous` 返回当前自然周期与上一同期的对比数据；该模式用于当前 Local dashboard 的 Day、Week、Month 控件。
 - 使用 `period` 时必须同时传 `compare=previous`。
+- `tool` 筛选必须同时应用到 current 和 previous period comparison。
 
 ## Response
 
@@ -60,6 +62,7 @@ GET /api/report
   },
   "daily": [],
   "models": [],
+  "tools": [],
   "sessions": []
 }
 ```
@@ -93,7 +96,8 @@ GET /api/report
       "sessions": 0
     },
     "daily": [],
-    "models": []
+    "models": [],
+    "tools": []
   }
 }
 ```
@@ -163,6 +167,7 @@ GET /api/report
 ```json
 {
   "model": "gpt-5.4",
+  "tools": ["codex"],
   "input_tokens": 0,
   "cached_input_tokens": 0,
   "output_tokens": 0,
@@ -181,6 +186,31 @@ GET /api/report
 
 排序：默认按 `total_tokens` 降序。无法归因的模型使用 `unknown`。
 
+### tool item
+
+P4 起 Local report 顶层新增 `tools`：
+
+```json
+{
+  "tool": "claude-code",
+  "input_tokens": 0,
+  "cached_input_tokens": 0,
+  "output_tokens": 0,
+  "reasoning_output_tokens": 0,
+  "total_tokens": 0,
+  "non_cached_input_tokens": 0,
+  "net_tokens": 0,
+  "cache_hit_rate": 0,
+  "session_count": 0,
+  "usage_event_count": 0,
+  "avg_tokens_per_session": 0,
+  "avg_tokens_per_call": 0,
+  "active_seconds": 0
+}
+```
+
+排序：默认按 `total_tokens` 降序。P4 支持 `codex` 和 `claude-code`。
+
 ### session item
 
 ```json
@@ -190,6 +220,7 @@ GET /api/report
   "ended_at": "2026-04-29T12:10:00+08:00",
   "active_seconds": 600,
   "models": ["gpt-5.4"],
+  "tools": ["codex"],
   "usage_event_count": 0,
   "avg_tokens_per_call": 0,
   "input_tokens": 0,
@@ -207,7 +238,7 @@ GET /api/report
 
 ## 空数据行为
 
-如果时间范围内没有 Codex usage：
+如果时间范围内没有 usage：
 
 - 返回 200。
 - `summary` 所有数值为 0。
@@ -219,6 +250,5 @@ GET /api/report
 - 分页。
 - 费用字段。
 - provider 字段。
-- tool 字段。
 - prompt 或 response 字段。
 - SQLite cursor 或 offset。
