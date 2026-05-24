@@ -20,7 +20,7 @@ public final class TokenMeterCollectorApp {
     }
 
     public static void main(String[] args) throws Exception {
-        AppConfig config = AppConfig.from(args);
+        AppConfig config = AppConfig.from(CollectorEnvFile.withEnvFileDefaults(args, System.getenv()));
         runCollector(config);
     }
 

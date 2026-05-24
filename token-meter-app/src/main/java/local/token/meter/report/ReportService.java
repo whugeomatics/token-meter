@@ -103,7 +103,7 @@ public final class ReportService {
         }
 
         void add(UsageEvent event) {
-            summary.add(event.usage());
+            summary.add(event.tool(), event.usage());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
@@ -149,7 +149,7 @@ public final class ReportService {
         }
 
         void add(UsageEvent event) {
-            totals.add(event.usage());
+            totals.add(event.tool(), event.usage());
             models.add(event.model());
             tools.add(event.tool());
             eventCount++;
@@ -173,7 +173,7 @@ public final class ReportService {
         }
 
         void add(UsageEvent event) {
-            totals.add(event.usage());
+            totals.add(event.tool(), event.usage());
             sessions.add(event.sessionId());
             tools.add(event.tool());
             activeWindows.add(event.sessionId(), event.timestamp());
@@ -195,7 +195,7 @@ public final class ReportService {
         }
 
         void add(UsageEvent event) {
-            totals.add(event.usage());
+            totals.add(event.tool(), event.usage());
             sessions.add(event.sessionId());
             activeWindows.add(event.sessionId(), event.timestamp());
             eventCount++;
@@ -216,7 +216,7 @@ public final class ReportService {
         }
 
         void add(UsageEvent event) {
-            totals.add(event.usage());
+            totals.add(event.tool(), event.usage());
             sessions.add(event.sessionId());
             activeWindows.add(event.sessionId(), event.timestamp());
             eventCount++;

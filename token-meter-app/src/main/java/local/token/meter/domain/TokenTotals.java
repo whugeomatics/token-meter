@@ -8,17 +8,30 @@ public final class TokenTotals {
     public long outputTokens;
     public long reasoningOutputTokens;
     public long totalTokens;
+    private long nonCachedInputTokens;
+    private long cacheHitRateDenominatorTokens;
 
     public void add(Snapshot snapshot) {
+        add("codex", snapshot);
+    }
+
+    public void add(String tool, Snapshot snapshot) {
         inputTokens += snapshot.inputTokens();
         cachedInputTokens += snapshot.cachedInputTokens();
         outputTokens += snapshot.outputTokens();
         reasoningOutputTokens += snapshot.reasoningOutputTokens();
         totalTokens += snapshot.totalTokens();
+        if ("claude-code".equals(tool) && snapshot.cachedInputTokens() > snapshot.inputTokens()) {
+            nonCachedInputTokens += snapshot.inputTokens();
+            cacheHitRateDenominatorTokens += snapshot.inputTokens() + snapshot.cachedInputTokens();
+            return;
+        }
+        nonCachedInputTokens += Math.max(0L, snapshot.inputTokens() - snapshot.cachedInputTokens());
+        cacheHitRateDenominatorTokens += snapshot.inputTokens();
     }
 
     public long nonCachedInputTokens() {
-        return Math.max(0L, inputTokens - cachedInputTokens);
+        return nonCachedInputTokens;
     }
 
     public long netTokens() {
@@ -26,7 +39,8 @@ public final class TokenTotals {
     }
 
     public double cacheHitRate() {
-        return inputTokens == 0 ? 0.0d : (double) cachedInputTokens / (double) inputTokens;
+        return cacheHitRateDenominatorTokens == 0L ? 0.0d
+                : (double) cachedInputTokens / (double) cacheHitRateDenominatorTokens;
     }
 
     public double reasoningRatio() {

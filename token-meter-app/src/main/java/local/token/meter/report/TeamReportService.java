@@ -130,7 +130,7 @@ public final class TeamReportService {
 
         void add(StoredTeamUsageEvent event) {
             teamId = event.teamId();
-            summary.add(event.usage());
+            summary.add(event.tool(), event.usage());
             eventCount++;
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
@@ -255,7 +255,7 @@ public final class TeamReportService {
         }
 
         void add(StoredTeamUsageEvent event) {
-            totals.add(event.usage());
+            totals.add(event.tool(), event.usage());
             users.add(event.userId());
             devices.add(event.deviceId());
             sessions.add(sessionKey(event));
@@ -293,7 +293,7 @@ public final class TeamReportService {
         }
 
         void add(StoredTeamUsageEvent event) {
-            totals.add(event.usage());
+            totals.add(event.tool(), event.usage());
             sessions.add(sessionKey(event));
             devices.add(event.deviceId());
             activeWindows.add(sessionKey(event), event.timestamp());
@@ -325,7 +325,7 @@ public final class TeamReportService {
         }
 
         void add(StoredTeamUsageEvent event) {
-            totals.add(event.usage());
+            totals.add(event.tool(), event.usage());
             sessions.add(sessionKey(event));
             activeWindows.add(sessionKey(event), event.timestamp());
             eventCount++;
@@ -349,7 +349,7 @@ public final class TeamReportService {
         }
 
         void add(StoredTeamUsageEvent event) {
-            totals.add(event.usage());
+            totals.add(event.tool(), event.usage());
             sessions.add(sessionKey(event));
             activeWindows.add(sessionKey(event), event.timestamp());
             eventCount++;
@@ -372,7 +372,7 @@ public final class TeamReportService {
         }
 
         void add(StoredTeamUsageEvent event) {
-            totals.add(event.usage());
+            totals.add(event.tool(), event.usage());
             sessions.add(sessionKey(event));
             users.add(event.userId());
             devices.add(event.deviceId());
@@ -405,7 +405,7 @@ public final class TeamReportService {
         }
 
         void add(StoredTeamUsageEvent event) {
-            totals.add(event.usage());
+            totals.add(event.tool(), event.usage());
             sessions.add(sessionKey(event));
             activeWindows.add(sessionKey(event), event.timestamp());
             eventCount++;
@@ -430,7 +430,7 @@ public final class TeamReportService {
         }
 
         void add(StoredTeamUsageEvent event) {
-            totals.add(event.usage());
+            totals.add(event.tool(), event.usage());
             sessions.add(sessionKey(event));
             users.add(event.userId());
             devices.add(event.deviceId());
@@ -461,7 +461,7 @@ public final class TeamReportService {
         }
 
         void add(StoredTeamUsageEvent event) {
-            totals.add(event.usage());
+            totals.add(event.tool(), event.usage());
             sessions.add(sessionKey(event));
             activeWindows.add(sessionKey(event), event.timestamp());
             eventCount++;

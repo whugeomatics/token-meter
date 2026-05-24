@@ -122,11 +122,30 @@ public final class TeamCollector {
         byte[] response = (status >= 200 && status < 400 ? connection.getInputStream() : connection.getErrorStream()).readAllBytes();
         String body = new String(response, StandardCharsets.UTF_8);
         if (status >= 400) {
-            throw new IOException("team upload failed: HTTP " + status + " " + sanitize(body)
-                    + " client_user_id=" + userId + " client_device_id=" + deviceId
-                    + " server_url=" + endpoint);
+            throw new IOException(uploadFailureMessage(status, body, userId, deviceId, endpoint));
         }
         return body;
+    }
+
+    public static String uploadFailureMessage(int status, String body, String userId, String deviceId, String endpoint) {
+        return "team upload failed: HTTP " + status + " " + sanitize(body)
+                + " client_user_id=" + userId + " client_device_id=" + deviceId
+                + " server_url=" + endpoint
+                + uploadFailureHint(status, body);
+    }
+
+    private static String uploadFailureHint(int status, String body) {
+        if (status != 401) {
+            return "";
+        }
+        String normalized = body == null ? "" : body.toLowerCase();
+        if (normalized.contains("unknown device token")) {
+            return " hint=unknown device token. The collector may still be using an old TOKEN_METER_DEVICE_TOKEN; copy the current teammate .env from admin.html, update the teammate environment, restart the collector, and verify the dashboard server is using the same database where the token was created.";
+        }
+        if (normalized.contains("missing device token")) {
+            return " hint=missing device token. Set TOKEN_METER_DEVICE_TOKEN from the teammate .env generated in admin.html, then restart the collector.";
+        }
+        return " hint=unauthorized. Verify TOKEN_METER_USER_ID, TOKEN_METER_DEVICE_ID, TOKEN_METER_DEVICE_TOKEN, and the dashboard server database match the token created in admin.html.";
     }
 
     private String safeEndpoint() {
@@ -136,7 +155,7 @@ public final class TeamCollector {
         return serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length() - 1) : serverUrl;
     }
 
-    private String sanitize(String body) {
+    private static String sanitize(String body) {
         return Json.escape(body);
     }
 

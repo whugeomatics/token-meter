@@ -22,6 +22,8 @@ JAVA_BIN="${TOKEN_METER_JAVA:-${JAVA_HOME:+$JAVA_HOME/bin/java}}"
 if [ -z "$JAVA_BIN" ]; then
   JAVA_BIN="$(command -v java || true)"
 fi
+TOKEN_METER_DAYS="${TOKEN_METER_DAYS:-30}"
+export TOKEN_METER_DAYS
 
 if [ ! -f "$JAR" ]; then
   printf '%s\n' "collector jar not found: $JAR" >&2
@@ -34,8 +36,4 @@ fi
 
 "$JAVA_BIN" -jar "$JAR" \
   --collect-team \
-  --server-url="${TOKEN_METER_SERVER_URL:?TOKEN_METER_SERVER_URL is required}" \
-  --device-token="${TOKEN_METER_DEVICE_TOKEN:?TOKEN_METER_DEVICE_TOKEN is required}" \
-  --user-id="${TOKEN_METER_USER_ID:?TOKEN_METER_USER_ID is required}" \
-  --device-id="${TOKEN_METER_DEVICE_ID:?TOKEN_METER_DEVICE_ID is required}" \
-  --days="${TOKEN_METER_DAYS:-30}"
+  --collector-env-file="$CONFIG"

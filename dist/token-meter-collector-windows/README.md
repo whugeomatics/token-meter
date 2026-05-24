@@ -25,11 +25,8 @@ Do not share `TOKEN_METER_DEVICE_TOKEN` with others.
 In Command Prompt:
 
 ```bat
-set TOKEN_METER_SERVER_URL=http://admin-machine:18080
-set TOKEN_METER_DEVICE_TOKEN=your-device-token
-set TOKEN_METER_USER_ID=your-user-id
-set TOKEN_METER_DEVICE_ID=your-device-id
-
+mkdir "%USERPROFILE%\.token-meter"
+rem Save the teammate .env from admin.html to %USERPROFILE%\.token-meter\collector.env
 run-collector.cmd
 ```
 
@@ -49,11 +46,8 @@ The script requires Java and `curl` to be available on `PATH`, unless `TOKEN_MET
 In Command Prompt:
 
 ```bat
-set TOKEN_METER_SERVER_URL=http://admin-machine:18080
-set TOKEN_METER_DEVICE_TOKEN=your-device-token
-set TOKEN_METER_USER_ID=your-user-id
-set TOKEN_METER_DEVICE_ID=your-device-id
-
+mkdir "%USERPROFILE%\.token-meter"
+rem Save the teammate .env from admin.html to %USERPROFILE%\.token-meter\collector.env
 install-collector-task.cmd
 ```
 

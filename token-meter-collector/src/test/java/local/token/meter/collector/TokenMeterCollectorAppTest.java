@@ -91,4 +91,18 @@ final class TokenMeterCollectorAppTest {
         assertTrue(json.contains("\"upload_time\":\"2026-05-23T11:58:23Z\""));
         assertTrue(json.contains("\"message\":\"collector cannot connect\""));
     }
+
+    @Test
+    void teamUploadFailureSuggestsRefreshingOldDeviceTokenWithoutLeakingToken() {
+        String message = TeamCollector.uploadFailureMessage(401,
+                "{\"status\":\"error\",\"error_code\":\"unauthorized\",\"message\":\"unknown device token\"}",
+                "user-a", "device-a", "http://127.0.0.1:18080");
+
+        assertTrue(message.contains("unknown device token"));
+        assertTrue(message.contains("old TOKEN_METER_DEVICE_TOKEN"));
+        assertTrue(message.contains("admin.html"));
+        assertTrue(message.contains("restart the collector"));
+        assertTrue(message.contains("client_user_id=user-a"));
+        assertTrue(message.contains("client_device_id=device-a"));
+    }
 }

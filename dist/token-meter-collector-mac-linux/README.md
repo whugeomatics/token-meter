@@ -24,11 +24,8 @@ Do not share `TOKEN_METER_DEVICE_TOKEN` with others.
 ## Run Once
 
 ```sh
-export TOKEN_METER_SERVER_URL="http://admin-machine:18080"
-export TOKEN_METER_DEVICE_TOKEN="your-device-token"
-export TOKEN_METER_USER_ID="your-user-id"
-export TOKEN_METER_DEVICE_ID="your-device-id"
-
+mkdir -p ~/.token-meter
+# Save the teammate .env from admin.html to ~/.token-meter/collector.env
 sh run-collector.sh
 ```
 
@@ -37,11 +34,8 @@ If the dashboard runs on a different machine, do not use `127.0.0.1` unless the 
 ## Install Periodic Upload on macOS
 
 ```sh
-export TOKEN_METER_SERVER_URL="http://admin-machine:18080"
-export TOKEN_METER_DEVICE_TOKEN="your-device-token"
-export TOKEN_METER_USER_ID="your-user-id"
-export TOKEN_METER_DEVICE_ID="your-device-id"
-
+mkdir -p ~/.token-meter
+# Save the teammate .env from admin.html to ~/.token-meter/collector.env
 sh install-collector-service.sh
 ```
 

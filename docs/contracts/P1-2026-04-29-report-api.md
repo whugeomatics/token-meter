@@ -125,9 +125,9 @@ GET /api/report
 - `output_tokens`: 输出 token。
 - `reasoning_output_tokens`: 推理输出 token。
 - `total_tokens`: Codex `total_token_usage` 相邻累计快照 delta 之和。
-- `non_cached_input_tokens`: `input_tokens - cached_input_tokens`。
+- `non_cached_input_tokens`: Codex 使用 `input_tokens - cached_input_tokens`；当来源把 cache token 与普通 input 分开上报导致 `cached_input_tokens > input_tokens` 时使用 `input_tokens`。
 - `net_tokens`: `non_cached_input_tokens + output_tokens`。
-- `cache_hit_rate`: `cached_input_tokens / input_tokens`，当 `input_tokens = 0` 时为 `0`。
+- `cache_hit_rate`: Codex 使用 `cached_input_tokens / input_tokens`；当来源把 cache token 与普通 input 分开上报导致 `cached_input_tokens > input_tokens` 时使用 `cached_input_tokens / (input_tokens + cached_input_tokens)`。
 - `reasoning_ratio`: `reasoning_output_tokens / output_tokens`，当 `output_tokens = 0` 时为 `0`。
 - `usage_event_count`: 已入库 usage event 行数，可近似表示 Codex 用量事件次数，不等同于用户提问数。
 - `active_seconds`: 对 summary、daily、models 等聚合 bucket，按 session 内不超过 30 分钟的相邻 usage event 间隔累加；超过 30 分钟的空闲间隔不计入。session item 仍展示该 session 内最早 usage event 到最晚 usage event 的时间窗口秒数。

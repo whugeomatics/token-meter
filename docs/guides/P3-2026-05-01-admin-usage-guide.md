@@ -137,6 +137,20 @@ java -jar token-meter-collector/target/token-meter-collector-0.1.0-SNAPSHOT.jar 
   --days=30
 ```
 
+也可以把 admin 页面生成的 teammate `.env` 保存到客户端本机：
+
+```text
+~/.token-meter/collector.env
+```
+
+collector 读取配置的优先级固定为：
+
+```text
+CLI 参数 > ~/.token-meter/collector.env > 系统环境变量
+```
+
+因此显式传入的 `--server-url`、`--device-token`、`--user-id`、`--device-id`、`--days` 会覆盖 env 文件；没有传 CLI 参数时优先使用客户端 env 文件；env 文件也缺失时才使用系统环境变量。server 端不需要这个 env 文件。
+
 字段说明：
 
 - `--collect-team`: 运行 collector，上报团队 usage event。
@@ -248,11 +262,8 @@ dist/token-meter-collector-windows/
 teammate 解压或复制目录后，在这个目录里执行：
 
 ```sh
-export TOKEN_METER_SERVER_URL="http://127.0.0.1:18080"
-export TOKEN_METER_DEVICE_TOKEN="teammate-device-token"
-export TOKEN_METER_USER_ID="zhangsan"
-export TOKEN_METER_DEVICE_ID="zhangsan-macbook"
-
+mkdir -p ~/.token-meter
+# 将 admin 页面生成的 teammate .env 保存为 ~/.token-meter/collector.env
 sh install-collector-service.sh
 ```
 
