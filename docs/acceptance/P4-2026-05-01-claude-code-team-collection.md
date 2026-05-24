@@ -132,7 +132,7 @@
 
 ### 9. 回归
 
-结果：部分通过
+结果：通过
 
 检查：
 
@@ -141,6 +141,8 @@
 - Local `/api/report` 可通过 `tool=claude-code` 展示 Claude Code 本地 JSONL 用量。
 - Day、Week、Month period comparison 行为不变。
 - collector jar 仍不包含 dashboard、SQLite、admin 或静态资源。
+- 用户已在本机真实 Claude Code 数据上验证：一次对话不再重复统计、Claude cache rate 不超过 100%、Codex cache rate 不被 Claude 口径错误拉低、Local/Team tool 过滤一致。
+- P4 端到端 smoke 覆盖 admin token 创建、teammate `.env`、collector 默认 Codex + Claude 上传、Team report tool 聚合与过滤。
 
 ## 验收命令
 
@@ -151,6 +153,7 @@ node scripts\P3-2026-05-10-dashboard-ui-check.mjs
 node --check token-meter-app\src\main\resources\static\app.js
 node --check token-meter-app\src\main\resources\static\admin.js
 sh scripts/P3-2026-05-01-package-collector.sh all
+sh scripts/P4-2026-05-24-claude-code-team-smoke-test.sh
 ```
 
 本轮已执行：
@@ -161,6 +164,12 @@ cmd /c "D:\Softwares\Maven-3.9.9\bin\mvn.cmd" "-Dmaven.repo.local=.m2\repository
 node --check token-meter-app\src\main\resources\static\app.js
 node --check token-meter-app/src/main/resources/static/admin.js
 sh scripts/P3-2026-05-01-package-collector.sh all
+sh scripts/P4-2026-05-24-claude-code-team-smoke-test.sh
 ```
 
-待补充：P3 Codex smoke 或等价端到端回归、P4 真实 collector upload smoke。
+说明：
+
+- P4 真实 Claude Code 样本校验已由用户在本机完成。
+- `sh scripts/P4-2026-05-24-claude-code-team-smoke-test.sh` 已由用户在本机真实环境执行通过，输出 `P4 Claude Code team smoke test passed`。
+- 同一 smoke 在当前 Codex 沙箱中执行到 server bind check 后因 `Operation not permitted` 按约定跳过；该结果表示沙箱端口绑定受限，不表示 smoke 逻辑失败。
+- Windows collector 实机安装路径仍建议在真实 Windows 终端复核；当前 macOS/Linux 脚本、Windows 分发脚本生成和 Java 单元测试已覆盖配置优先级与兼容格式。

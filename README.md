@@ -8,9 +8,9 @@ Token Meter is a local AI CLI usage dashboard and future routing tool. The proje
 
 ## Current Status
 
-Current phase: **P4 - Claude Code teammate usage collection implementation verification**.
+Current phase: **P4 - Claude Code teammate usage collection implementation verification complete**.
 
-P1, P2, and P3 have passed acceptance. P4 implementation is in verification.
+P1, P2, P3, and P4 have passed implementation verification. The next phase has not started.
 
 P1, the Codex Dashboard MVP:
 
@@ -40,6 +40,7 @@ P4, Claude Code local and team usage collection:
 - The admin token creation flow produces a teammate `.env` block for the collector.
 - Collector config precedence is `CLI args > ~/.token-meter/collector.env > system environment variables`.
 - `--collect-claude-code` is retained only as a legacy compatibility entry point.
+- P4 review and acceptance are recorded; local port-binding smoke can be skipped only when the Codex sandbox blocks local HTTP ports.
 
 ## Stage Results
 
@@ -80,12 +81,14 @@ Current phase:
 P4 implementation baseline:
 
 - [P4 README](docs/P4-2026-05-01-README.md)
+- [Archived P4 AGENTS](docs/archive/P4-2026-05-24-AGENTS.md)
 - [P4 Claude Code Usage Event Contract](docs/contracts/P4-2026-05-01-claude-code-usage-event.md)
 - [P4 Claude Code Ingestion Source Contract](docs/contracts/P4-2026-05-01-claude-code-ingestion-source.md)
 - [P4 Tool Usage Report Extension](docs/contracts/P4-2026-05-01-tool-usage-report-extension.md)
 - [P4 Design](docs/milestones/P4-claude-code-team-collection/P4-2026-05-01-design.md)
 - [P4 Tasks](docs/milestones/P4-claude-code-team-collection/P4-2026-05-01-tasks.md)
 - [P4 Acceptance](docs/acceptance/P4-2026-05-01-claude-code-team-collection.md)
+- [P4 Review](docs/reviews/P4-2026-05-24-claude-code-team-collection-review.md)
 
 Completed P3:
 
