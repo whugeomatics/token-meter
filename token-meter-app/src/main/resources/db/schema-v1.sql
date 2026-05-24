@@ -223,7 +223,7 @@ INSERT OR IGNORE INTO usage_events(source_file_id, line_number, event_key, tool,
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: load_usage_events
-SELECT session_id, model, event_timestamp, input_tokens, cached_input_tokens, output_tokens,
+SELECT tool, session_id, model, event_timestamp, input_tokens, cached_input_tokens, output_tokens,
   reasoning_output_tokens, total_tokens
 FROM usage_events
 WHERE local_date >= ? AND local_date <= ?

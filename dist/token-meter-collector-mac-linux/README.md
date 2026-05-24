@@ -1,6 +1,6 @@
 # Token Meter Collector Teammate Guide
 
-This macOS/Linux package uploads local Codex usage summaries to the team token-meter dashboard.
+This macOS/Linux package uploads local Codex and Claude Code usage summaries to the team token-meter dashboard.
 
 ## Files
 
@@ -21,14 +21,17 @@ Ask the admin for these values:
 
 Do not share `TOKEN_METER_DEVICE_TOKEN` with others.
 
+The collector reads configuration in this order:
+
+```text
+CLI args > ~/.token-meter/collector.env > system environment variables
+```
+
 ## Run Once
 
 ```sh
-export TOKEN_METER_SERVER_URL="http://admin-machine:18080"
-export TOKEN_METER_DEVICE_TOKEN="your-device-token"
-export TOKEN_METER_USER_ID="your-user-id"
-export TOKEN_METER_DEVICE_ID="your-device-id"
-
+mkdir -p ~/.token-meter
+# Save the teammate .env from admin.html to ~/.token-meter/collector.env
 sh run-collector.sh
 ```
 
@@ -37,11 +40,8 @@ If the dashboard runs on a different machine, do not use `127.0.0.1` unless the 
 ## Install Periodic Upload on macOS
 
 ```sh
-export TOKEN_METER_SERVER_URL="http://admin-machine:18080"
-export TOKEN_METER_DEVICE_TOKEN="your-device-token"
-export TOKEN_METER_USER_ID="your-user-id"
-export TOKEN_METER_DEVICE_ID="your-device-id"
-
+mkdir -p ~/.token-meter
+# Save the teammate .env from admin.html to ~/.token-meter/collector.env
 sh install-collector-service.sh
 ```
 
@@ -62,7 +62,7 @@ Installed files:
 ~/.token-meter/logs/collector.err.log
 ```
 
-`~/.token-meter/collector.env` contains the device token and is created with `600` permissions.
+`~/.token-meter/collector.env` contains the device token and should be kept with `600` permissions.
 
 ## Check or Trigger the Service
 

@@ -57,6 +57,13 @@ cat > "$PACKAGE/run-collector.cmd" <<'CMD'
 @echo off
 setlocal
 
+set "CONFIG=%TOKEN_METER_COLLECTOR_ENV%"
+if "%CONFIG%"=="" set "CONFIG=%USERPROFILE%\.token-meter\collector.env"
+if not exist "%CONFIG%" if exist "%USERPROFILE%\.token-meter\collector.env.cmd" set "CONFIG=%USERPROFILE%\.token-meter\collector.env.cmd"
+if exist "%CONFIG%" (
+  if /I "%CONFIG:~-4%"==".cmd" call "%CONFIG%"
+)
+
 set "SCRIPT_DIR=%~dp0"
 set "DEFAULT_JAR=%SCRIPT_DIR%token-meter-collector.jar"
 if "%TOKEN_METER_JAR%"=="" set "TOKEN_METER_JAR=%DEFAULT_JAR%"
@@ -67,44 +74,26 @@ if "%TOKEN_METER_JAVA%"=="" (
 )
 if "%TOKEN_METER_DAYS%"=="" set "TOKEN_METER_DAYS=30"
 
-if "%TOKEN_METER_SERVER_URL%"=="" (
-  echo TOKEN_METER_SERVER_URL is required 1>&2
-  exit /b 1
-)
-if "%TOKEN_METER_DEVICE_TOKEN%"=="" (
-  echo TOKEN_METER_DEVICE_TOKEN is required 1>&2
-  exit /b 1
-)
-if "%TOKEN_METER_USER_ID%"=="" (
-  echo TOKEN_METER_USER_ID is required 1>&2
-  exit /b 1
-)
-if "%TOKEN_METER_DEVICE_ID%"=="" (
-  echo TOKEN_METER_DEVICE_ID is required 1>&2
-  exit /b 1
-)
 if not exist "%TOKEN_METER_JAR%" (
   echo collector jar not found: %TOKEN_METER_JAR% 1>&2
   exit /b 1
 )
 
-set "HEALTH_URL=%TOKEN_METER_SERVER_URL%"
-if "%HEALTH_URL:~-1%"=="/" set "HEALTH_URL=%HEALTH_URL:~0,-1%"
-echo Collector target: %TOKEN_METER_SERVER_URL% 1>&2
-curl --noproxy "*" -fsS "%HEALTH_URL%/health" >nul 2>nul
-if errorlevel 1 (
-  echo Dashboard server is not reachable at %HEALTH_URL%/health 1>&2
-  echo Start the dashboard server first, or set TOKEN_METER_SERVER_URL to the actual dashboard URL. 1>&2
-  exit /b 1
+if not "%TOKEN_METER_SERVER_URL%"=="" (
+  set "HEALTH_URL=%TOKEN_METER_SERVER_URL%"
+  if "%HEALTH_URL:~-1%"=="/" set "HEALTH_URL=%HEALTH_URL:~0,-1%"
+  echo Collector target: %TOKEN_METER_SERVER_URL% 1>&2
+  curl --noproxy "*" -fsS "%HEALTH_URL%/health" >nul 2>nul
+  if errorlevel 1 (
+    echo Dashboard server is not reachable at %HEALTH_URL%/health 1>&2
+    echo Start the dashboard server first, or set TOKEN_METER_SERVER_URL to the actual dashboard URL. 1>&2
+    exit /b 1
+  )
 )
 
 "%JAVA_BIN%" -jar "%TOKEN_METER_JAR%" ^
   --collect-team ^
-  --server-url="%TOKEN_METER_SERVER_URL%" ^
-  --device-token="%TOKEN_METER_DEVICE_TOKEN%" ^
-  --user-id="%TOKEN_METER_USER_ID%" ^
-  --device-id="%TOKEN_METER_DEVICE_ID%" ^
-  --days="%TOKEN_METER_DAYS%"
+  --collector-env-file="%CONFIG%"
 CMD
 cat > "$PACKAGE/install-collector-task.cmd" <<'CMD'
 @echo off
@@ -118,6 +107,7 @@ if "%INTERVAL_MINUTES%"=="" set "INTERVAL_MINUTES=5"
 set "CONFIG_DIR=%USERPROFILE%\.token-meter"
 set "LOG_DIR=%CONFIG_DIR%\logs"
 set "CONFIG=%CONFIG_DIR%\collector.env.cmd"
+set "PLAIN_CONFIG=%CONFIG_DIR%\collector.env"
 set "RUNNER=%CONFIG_DIR%\run-collector-task.cmd"
 set "INSTALL_LOG=%LOG_DIR%\install.log"
 set "PACKAGE_RUNNER=%SCRIPT_DIR%run-collector.cmd"
@@ -129,25 +119,17 @@ if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 if errorlevel 1 exit /b 1
 echo %DATE% %TIME% install started > "%INSTALL_LOG%"
 
-if "%TOKEN_METER_SERVER_URL%"=="" (
-  echo TOKEN_METER_SERVER_URL is required >> "%INSTALL_LOG%"
-  echo TOKEN_METER_SERVER_URL is required 1>&2
-  exit /b 1
-)
-if "%TOKEN_METER_DEVICE_TOKEN%"=="" (
-  echo TOKEN_METER_DEVICE_TOKEN is required >> "%INSTALL_LOG%"
-  echo TOKEN_METER_DEVICE_TOKEN is required 1>&2
-  exit /b 1
-)
-if "%TOKEN_METER_USER_ID%"=="" (
-  echo TOKEN_METER_USER_ID is required >> "%INSTALL_LOG%"
-  echo TOKEN_METER_USER_ID is required 1>&2
-  exit /b 1
-)
-if "%TOKEN_METER_DEVICE_ID%"=="" (
-  echo TOKEN_METER_DEVICE_ID is required >> "%INSTALL_LOG%"
-  echo TOKEN_METER_DEVICE_ID is required 1>&2
-  exit /b 1
+set "HAS_ENV_VALUES=1"
+if "%TOKEN_METER_SERVER_URL%"=="" set "HAS_ENV_VALUES=0"
+if "%TOKEN_METER_DEVICE_TOKEN%"=="" set "HAS_ENV_VALUES=0"
+if "%TOKEN_METER_USER_ID%"=="" set "HAS_ENV_VALUES=0"
+if "%TOKEN_METER_DEVICE_ID%"=="" set "HAS_ENV_VALUES=0"
+if "%HAS_ENV_VALUES%"=="0" (
+  if not exist "%PLAIN_CONFIG%" if not exist "%CONFIG%" (
+    echo collector env file not found: %PLAIN_CONFIG% >> "%INSTALL_LOG%"
+    echo Save the teammate .env from admin.html to %PLAIN_CONFIG%, or set TOKEN_METER_SERVER_URL, TOKEN_METER_DEVICE_TOKEN, TOKEN_METER_USER_ID, and TOKEN_METER_DEVICE_ID. 1>&2
+    exit /b 1
+  )
 )
 if not exist "%PACKAGE_RUNNER%" (
   echo collector runner not found: %PACKAGE_RUNNER% >> "%INSTALL_LOG%"
@@ -160,21 +142,23 @@ if not exist "%PACKAGE_JAR%" (
   exit /b 1
 )
 
-(
-  echo @echo off
-  echo set "TOKEN_METER_JAR=%PACKAGE_JAR%"
-  echo set "TOKEN_METER_SERVER_URL=%TOKEN_METER_SERVER_URL%"
-  echo set "TOKEN_METER_DEVICE_TOKEN=%TOKEN_METER_DEVICE_TOKEN%"
-  echo set "TOKEN_METER_USER_ID=%TOKEN_METER_USER_ID%"
-  echo set "TOKEN_METER_DEVICE_ID=%TOKEN_METER_DEVICE_ID%"
-  echo set "TOKEN_METER_DAYS=%TOKEN_METER_DAYS%"
-  echo set "TOKEN_METER_JAVA=%TOKEN_METER_JAVA%"
-) > "%CONFIG%"
+if "%HAS_ENV_VALUES%"=="1" (
+  (
+    echo @echo off
+    echo set "TOKEN_METER_JAR=%PACKAGE_JAR%"
+    echo set "TOKEN_METER_SERVER_URL=%TOKEN_METER_SERVER_URL%"
+    echo set "TOKEN_METER_DEVICE_TOKEN=%TOKEN_METER_DEVICE_TOKEN%"
+    echo set "TOKEN_METER_USER_ID=%TOKEN_METER_USER_ID%"
+    echo set "TOKEN_METER_DEVICE_ID=%TOKEN_METER_DEVICE_ID%"
+    echo set "TOKEN_METER_DAYS=%TOKEN_METER_DAYS%"
+    echo set "TOKEN_METER_JAVA=%TOKEN_METER_JAVA%"
+  ) > "%CONFIG%"
+)
 
 (
   echo @echo off
   echo echo %%DATE%% %%TIME%% collector task started ^>^> "%LOG_DIR%\collector.out.log"
-  echo call "%CONFIG%"
+  echo if exist "%CONFIG%" call "%CONFIG%"
   echo call "%PACKAGE_RUNNER%" ^>^> "%LOG_DIR%\collector.out.log" 2^>^> "%LOG_DIR%\collector.err.log"
   echo set "EXIT_CODE=%%ERRORLEVEL%%"
   echo echo %%DATE%% %%TIME%% collector task exited with %%EXIT_CODE%% ^>^> "%LOG_DIR%\collector.out.log"
@@ -212,16 +196,18 @@ setlocal EnableExtensions
 set "TASK_NAME=%TOKEN_METER_COLLECTOR_TASK_NAME%"
 if "%TASK_NAME%"=="" set "TASK_NAME=TokenMeterCollector"
 set "CONFIG=%USERPROFILE%\.token-meter\collector.env.cmd"
+set "PLAIN_CONFIG=%USERPROFILE%\.token-meter\collector.env"
 
 schtasks /Delete /TN "%TASK_NAME%" /F >nul 2>nul
 
 echo collector task uninstalled: %TASK_NAME%
 echo collector config remains at: %CONFIG%
+echo plain collector env may also remain at: %PLAIN_CONFIG%
 CMD
 cat > "$PACKAGE/README.md" <<'README'
 # Token Meter Collector Teammate Guide
 
-This Windows package uploads local Codex usage summaries to the team token-meter dashboard.
+This Windows package uploads local Codex and Claude Code usage summaries to the team token-meter dashboard.
 
 ## Files
 
@@ -241,16 +227,19 @@ Ask the admin for these values:
 
 Do not share `TOKEN_METER_DEVICE_TOKEN` with others.
 
+The collector reads configuration in this order:
+
+```text
+CLI args > %USERPROFILE%\.token-meter\collector.env > system environment variables
+```
+
 ## Run Once
 
 In Command Prompt:
 
 ```bat
-set TOKEN_METER_SERVER_URL=http://admin-machine:18080
-set TOKEN_METER_DEVICE_TOKEN=your-device-token
-set TOKEN_METER_USER_ID=your-user-id
-set TOKEN_METER_DEVICE_ID=your-device-id
-
+mkdir "%USERPROFILE%\.token-meter"
+rem Save the teammate .env from admin.html to %USERPROFILE%\.token-meter\collector.env
 run-collector.cmd
 ```
 
@@ -270,11 +259,8 @@ The script requires Java and `curl` to be available on `PATH`, unless `TOKEN_MET
 In Command Prompt:
 
 ```bat
-set TOKEN_METER_SERVER_URL=http://admin-machine:18080
-set TOKEN_METER_DEVICE_TOKEN=your-device-token
-set TOKEN_METER_USER_ID=your-user-id
-set TOKEN_METER_DEVICE_ID=your-device-id
-
+mkdir "%USERPROFILE%\.token-meter"
+rem Save the teammate .env from admin.html to %USERPROFILE%\.token-meter\collector.env
 install-collector-task.cmd
 ```
 
@@ -293,13 +279,14 @@ Installed files:
 
 ```text
 %USERPROFILE%\.token-meter\collector.env.cmd
+%USERPROFILE%\.token-meter\collector.env
 %USERPROFILE%\.token-meter\run-collector-task.cmd
 %USERPROFILE%\.token-meter\logs\install.log
 %USERPROFILE%\.token-meter\logs\collector.out.log
 %USERPROFILE%\.token-meter\logs\collector.err.log
 ```
 
-`collector.env.cmd` contains the device token. Do not share this file.
+`collector.env` or the legacy `collector.env.cmd` contains the device token. Do not share this file.
 
 ## Check or Trigger the Task
 
@@ -321,7 +308,7 @@ Task output is written to:
 uninstall-collector-task.cmd
 ```
 
-The uninstall script keeps `%USERPROFILE%\.token-meter\collector.env.cmd`. Delete it manually if the local token config should be removed.
+The uninstall script keeps `%USERPROFILE%\.token-meter\collector.env` and `%USERPROFILE%\.token-meter\collector.env.cmd`. Delete local token config files manually if they should be removed.
 README
 
 printf '%s\n' "collector package: $PACKAGE"

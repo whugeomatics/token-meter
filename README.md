@@ -4,13 +4,13 @@
 
 **English** | [中文](README.zh-CN.md)
 
-Token Meter is a local AI CLI usage dashboard and future routing tool. The project starts with Codex usage analytics, then evolves toward team collection across CLI tools and, later, a local OpenAI-compatible model gateway.
+Token Meter is a local AI CLI usage dashboard and future routing tool. The project started with Codex usage analytics and now collects both Codex and Claude Code usage for Local and Team views, with a later path toward more CLI tools and a local OpenAI-compatible model gateway.
 
 ## Current Status
 
-Current phase: **P4 - Claude Code teammate usage collection design preparation**.
+Current phase: **P4 - Claude Code teammate usage collection implementation verification**.
 
-P1, P2, and P3 have passed acceptance.
+P1, P2, and P3 have passed acceptance. P4 implementation is in verification.
 
 P1, the Codex Dashboard MVP:
 
@@ -31,26 +31,36 @@ P3, Codex team usage collection:
 - The collector is a lightweight teammate-side uploader and does not include dashboard, admin, SQLite, or static UI code.
 - Local `/api/report` and Team `/api/team/report` both support Day, Week, and Month period comparison with `period=<day|week|month>&compare=previous`.
 
-The next work is P4 design documentation: Claude Code usage collection contracts, collector integration design, task breakdown, privacy rules, and acceptance criteria.
+P4, Claude Code local and team usage collection:
+
+- Local dashboard startup and `/api/ingest` collect Codex and Claude Code when local data exists.
+- Team collector collects Codex and Claude Code in one default run; teammates do not need a separate Claude flag.
+- Claude Code local JSONL parsing reads only usage metadata from `<user.home>/.claude/projects/**/*.jsonl`.
+- Local and Team reports expose `tool` filtering and tool-level aggregates for `codex` and `claude-code`.
+- The admin token creation flow produces a teammate `.env` block for the collector.
+- Collector config precedence is `CLI args > ~/.token-meter/collector.env > system environment variables`.
+- `--collect-claude-code` is retained only as a legacy compatibility entry point.
 
 ## Stage Results
 
 Each completed phase should add links to its screenshots or result artifacts here.
 
-- P1 Codex Dashboard MVP: [2026-04-30](images/P1-2026-04-30-mvp.png)
+- P1 Codex Dashboard MVP: [2026-04-30](./images/P1-2026-04-30-mvp.png)
+- P3 Codex team usage collection: [2026-05-20](./images/P3-2026-05-20-team-usage.png)
 
 ## Scope
 
-P1, P2, and P3 focus only on Codex. P4 starts adding Claude Code usage collection to make the product useful across AI CLI tools.
+P1, P2, and P3 focused only on Codex. P4 adds Claude Code usage collection to make the product useful across AI CLI tools.
 
 In scope now:
 
 - Read local Codex session JSONL logs.
+- Read Claude Code local JSONL usage metadata without prompt/response content.
 - Aggregate token usage by day, model, and session.
 - Persist Codex usage metadata to local SQLite in P2.
 - Incrementally ingest newly appended Codex logs.
-- Collect teammate Codex usage through a lightweight collector in P3.
-- Design Claude Code teammate usage collection for P4.
+- Collect teammate Codex and Claude Code usage through a lightweight collector.
+- Configure teammate collectors through a local `~/.token-meter/collector.env` file generated from admin token creation.
 - Compare Local and Team usage by Day, Week, and Month.
 - Keep prompt and response bodies out of storage and reports.
 
@@ -66,6 +76,16 @@ Out of scope for the current phase:
 Current phase:
 
 - [Current AGENTS.md](AGENTS.md)
+
+P4 implementation baseline:
+
+- [P4 README](docs/P4-2026-05-01-README.md)
+- [P4 Claude Code Usage Event Contract](docs/contracts/P4-2026-05-01-claude-code-usage-event.md)
+- [P4 Claude Code Ingestion Source Contract](docs/contracts/P4-2026-05-01-claude-code-ingestion-source.md)
+- [P4 Tool Usage Report Extension](docs/contracts/P4-2026-05-01-tool-usage-report-extension.md)
+- [P4 Design](docs/milestones/P4-claude-code-team-collection/P4-2026-05-01-design.md)
+- [P4 Tasks](docs/milestones/P4-claude-code-team-collection/P4-2026-05-01-tasks.md)
+- [P4 Acceptance](docs/acceptance/P4-2026-05-01-claude-code-team-collection.md)
 
 Completed P3:
 
@@ -200,6 +220,7 @@ The project must not store or display:
 - API keys.
 
 P1 reads Codex JSONL metadata only. P2 persists usage delta metadata only. P3 uploads normalized usage events only.
+P4 also reads Claude Code usage metadata only and must not store prompt, response, raw API body, transcript text, or raw Claude JSONL lines.
 
 ## Agent Workflow
 

@@ -18,6 +18,9 @@ import java.util.Optional;
 public final class TeamIngestionService {
     private static final int MAX_EVENTS_PER_BATCH = 500;
     private static final int MAX_PAYLOAD_CHARS = 1_048_576;
+    private static final List<String> FORBIDDEN_EVENT_FIELDS = List.of(
+            "prompt", "response", "raw_api_body", "transcript"
+    );
 
     private final TeamUsageStore store;
     private final ZoneId zone;
@@ -115,7 +118,8 @@ public final class TeamIngestionService {
             String sessionId = Json.firstString(json, "session_id").orElse("");
             String model = Json.firstString(json, "model").orElse("unknown");
             String timestampValue = Json.firstString(json, "timestamp").orElse("");
-            if (eventKey.isBlank() || !"codex".equals(tool) || sessionId.isBlank() || timestampValue.isBlank()) {
+            if (eventKey.isBlank() || !knownTool(tool) || sessionId.isBlank() || timestampValue.isBlank()
+                    || hasForbiddenEventField(json)) {
                 return null;
             }
             Instant timestamp = Instant.parse(timestampValue);
@@ -130,10 +134,26 @@ public final class TeamIngestionService {
                 return null;
             }
             LocalDate localDate = timestamp.atZone(zone).toLocalDate();
-            return new TeamUsageEvent(eventKey, tool, sessionId, model, timestamp, localDate, usage, clientUserId, clientDeviceId);
+            String sourceKind = Json.firstString(json, "source_kind").orElse("");
+            String sourceQuality = Json.firstString(json, "source_quality").orElse("");
+            return new TeamUsageEvent(eventKey, tool, sessionId, model, timestamp, localDate, usage, clientUserId,
+                    clientDeviceId, sourceKind, sourceQuality);
         } catch (RuntimeException e) {
             return null;
         }
+    }
+
+    private boolean knownTool(String tool) {
+        return "codex".equals(tool) || "claude-code".equals(tool);
+    }
+
+    private boolean hasForbiddenEventField(String json) {
+        for (String field : FORBIDDEN_EVENT_FIELDS) {
+            if (json.contains("\"" + field + "\"")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static String eventsToJson(String collectorVersion, String clientUserId, String clientDeviceId,

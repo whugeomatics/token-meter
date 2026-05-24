@@ -131,6 +131,7 @@ POST /api/admin/login
 - `/admin.html` 和 `/api/admin/*` 必须校验 cookie 或等价管理员凭证。
 - 管理列表只展示 `token_preview`，例如 `abc123****wxyz`，不得直接展示完整 device token。
 - 管理页面提供 `Copy` 按钮，按钮通过受 admin 保护的 API 获取完整 token 并写入剪贴板。
+- 管理页面创建 token 成功后应展示完整 teammate `.env` 配置块，便于复制到客户端 `~/.token-meter/collector.env`。该配置块包含 `TOKEN_METER_SERVER_URL`、`TOKEN_METER_USER_ID`、`TOKEN_METER_DEVICE_ID`、`TOKEN_METER_DEVICE_TOKEN` 和默认 `TOKEN_METER_DAYS`。
 - 管理页面不得允许编辑 token。
 - 管理页面提供删除 token binding 的能力；删除后该 token 不能继续上报。
 - 管理页面可以展示 `team_id`、`user_id`、`device_id`、`display_name`、`status`、`created_at`、`last_seen_at`。
@@ -162,7 +163,7 @@ POST /api/admin/login
 }
 ```
 
-管理员可以在创建成功响应复制 token，也可以后续在 binding 列表中通过 `Copy` 按钮复制。列表本身只显示 mask 后的 token。
+管理员可以在创建成功响应复制 token 或 teammate `.env`，也可以后续在 binding 列表中通过 `Copy` 按钮复制 token。列表本身只显示 mask 后的 token。
 
 ## 安全边界
 

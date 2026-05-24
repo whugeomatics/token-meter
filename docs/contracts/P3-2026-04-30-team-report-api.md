@@ -340,7 +340,7 @@ dashboard 团队视角至少包含：
 - `usage_event_count` 统计服务端已验权并写入的 usage event 行数，可近似表示 Codex 模型调用/用量事件次数，不等同于用户提问数。
 - `avg_tokens_per_session` 为 `total_tokens / sessions`，当 `sessions = 0` 时为 `0`。
 - `avg_tokens_per_call` 为 `total_tokens / usage_event_count`，当 `usage_event_count = 0` 时为 `0`。
-- `cache_hit_rate` 为 `cached_input_tokens / input_tokens`，当 `input_tokens = 0` 时为 `0`。
+- `cache_hit_rate` 为工具口径归一化后的缓存占比：Codex 使用 `cached_input_tokens / input_tokens`；当来源把 cache token 与普通 input 分开上报导致 `cached_input_tokens > input_tokens` 时使用 `cached_input_tokens / (input_tokens + cached_input_tokens)`。
 - `reasoning_ratio` 为 `reasoning_output_tokens / output_tokens`，当 `output_tokens = 0` 时为 `0`。
 - `active_seconds` 为该聚合 bucket 内每个 session 的活跃间隔之和：同一 session 内按时间排序的相邻 usage event 间隔不超过 30 分钟时计入，超过 30 分钟的空闲间隔不计入；它是日志估算值，不是精确键盘在线时长。
 - `upload_health` 按 `team_id + user_id + device_id` 分组。

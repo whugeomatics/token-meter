@@ -113,6 +113,23 @@ button.danger {
   margin-top: 8px;
   color: var(--text);
 }
+.created-title { font-weight: 700; }
+.created-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.created-token pre {
+  margin: 10px 0 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--text);
+  padding: 10px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
 .table-wrap { overflow-x: auto; }
 table { width: 100%; min-width: 1040px; border-collapse: collapse; }
 th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }

@@ -40,6 +40,11 @@ quote_value() {
   printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
 }
 
+if [ -f "$CONFIG" ]; then
+  # shellcheck disable=SC1090
+  . "$CONFIG"
+fi
+
 require_env TOKEN_METER_SERVER_URL
 require_env TOKEN_METER_DEVICE_TOKEN
 require_env TOKEN_METER_USER_ID

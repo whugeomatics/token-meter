@@ -40,8 +40,16 @@ qs('createForm').addEventListener('submit', async (event) => {
     return;
   }
   const created = qs('createdToken');
+  const env = teammateEnv(payload, data.device_token);
   created.classList.remove('hidden');
-  created.innerHTML = `Device token created for ${escapeHtml(payload.user_id)} / ${escapeHtml(payload.device_id)}.<code>${escapeHtml(data.device_token)}</code>`;
+  created.innerHTML = `
+    <div class="created-title">Device token created for ${escapeHtml(payload.user_id)} / ${escapeHtml(payload.device_id)}</div>
+    <code>${escapeHtml(data.device_token)}</code>
+    <div class="created-actions">
+      <button type="button" data-copy-text="${escapeHtml(data.device_token)}">Copy Token</button>
+      <button type="button" data-copy-text="${escapeHtml(env)}">Copy Teammate .env</button>
+    </div>
+    <pre>${escapeHtml(env)}</pre>`;
   qs('createForm').reset();
   loadTokens();
 });
@@ -81,6 +89,12 @@ document.addEventListener('click', async (event) => {
   const deleteId = event.target?.closest?.('[data-delete-token]')?.dataset?.deleteToken;
   if (deleteId) {
     await deleteDeviceToken(deleteId);
+    return;
+  }
+  const copyText = event.target?.closest?.('[data-copy-text]')?.dataset?.copyText;
+  if (copyText) {
+    await navigator.clipboard.writeText(copyText);
+    showToast('Copied');
   }
 });
 
@@ -119,6 +133,20 @@ async function deleteDeviceToken(tokenId) {
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+}
+
+function teammateEnv(payload, token) {
+  return [
+    `export TOKEN_METER_SERVER_URL="${location.origin}"`,
+    `export TOKEN_METER_USER_ID="${shellEscape(payload.user_id)}"`,
+    `export TOKEN_METER_DEVICE_ID="${shellEscape(payload.device_id)}"`,
+    `export TOKEN_METER_DEVICE_TOKEN="${shellEscape(token)}"`,
+    `export TOKEN_METER_DAYS="30"`
+  ].join('\n');
+}
+
+function shellEscape(value) {
+  return String(value ?? '').replace(/["\\$`]/g, '\\$&');
 }
 
 function formatDateTime(value) {

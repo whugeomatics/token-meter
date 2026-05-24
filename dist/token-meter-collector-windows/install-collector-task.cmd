@@ -9,6 +9,7 @@ if "%INTERVAL_MINUTES%"=="" set "INTERVAL_MINUTES=5"
 set "CONFIG_DIR=%USERPROFILE%\.token-meter"
 set "LOG_DIR=%CONFIG_DIR%\logs"
 set "CONFIG=%CONFIG_DIR%\collector.env.cmd"
+set "PLAIN_CONFIG=%CONFIG_DIR%\collector.env"
 set "RUNNER=%CONFIG_DIR%\run-collector-task.cmd"
 set "INSTALL_LOG=%LOG_DIR%\install.log"
 set "PACKAGE_RUNNER=%SCRIPT_DIR%run-collector.cmd"
@@ -20,25 +21,17 @@ if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 if errorlevel 1 exit /b 1
 echo %DATE% %TIME% install started > "%INSTALL_LOG%"
 
-if "%TOKEN_METER_SERVER_URL%"=="" (
-  echo TOKEN_METER_SERVER_URL is required >> "%INSTALL_LOG%"
-  echo TOKEN_METER_SERVER_URL is required 1>&2
-  exit /b 1
-)
-if "%TOKEN_METER_DEVICE_TOKEN%"=="" (
-  echo TOKEN_METER_DEVICE_TOKEN is required >> "%INSTALL_LOG%"
-  echo TOKEN_METER_DEVICE_TOKEN is required 1>&2
-  exit /b 1
-)
-if "%TOKEN_METER_USER_ID%"=="" (
-  echo TOKEN_METER_USER_ID is required >> "%INSTALL_LOG%"
-  echo TOKEN_METER_USER_ID is required 1>&2
-  exit /b 1
-)
-if "%TOKEN_METER_DEVICE_ID%"=="" (
-  echo TOKEN_METER_DEVICE_ID is required >> "%INSTALL_LOG%"
-  echo TOKEN_METER_DEVICE_ID is required 1>&2
-  exit /b 1
+set "HAS_ENV_VALUES=1"
+if "%TOKEN_METER_SERVER_URL%"=="" set "HAS_ENV_VALUES=0"
+if "%TOKEN_METER_DEVICE_TOKEN%"=="" set "HAS_ENV_VALUES=0"
+if "%TOKEN_METER_USER_ID%"=="" set "HAS_ENV_VALUES=0"
+if "%TOKEN_METER_DEVICE_ID%"=="" set "HAS_ENV_VALUES=0"
+if "%HAS_ENV_VALUES%"=="0" (
+  if not exist "%PLAIN_CONFIG%" if not exist "%CONFIG%" (
+    echo collector env file not found: %PLAIN_CONFIG% >> "%INSTALL_LOG%"
+    echo Save the teammate .env from admin.html to %PLAIN_CONFIG%, or set TOKEN_METER_SERVER_URL, TOKEN_METER_DEVICE_TOKEN, TOKEN_METER_USER_ID, and TOKEN_METER_DEVICE_ID. 1>&2
+    exit /b 1
+  )
 )
 if not exist "%PACKAGE_RUNNER%" (
   echo collector runner not found: %PACKAGE_RUNNER% >> "%INSTALL_LOG%"
@@ -51,21 +44,23 @@ if not exist "%PACKAGE_JAR%" (
   exit /b 1
 )
 
-(
-  echo @echo off
-  echo set "TOKEN_METER_JAR=%PACKAGE_JAR%"
-  echo set "TOKEN_METER_SERVER_URL=%TOKEN_METER_SERVER_URL%"
-  echo set "TOKEN_METER_DEVICE_TOKEN=%TOKEN_METER_DEVICE_TOKEN%"
-  echo set "TOKEN_METER_USER_ID=%TOKEN_METER_USER_ID%"
-  echo set "TOKEN_METER_DEVICE_ID=%TOKEN_METER_DEVICE_ID%"
-  echo set "TOKEN_METER_DAYS=%TOKEN_METER_DAYS%"
-  echo set "TOKEN_METER_JAVA=%TOKEN_METER_JAVA%"
-) > "%CONFIG%"
+if "%HAS_ENV_VALUES%"=="1" (
+  (
+    echo @echo off
+    echo set "TOKEN_METER_JAR=%PACKAGE_JAR%"
+    echo set "TOKEN_METER_SERVER_URL=%TOKEN_METER_SERVER_URL%"
+    echo set "TOKEN_METER_DEVICE_TOKEN=%TOKEN_METER_DEVICE_TOKEN%"
+    echo set "TOKEN_METER_USER_ID=%TOKEN_METER_USER_ID%"
+    echo set "TOKEN_METER_DEVICE_ID=%TOKEN_METER_DEVICE_ID%"
+    echo set "TOKEN_METER_DAYS=%TOKEN_METER_DAYS%"
+    echo set "TOKEN_METER_JAVA=%TOKEN_METER_JAVA%"
+  ) > "%CONFIG%"
+)
 
 (
   echo @echo off
   echo echo %%DATE%% %%TIME%% collector task started ^>^> "%LOG_DIR%\collector.out.log"
-  echo call "%CONFIG%"
+  echo if exist "%CONFIG%" call "%CONFIG%"
   echo call "%PACKAGE_RUNNER%" ^>^> "%LOG_DIR%\collector.out.log" 2^>^> "%LOG_DIR%\collector.err.log"
   echo set "EXIT_CODE=%%ERRORLEVEL%%"
   echo echo %%DATE%% %%TIME%% collector task exited with %%EXIT_CODE%% ^>^> "%LOG_DIR%\collector.out.log"

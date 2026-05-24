@@ -262,6 +262,19 @@ th { color: var(--muted); font-size: 12px; background: #fbfcfd; }
 .health-ok { color: #217346; background: #e9f6ef; }
 .health-warning { color: #8a5a00; background: #fff4d6; }
 .health-stale, .health-error { color: var(--danger); background: #fae8e6; }
+.tool-pill {
+  display: inline-block;
+  min-width: 72px;
+  border-radius: 999px;
+  padding: 3px 8px;
+  text-align: center;
+  color: #244066;
+  background: #edf2fb;
+  font-size: 12px;
+  font-weight: 700;
+}
+.tool-claude-code { color: #6b3f00; background: #fff1d8; }
+.tool-codex { color: #075f59; background: #e5f5f2; }
 .empty { padding: 24px 14px; color: var(--muted); }
 .hidden { display: none; }
 @media (max-width: 860px) {

@@ -3,6 +3,7 @@ package local.token.meter.store;
 import local.token.meter.domain.Snapshot;
 import local.token.meter.domain.UsageEvent;
 import local.token.meter.domain.ExportedUsageEvent;
+import local.token.meter.domain.TeamUsageEvent;
 import local.token.meter.ingestion.IngestedUsageEvent;
 import local.token.meter.ingestion.SourceFileRecord;
 import local.token.meter.ingestion.SourceFileState;
@@ -52,10 +53,14 @@ public final class SqliteUsageStore implements UsageStore {
     }
 
     public SourceFileRecord findSourceFile(SourceFileState state) throws SQLException {
+        return findSourceFile("codex", state.path());
+    }
+
+    private SourceFileRecord findSourceFile(String tool, String path) throws SQLException {
         try (Connection connection = connect();
              PreparedStatement statement = connection.prepareStatement(scripts.statement("find_source_file"))) {
-            statement.setString(1, "codex");
-            statement.setString(2, state.path());
+            statement.setString(1, tool);
+            statement.setString(2, path);
             try (ResultSet rs = statement.executeQuery()) {
                 if (!rs.next()) {
                     return null;
@@ -110,6 +115,50 @@ public final class SqliteUsageStore implements UsageStore {
         }
     }
 
+    public boolean insertLocalUsageEvent(String tool, String sourcePath, int lineNumber, TeamUsageEvent event) throws SQLException {
+        long sourceFileId = upsertLocalSourceFile(tool, sourcePath, lineNumber, event);
+        try (Connection connection = connect();
+             PreparedStatement statement = connection.prepareStatement(scripts.statement("insert_usage_event"))) {
+            statement.setLong(1, sourceFileId);
+            statement.setInt(2, lineNumber);
+            statement.setString(3, event.eventKey());
+            statement.setString(4, event.tool());
+            statement.setString(5, event.sessionId());
+            statement.setString(6, event.model());
+            statement.setString(7, event.timestamp().toString());
+            statement.setString(8, event.localDate().toString());
+            statement.setLong(9, event.usage().inputTokens());
+            statement.setLong(10, event.usage().cachedInputTokens());
+            statement.setLong(11, event.usage().outputTokens());
+            statement.setLong(12, event.usage().reasoningOutputTokens());
+            statement.setLong(13, event.usage().totalTokens());
+            statement.setString(14, Instant.now().toString());
+            return statement.executeUpdate() > 0;
+        }
+    }
+
+    private long upsertLocalSourceFile(String tool, String sourcePath, int lineNumber, TeamUsageEvent event) throws SQLException {
+        try (Connection connection = connect();
+             PreparedStatement statement = connection.prepareStatement(scripts.statement("upsert_source_file"))) {
+            statement.setString(1, tool);
+            statement.setString(2, sourcePath);
+            statement.setLong(3, 0L);
+            statement.setString(4, event.timestamp().toString());
+            statement.setInt(5, lineNumber);
+            statement.setString(6, event.timestamp().toString());
+            statement.setString(7, event.eventKey());
+            statement.setString(8, "active");
+            statement.setString(9, null);
+            statement.setString(10, Instant.now().toString());
+            statement.executeUpdate();
+        }
+        SourceFileRecord record = findSourceFile(tool, sourcePath);
+        if (record == null) {
+            throw new SQLException("local source file upsert did not return a row");
+        }
+        return record.id();
+    }
+
     public List<UsageEvent> loadEvents(LocalDate startDate, LocalDate endDate) throws SQLException {
         List<UsageEvent> events = new ArrayList<>();
         try (Connection connection = connect();
@@ -125,7 +174,7 @@ public final class SqliteUsageStore implements UsageStore {
                             rs.getLong("reasoning_output_tokens"),
                             rs.getLong("total_tokens")
                     );
-                    events.add(new UsageEvent(rs.getString("session_id"), rs.getString("model"),
+                    events.add(new UsageEvent(rs.getString("tool"), rs.getString("session_id"), rs.getString("model"),
                             Instant.parse(rs.getString("event_timestamp")), usage));
                 }
             }

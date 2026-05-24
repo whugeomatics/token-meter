@@ -37,6 +37,9 @@
           <select id="teamFilter" class="hidden" aria-label="Team filter">
             <option value="">All Teams</option>
           </select>
+          <select id="toolFilter" aria-label="Tool filter">
+            <option value="">All Tools</option>
+          </select>
           <button type="button" data-period="day" class="active">Day</button>
           <button type="button" data-period="week">Week</button>
           <button type="button" data-period="month">Month</button>
@@ -59,6 +62,7 @@
       <div class="section-tabs" role="tablist" aria-label="Local sections">
         <button type="button" data-local-section-tab="overview" class="active" role="tab" aria-selected="true">Overview</button>
         <button type="button" data-local-section-tab="sessions" role="tab" aria-selected="false">Sessions</button>
+        <button type="button" data-local-section-tab="tools" role="tab" aria-selected="false">Tools</button>
         <button type="button" data-local-section-tab="models" role="tab" aria-selected="false">Models</button>
         <button type="button" data-local-section-tab="daily" role="tab" aria-selected="false">Daily Trend</button>
       </div>
@@ -85,12 +89,17 @@
 
       <section class="section local-section hidden" data-local-section="models">
         <div class="section-header"><div class="section-title">Models</div></div>
-        <div class="table-wrap"><table><thead><tr><th>Model</th><th>Total</th><th>Input</th><th>Cached</th><th>Output</th><th>Reasoning</th><th>Sessions</th><th>Calls</th><th>Avg / Session</th><th>Avg / Call</th><th>Cache</th><th>Reasoning %</th><th>Active</th></tr></thead><tbody id="localModelsBody"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>Tool</th><th>Model</th><th>Total</th><th>Input</th><th>Cached</th><th>Output</th><th>Reasoning</th><th>Sessions</th><th>Calls</th><th>Avg / Session</th><th>Avg / Call</th><th>Cache</th><th>Reasoning %</th><th>Active</th></tr></thead><tbody id="localModelsBody"></tbody></table></div>
+      </section>
+
+      <section class="section local-section hidden" data-local-section="tools">
+        <div class="section-header"><div class="section-title">Tools</div></div>
+        <div class="table-wrap"><table><thead><tr><th>Tool</th><th>Total</th><th>Input</th><th>Cached</th><th>Output</th><th>Reasoning</th><th>Sessions</th><th>Calls</th><th>Avg / Call</th><th>Cache</th><th>Reasoning %</th><th>Active</th></tr></thead><tbody id="localToolsBody"></tbody></table></div>
       </section>
 
       <section class="section local-section hidden" data-local-section="sessions">
         <div class="section-header"><div class="section-title">Sessions</div><div id="localSessionsStatus" class="status"></div></div>
-        <div class="table-wrap"><table><thead><tr><th>Session</th><th>Total</th><th>Net</th><th>Calls</th><th>Avg / Call</th><th>Active</th><th>Started</th><th>Ended</th><th>Models</th></tr></thead><tbody id="localSessionsBody"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>Tool</th><th>Session</th><th>Total</th><th>Net</th><th>Calls</th><th>Avg / Call</th><th>Active</th><th>Started</th><th>Ended</th><th>Models</th></tr></thead><tbody id="localSessionsBody"></tbody></table></div>
       </section>
       </div>
 
@@ -109,6 +118,7 @@
       <div class="section-tabs" role="tablist" aria-label="Team sections">
         <button type="button" data-team-section-tab="overview" class="active" role="tab" aria-selected="true">Overview</button>
         <button type="button" data-team-section-tab="users" role="tab" aria-selected="false">Users</button>
+        <button type="button" data-team-section-tab="tools" role="tab" aria-selected="false">Tools</button>
         <button type="button" data-team-section-tab="models" role="tab" aria-selected="false">Models</button>
         <button type="button" data-team-section-tab="devices" role="tab" aria-selected="false">Devices</button>
         <button type="button" data-team-section-tab="uploads" role="tab" aria-selected="false">Upload Health</button>
@@ -137,6 +147,10 @@
             <div class="table-wrap"><table class="compact-table"><thead><tr><th>Model</th><th>Current</th><th>Previous</th><th>Delta</th></tr></thead><tbody id="teamOverviewModelsBody"></tbody></table></div>
           </div>
           <div class="insight-panel">
+            <div class="panel-title">Tool Change</div>
+            <div class="table-wrap"><table class="compact-table"><thead><tr><th>Tool</th><th>Current</th><th>Previous</th><th>Delta</th></tr></thead><tbody id="teamOverviewToolsBody"></tbody></table></div>
+          </div>
+          <div class="insight-panel">
             <div class="panel-title">Upload Health</div>
             <div class="table-wrap"><table class="compact-table"><thead><tr><th>Device</th><th>User</th><th>Health</th><th>Gap</th></tr></thead><tbody id="teamOverviewHealthBody"></tbody></table></div>
           </div>
@@ -154,6 +168,11 @@
         <div class="table-wrap"><table><thead><tr><th>Team</th><th>User</th><th>Total</th><th>Input</th><th>Output</th><th>Sessions</th><th>Calls</th><th>Avg / Session</th><th>Avg / Call</th><th>Cache</th><th>Reasoning</th><th>Active</th><th>Devices</th><th>Last Seen</th></tr></thead><tbody id="teamUsersBody"></tbody></table></div>
       </section>
 
+      <section class="section team-section hidden" data-team-section="tools">
+        <div class="section-header"><div class="section-title">Tools</div></div>
+        <div class="table-wrap"><table><thead><tr><th>Tool</th><th>Total</th><th>Input</th><th>Cached</th><th>Output</th><th>Reasoning</th><th>Sessions</th><th>Users</th><th>Devices</th><th>Calls</th><th>Avg / Call</th><th>Cache</th><th>Reasoning %</th><th>Active</th></tr></thead><tbody id="teamToolsBody"></tbody></table></div>
+      </section>
+
       <section class="section team-section hidden" data-team-section="devices">
         <div class="section-header"><div class="section-title">Devices</div></div>
         <div class="table-wrap"><table><thead><tr><th>Team</th><th>Device</th><th>User</th><th>Total</th><th>Sessions</th><th>Calls</th><th>Avg / Call</th><th>Active</th><th>Last Seen</th></tr></thead><tbody id="teamDevicesBody"></tbody></table></div>
@@ -165,6 +184,7 @@
           <th><button type="button" class="sort-header" data-team-model-sort="date">Date</button></th>
           <th><button type="button" class="sort-header" data-team-model-sort="team_id">Team</button></th>
           <th><button type="button" class="sort-header" data-team-model-sort="user_id">User</button></th>
+          <th><button type="button" class="sort-header" data-team-model-sort="tool">Tool</button></th>
           <th><button type="button" class="sort-header" data-team-model-sort="model">Model</button></th>
           <th><button type="button" class="sort-header" data-team-model-sort="total_tokens">Total</button></th>
           <th><button type="button" class="sort-header" data-team-model-sort="input_tokens">Input</button></th>

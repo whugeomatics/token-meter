@@ -3,6 +3,11 @@ set -eu
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
+CONFIG="${TOKEN_METER_COLLECTOR_ENV:-$HOME/.token-meter/collector.env}"
+if [ -f "$CONFIG" ]; then
+  # shellcheck disable=SC1090
+  . "$CONFIG"
+fi
 if [ -f "$SCRIPT_DIR/token-meter-collector-0.1.0-SNAPSHOT.jar" ]; then
   DEFAULT_JAR="$SCRIPT_DIR/token-meter-collector-0.1.0-SNAPSHOT.jar"
 else
@@ -13,7 +18,8 @@ JAVA_BIN="${TOKEN_METER_JAVA:-${JAVA_HOME:+$JAVA_HOME/bin/java}}"
 if [ -z "$JAVA_BIN" ]; then
   JAVA_BIN="$(command -v java || true)"
 fi
-SERVER_URL="${TOKEN_METER_SERVER_URL:?TOKEN_METER_SERVER_URL is required}"
+TOKEN_METER_DAYS="${TOKEN_METER_DAYS:-30}"
+export TOKEN_METER_DAYS
 
 if [ ! -f "$JAR" ]; then
   printf '%s\n' "collector jar not found: $JAR" >&2
@@ -24,17 +30,20 @@ if [ -z "$JAVA_BIN" ] || [ ! -x "$JAVA_BIN" ]; then
   exit 1
 fi
 
-printf '%s\n' "Collector target: $SERVER_URL" >&2
-if ! curl --noproxy '*' -fsS "${SERVER_URL%/}/health" >/dev/null 2>&1; then
-  printf '%s\n' "Dashboard server is not reachable at ${SERVER_URL%/}/health" >&2
-  printf '%s\n' "Start the dashboard server first, or set TOKEN_METER_SERVER_URL to the actual dashboard URL." >&2
-  exit 1
+if [ -n "${TOKEN_METER_SERVER_URL:-}" ]; then
+  printf '%s\n' "Collector target: $TOKEN_METER_SERVER_URL" >&2
+  if ! curl --noproxy '*' -fsS "${TOKEN_METER_SERVER_URL%/}/health" >/dev/null 2>&1; then
+    printf '%s\n' "Dashboard server is not reachable at ${TOKEN_METER_SERVER_URL%/}/health" >&2
+    printf '%s\n' "Start the dashboard server first, or set TOKEN_METER_SERVER_URL to the actual dashboard URL." >&2
+    exit 1
+  fi
 fi
 
-"$JAVA_BIN" -jar "$JAR" \
-  --collect-team \
-  --server-url="$SERVER_URL" \
-  --device-token="${TOKEN_METER_DEVICE_TOKEN:?TOKEN_METER_DEVICE_TOKEN is required}" \
-  --user-id="${TOKEN_METER_USER_ID:?TOKEN_METER_USER_ID is required}" \
-  --device-id="${TOKEN_METER_DEVICE_ID:?TOKEN_METER_DEVICE_ID is required}" \
-  --days="${TOKEN_METER_DAYS:-30}"
+if [ -f "$CONFIG" ]; then
+  "$JAVA_BIN" -jar "$JAR" \
+    --collect-team \
+    --collector-env-file="$CONFIG"
+else
+  "$JAVA_BIN" -jar "$JAR" \
+    --collect-team
+fi
