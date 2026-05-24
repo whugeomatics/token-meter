@@ -62,7 +62,7 @@ chmod +x "$PACKAGE"/*.sh
 cat > "$PACKAGE/README.md" <<'README'
 # Token Meter Collector Teammate Guide
 
-This macOS/Linux package uploads local Codex usage summaries to the team token-meter dashboard.
+This macOS/Linux package uploads local Codex and Claude Code usage summaries to the team token-meter dashboard.
 
 ## Files
 
@@ -82,6 +82,12 @@ Ask the admin for these values:
 - `TOKEN_METER_DEVICE_ID`: this device id.
 
 Do not share `TOKEN_METER_DEVICE_TOKEN` with others.
+
+The collector reads configuration in this order:
+
+```text
+CLI args > ~/.token-meter/collector.env > system environment variables
+```
 
 ## Run Once
 
@@ -118,7 +124,7 @@ Installed files:
 ~/.token-meter/logs/collector.err.log
 ```
 
-`~/.token-meter/collector.env` contains the device token and is created with `600` permissions.
+`~/.token-meter/collector.env` contains the device token and should be kept with `600` permissions.
 
 ## Check or Trigger the Service
 

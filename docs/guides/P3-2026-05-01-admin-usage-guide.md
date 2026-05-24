@@ -112,8 +112,8 @@ Device Name:  展示名称，例如 Zhangsan MacBook Pro
 
 前提：
 
-- 成员机器已经运行过 Codex。
-- 成员机器上有 `~/.codex/sessions` 数据。
+- 成员机器已经运行过 Codex 或 Claude Code。
+- Codex 数据默认来自 `~/.codex/sessions`；Claude Code 数据默认来自 `~/.claude/projects/**/*.jsonl`。
 - `server-url` 必须是成员机器能访问到的 dashboard 服务地址。
 
 关键说明：
@@ -121,8 +121,8 @@ Device Name:  展示名称，例如 Zhangsan MacBook Pro
 - collector 是独立采集模式，不启动 HTTP server。
 - collector 不占用 `10080`、`18080` 或任何 dashboard server 端口。
 - collector 不需要 `--port`。
-- collector 只通过 `--server-url` 主动 POST 到 server。
-- collector 默认读取 `~/.codex/sessions`，不需要显式传 `--sessions-dir`。
+- collector 只主动 POST 到 server，不接受入站请求；server 地址可以来自 `--server-url`、`~/.token-meter/collector.env` 或系统环境变量。
+- collector 默认同时读取 `~/.codex/sessions` 和 `~/.claude/projects`，不需要显式传 `--sessions-dir` 或 Claude 专用开关。
 - collector 不依赖本地数据库，也不会创建 checkpoint SQLite。
 
 推荐示例：
@@ -137,7 +137,7 @@ java -jar token-meter-collector/target/token-meter-collector-0.1.0-SNAPSHOT.jar 
   --days=30
 ```
 
-也可以把 admin 页面生成的 teammate `.env` 保存到客户端本机：
+推荐把 admin 页面生成的 teammate `.env` 保存到客户端本机：
 
 ```text
 ~/.token-meter/collector.env
@@ -163,12 +163,14 @@ CLI 参数 > ~/.token-meter/collector.env > 系统环境变量
 可选参数：
 
 - `--sessions-dir`: 覆盖 Codex sessions 目录；默认 `~/.codex/sessions`。
+- `--claude-projects-dir`: 覆盖 Claude Code projects 目录；默认 `~/.claude/projects`。
+- `--collect-claude-code`: 旧脚本兼容入口。正常 team collection 不需要该开关。
 
 如果在同一台电脑上同时充当管理员和 teammate：
 
 - server 可以继续运行在 `18080` 或你选择的 `10080`。
 - collector 不会监听端口，所以不会和 server 端口冲突。
-- collector 的 `--server-url` 指向这台 server，例如 `http://127.0.0.1:10080`。
+- collector 的 server URL 指向这台 server，例如 `http://127.0.0.1:10080`，可写在 CLI 或 `~/.token-meter/collector.env`。
 - collector 不写本地数据库；重复上报由服务端按 `team_id + user_id + device_id + event_key` 幂等去重。
 
 示例：
@@ -183,17 +185,15 @@ java -jar token-meter-collector/target/token-meter-collector-0.1.0-SNAPSHOT.jar 
   --days=30
 ```
 
-也可以使用封装脚本：
+也可以使用封装脚本。推荐先保存 admin 页面生成的 teammate `.env`：
 
 ```sh
-export TOKEN_METER_SERVER_URL="http://127.0.0.1:18080"
-export TOKEN_METER_DEVICE_TOKEN="teammate-device-token"
-export TOKEN_METER_USER_ID="zhangsan"
-export TOKEN_METER_DEVICE_ID="zhangsan-macbook"
+mkdir -p ~/.token-meter
+# 将 teammate .env 保存为 ~/.token-meter/collector.env
 sh scripts/P3-2026-05-01-run-collector.sh
 ```
 
-脚本启动时会先检查 `${TOKEN_METER_SERVER_URL}/health`。如果 dashboard 实际启动在 `18080`，但 `TOKEN_METER_SERVER_URL` 仍然配置成 `10080`，collector 会直接提示服务不可达。
+脚本如果能从 env 文件或环境变量解析到 `TOKEN_METER_SERVER_URL`，会先检查 `${TOKEN_METER_SERVER_URL}/health`。如果 dashboard 实际启动在 `18080`，但配置仍然是 `10080`，collector 会直接提示服务不可达。
 
 collector 成功时会输出类似：
 

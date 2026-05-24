@@ -23,7 +23,10 @@
 检查：
 
 - P4 README、design、contract、tasks、acceptance 文档存在。
-- 文档明确 P4 只做 Claude Code teammate usage collection。
+- 文档明确 P4 只做 Claude Code local + teammate usage collection 和 tool 维度统计补齐。
+- 文档明确 P4 同时补齐 Local 和 Team 的 Claude Code 统计。
+- 文档明确 collector 默认同时采集 Codex 和 Claude Code，不要求 teammate 使用 Claude 专用开关。
+- 文档明确 teammate `.env` 只在客户端使用，配置优先级为 `CLI 参数 > collector.env > 系统环境变量`。
 - 文档明确不做 Cursor、本地网关、多 provider 自动路由。
 - 文档明确不采集 prompt、response、raw API body、raw transcript。
 
@@ -68,7 +71,11 @@
 - `--claude-source=otel` 可读取 fixture。
 - `--claude-source=hook` 只读取允许 metadata。
 - `--collect-claude-code` 仅作为旧脚本兼容入口保留。
-- collector 继续复用 P3 `--server-url`、`--device-token`、`--user-id`、`--device-id`。
+- collector 继续支持 P3 `--server-url`、`--device-token`、`--user-id`、`--device-id` CLI 参数。
+- collector 默认读取 teammate 本机 `~/.token-meter/collector.env`；Windows 支持 `%USERPROFILE%\.token-meter\collector.env` 并兼容 `collector.env.cmd`。
+- collector 同名配置优先级为 `CLI 参数 > collector.env > 系统环境变量`。
+- admin 创建 token 后页面生成完整 teammate `.env`。
+- 401 unknown device token 错误提示包含“可能使用旧 token / 从 admin.html 复制当前 teammate .env / 重启 collector / 校验 server database”诊断，不包含 token 明文。
 - stdout 为机器可读 JSON。
 - stdout/stderr 不包含 device token、prompt、response、raw payload。
 
@@ -103,8 +110,10 @@
 检查：
 
 - Team 页面可选择 All Tools、Codex、Claude Code。
+- Local 页面可选择 All Tools、Codex、Claude Code。
 - Overview 展示 tool ranking。
 - Period Comparison 展示 tool delta。
+- Models/Sessions 等表格展示 tool 来源。
 - 页面不展示 raw source、完整 transcript path、prompt 或 response。
 
 ### 8. 隐私
@@ -127,8 +136,8 @@
 
 检查：
 
-- P3 Codex team ingestion/report 行为不变。
-- Local `/api/report` 行为不变。
+- P3 Codex team ingestion/report 行为保持兼容。
+- Local `/api/report` 保持旧字段兼容，并新增 tool 维度过滤和聚合。
 - Local `/api/report` 可通过 `tool=claude-code` 展示 Claude Code 本地 JSONL 用量。
 - Day、Week、Month period comparison 行为不变。
 - collector jar 仍不包含 dashboard、SQLite、admin 或静态资源。
@@ -139,6 +148,9 @@
 cmd /c D:\Softwares\Maven-3.9.9\bin\mvn.cmd -DskipTests package
 cmd /c D:\Softwares\Maven-3.9.9\bin\mvn.cmd test
 node scripts\P3-2026-05-10-dashboard-ui-check.mjs
+node --check token-meter-app\src\main\resources\static\app.js
+node --check token-meter-app\src\main\resources\static\admin.js
+sh scripts/P3-2026-05-01-package-collector.sh all
 ```
 
 本轮已执行：
@@ -147,6 +159,8 @@ node scripts\P3-2026-05-10-dashboard-ui-check.mjs
 cmd /c "D:\Softwares\Maven-3.9.9\bin\mvn.cmd" "-Dmaven.repo.local=.m2\repository" test
 cmd /c "D:\Softwares\Maven-3.9.9\bin\mvn.cmd" "-Dmaven.repo.local=.m2\repository" -DskipTests package
 node --check token-meter-app\src\main\resources\static\app.js
+node --check token-meter-app/src/main/resources/static/admin.js
+sh scripts/P3-2026-05-01-package-collector.sh all
 ```
 
 待补充：P3 Codex smoke 或等价端到端回归、P4 真实 collector upload smoke。

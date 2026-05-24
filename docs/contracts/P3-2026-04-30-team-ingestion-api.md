@@ -2,7 +2,7 @@
 
 ## 目标
 
-定义 collector 向中央服务上报 Codex usage event 的 HTTP API。
+定义 collector 向中央服务上报标准化 tool usage event 的 HTTP API。P3 初始只上传 Codex；P4 起同一 endpoint 也接收 `tool=claude-code`。
 
 P3 只新增团队采集 ingestion API，不改变 P1/P2 `/api/report` contract。
 
@@ -147,7 +147,7 @@ collector 不应自动重试：
 
 collector 不依赖本地 SQLite checkpoint：
 
-- Codex 打开并持续产生 session 时，可周期性运行 collector。
+- Codex 或 Claude Code 打开并持续产生本地 usage metadata 时，可周期性运行 collector。
 - Codex 关闭期间不需要后台常驻；下次 collector 启动时重新扫描最近窗口内的 sessions 并批量补报。
 - 网络失败或服务端 5xx 时，下一次 collector 运行可以重新发送最近窗口内 event。
 - 服务端通过 `team_id + user_id + device_id + event_key` 去重，重复补报不重复统计。

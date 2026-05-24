@@ -15,7 +15,7 @@
 
 当前阶段：P4 实现验证。
 
-P1、P2、P3 已通过验收。P4 聚焦 Claude Code teammate usage collection。P4 文档已落地，当前代码已进入实现验证阶段；后续改动仍需先对齐 contract、tasks 和 acceptance。
+P1、P2、P3 已通过验收。P4 聚焦 Claude Code local + teammate usage collection。P4 当前代码已支持 Local 与 Team 默认同时采集 Codex 和 Claude Code，并进入实现验证阶段；后续改动仍需先对齐 contract、tasks 和 acceptance。
 
 P4 文档基线：
 
@@ -38,6 +38,9 @@ P4 禁止：
 - 不破坏 P1/P2 `/api/report` contract。
 - 不破坏 P3 `/api/team/report` 和 `/api/team/ingest` contract。
 - Local `/api/report` 与 Team `/api/team/report` 当前都支持 `period=<day|week|month>&compare=previous` 的自然周期对比；旧 `days` / `month` 查询继续作为兼容入口保留。
+- Team collector 默认一次运行同时采集 Codex 与 Claude Code；`--collect-claude-code` 仅作为旧脚本兼容入口保留，不作为正常 teammate 流程要求。
+- Collector teammate 配置优先级固定为 `CLI 参数 > ~/.token-meter/collector.env > 系统环境变量`；server 端不读取 teammate `.env`。
+- Admin 创建 device token 后应向管理员展示完整 teammate `.env`，但日志、错误响应、普通列表和文档示例不得输出真实 token。
 
 ## 3. 项目架构硬约束
 
@@ -45,7 +48,7 @@ P4 禁止：
 
 - `token-meter-core`：只放 app 和 collector 都需要的配置、Codex session 解析、team payload DTO、通用 DTO 和通用工具。
 - `token-meter-app`：负责 dashboard/server 入口、HTTP/API、admin、report、SQLite CRUD/store、SQL resources 和静态资源。只有 app module 可以依赖 SQLite。
-- `token-meter-collector`：负责 teammate 端轻量上报入口和周期性上报逻辑；collector 不依赖数据库，不启动 HTTP server，不包含 dashboard 静态资源或 CRUD/API/report/admin 实现。
+- `token-meter-collector`：负责 teammate 端轻量上报入口、Claude Code usage source、collector `.env` 读取和周期性上报逻辑；collector 不依赖数据库，不启动 HTTP server，不包含 dashboard 静态资源或 CRUD/API/report/admin 实现。
 
 如果后续发现 app 和 collector 都需要的类或方法，先确认当前阶段确实双端共用，再补到 core。
 
@@ -68,6 +71,7 @@ P3 module 细节见：
 - `dist/` 下保持两个 teammate 制品包目录：macOS/Linux 使用 `token-meter-collector-mac-linux/`，Windows 使用 `token-meter-collector-windows/`。
 - `dist/` 制品包内的 collector jar 名称必须为 `token-meter-collector.jar`，不包含 `SNAPSHOT`；Maven target 和源码脚本仍保持项目版本命名。
 - 打包脚本按目标平台拆分：总入口 `scripts/P3-2026-05-01-package-collector.sh` 接收 `unix`、`windows` 或 `all`；平台脚本分别为 `scripts/P3-2026-05-01-package-collector-unix.sh` 和 `scripts/P3-2026-05-01-package-collector-windows.sh`。
+- macOS/Linux teammate 默认配置文件为 `~/.token-meter/collector.env`。Windows 优先使用 `%USERPROFILE%\.token-meter\collector.env`，并兼容旧的 `collector.env.cmd`。
 
 ## 4. 当前阶段必读
 
@@ -133,6 +137,8 @@ P3：Codex 团队用量采集，通过。
 - 构建：`cmd /c D:\Softwares\Maven-3.9.9\bin\mvn.cmd -DskipTests package`
 - 完整清理构建：`cmd /c D:\Softwares\Maven-3.9.9\bin\mvn.cmd -DskipTests clean package`
 - 全量测试：`cmd /c D:\Softwares\Maven-3.9.9\bin\mvn.cmd test`
+- JS 语法检查：`node --check token-meter-app/src/main/resources/static/app.js` 和 `node --check token-meter-app/src/main/resources/static/admin.js`
+- Collector 分发包：`sh scripts/P3-2026-05-01-package-collector.sh all`
 - P2 smoke：`sh scripts/P2-2026-04-30-smoke-test.sh`
 - P3 smoke：`sh scripts/P3-2026-04-30-smoke-test.sh`
 

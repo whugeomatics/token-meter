@@ -196,16 +196,18 @@ setlocal EnableExtensions
 set "TASK_NAME=%TOKEN_METER_COLLECTOR_TASK_NAME%"
 if "%TASK_NAME%"=="" set "TASK_NAME=TokenMeterCollector"
 set "CONFIG=%USERPROFILE%\.token-meter\collector.env.cmd"
+set "PLAIN_CONFIG=%USERPROFILE%\.token-meter\collector.env"
 
 schtasks /Delete /TN "%TASK_NAME%" /F >nul 2>nul
 
 echo collector task uninstalled: %TASK_NAME%
 echo collector config remains at: %CONFIG%
+echo plain collector env may also remain at: %PLAIN_CONFIG%
 CMD
 cat > "$PACKAGE/README.md" <<'README'
 # Token Meter Collector Teammate Guide
 
-This Windows package uploads local Codex usage summaries to the team token-meter dashboard.
+This Windows package uploads local Codex and Claude Code usage summaries to the team token-meter dashboard.
 
 ## Files
 
@@ -224,6 +226,12 @@ Ask the admin for these values:
 - `TOKEN_METER_DEVICE_ID`: this device id.
 
 Do not share `TOKEN_METER_DEVICE_TOKEN` with others.
+
+The collector reads configuration in this order:
+
+```text
+CLI args > %USERPROFILE%\.token-meter\collector.env > system environment variables
+```
 
 ## Run Once
 
@@ -271,13 +279,14 @@ Installed files:
 
 ```text
 %USERPROFILE%\.token-meter\collector.env.cmd
+%USERPROFILE%\.token-meter\collector.env
 %USERPROFILE%\.token-meter\run-collector-task.cmd
 %USERPROFILE%\.token-meter\logs\install.log
 %USERPROFILE%\.token-meter\logs\collector.out.log
 %USERPROFILE%\.token-meter\logs\collector.err.log
 ```
 
-`collector.env.cmd` contains the device token. Do not share this file.
+`collector.env` or the legacy `collector.env.cmd` contains the device token. Do not share this file.
 
 ## Check or Trigger the Task
 
@@ -299,7 +308,7 @@ Task output is written to:
 uninstall-collector-task.cmd
 ```
 
-The uninstall script keeps `%USERPROFILE%\.token-meter\collector.env.cmd`. Delete it manually if the local token config should be removed.
+The uninstall script keeps `%USERPROFILE%\.token-meter\collector.env` and `%USERPROFILE%\.token-meter\collector.env.cmd`. Delete local token config files manually if they should be removed.
 README
 
 printf '%s\n' "collector package: $PACKAGE"

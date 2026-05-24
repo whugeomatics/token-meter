@@ -109,6 +109,7 @@ P4 collector 默认一次运行同时读取 Codex 和 Claude Code；客户端无
 --claude-projects-dir=<path>
 --claude-otel-input=<path-or-endpoint>
 --claude-hook-input=<path>
+--collector-env-file=<path>
 --days=<1|7|30>
 ```
 
@@ -119,7 +120,23 @@ TOKEN_METER_CLAUDE_SOURCE
 TOKEN_METER_CLAUDE_PROJECTS_DIR
 TOKEN_METER_CLAUDE_OTEL_INPUT
 TOKEN_METER_CLAUDE_HOOK_INPUT
+TOKEN_METER_COLLECTOR_ENV
 ```
+
+Team collector teammate 配置优先级固定为：
+
+```text
+CLI 参数 > collector env file > 系统环境变量
+```
+
+默认 env file：
+
+```text
+macOS/Linux: ~/.token-meter/collector.env
+Windows: %USERPROFILE%\.token-meter\collector.env
+```
+
+Windows 兼容旧服务配置 `%USERPROFILE%\.token-meter\collector.env.cmd`。env file 只属于 teammate 客户端，server 端不读取该文件。Admin 页面创建 token 后应生成完整 teammate `.env`，包含 `TOKEN_METER_SERVER_URL`、`TOKEN_METER_USER_ID`、`TOKEN_METER_DEVICE_ID`、`TOKEN_METER_DEVICE_TOKEN` 和默认 `TOKEN_METER_DAYS`。
 
 `--collect-claude-code` 仅作为旧脚本兼容入口保留；正常 team collection 不需要它。
 

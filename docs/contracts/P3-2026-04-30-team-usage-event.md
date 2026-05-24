@@ -2,7 +2,7 @@
 
 ## 目标
 
-定义 collector 上传给中央服务的标准化 Codex usage event。
+定义 collector 上传给中央服务的标准化 usage event。P3 初始只要求 Codex；P4 起 Claude Code 通过 `tool=claude-code` 复用同一服务端 schema 和 ingestion 链路。
 
 P3 复用 P2 统计口径：Codex `total_token_usage` 相邻累计快照转成非负 delta。上传的是 delta event，不是 cumulative snapshot。
 
@@ -109,4 +109,4 @@ token-meter-team-2026-04.sqlite
 - model。
 - session。
 
-P3 只要求 `tool=codex`。
+P3 只要求 `tool=codex`；P4 增加 `tool=claude-code`。
