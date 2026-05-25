@@ -29,6 +29,13 @@ cleanup_package_dir() {
   fi
 }
 
+replace_dist_jar_name() {
+  file="$1"
+  tmp="$file.tmp.$$"
+  sed "s/$SOURCE_JAR_NAME/$DIST_JAR_NAME/g" "$file" > "$tmp"
+  mv "$tmp" "$file"
+}
+
 if [ ! -f "$JAR" ]; then
   printf '%s\n' "collector jar not found: $JAR" >&2
   printf '%s\n' "Run: mvn -DskipTests package" >&2
@@ -57,7 +64,9 @@ cp "$ROOT/scripts/P3-2026-05-01-run-collector.sh" "$PACKAGE/run-collector.sh"
 cp "$ROOT/scripts/P3-2026-05-01-run-collector-service.sh" "$PACKAGE/run-collector-service.sh"
 cp "$ROOT/scripts/P3-2026-05-01-install-collector-service.sh" "$PACKAGE/install-collector-service.sh"
 cp "$ROOT/scripts/P3-2026-05-01-uninstall-collector-service.sh" "$PACKAGE/uninstall-collector-service.sh"
-sed -i '' "s/$SOURCE_JAR_NAME/$DIST_JAR_NAME/g" "$PACKAGE/run-collector.sh" "$PACKAGE/run-collector-service.sh" "$PACKAGE/install-collector-service.sh"
+replace_dist_jar_name "$PACKAGE/run-collector.sh"
+replace_dist_jar_name "$PACKAGE/run-collector-service.sh"
+replace_dist_jar_name "$PACKAGE/install-collector-service.sh"
 chmod +x "$PACKAGE"/*.sh
 cat > "$PACKAGE/README.md" <<'README'
 # Token Meter Collector Teammate Guide
