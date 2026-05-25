@@ -36,13 +36,6 @@ public final class TeamCollector {
         this.batchSize = Math.max(1, Math.min(500, batchSize));
     }
 
-    public String uploadRecent(int days) throws Exception {
-        LocalDate end = LocalDate.now(zone);
-        LocalDate start = end.minusDays(days - 1L);
-        Instant uploadTime = Instant.now();
-        return uploadEvents(collectRecentEvents(start, end), start, end, uploadTime);
-    }
-
     public List<TeamUsageEvent> collectRecentEvents(LocalDate start, LocalDate end) throws IOException {
         SessionUsageScan scan = scanner.scan();
         if (!scan.result().errors().isEmpty()) {

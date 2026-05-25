@@ -65,7 +65,7 @@ final class ReportServiceToolTest {
     }
 
     @Test
-    void localSessionsReportPaginatesFiftyRowsPerPage() throws Exception {
+    void localSessionsReportPaginatesFifteenRowsPerPage() throws Exception {
         LocalDate today = LocalDate.now(ZoneId.of("UTC"));
         SqliteUsageStore store = new SqliteUsageStore(tempDir.resolve("sessions.sqlite"));
         store.initialize();
@@ -79,13 +79,13 @@ final class ReportServiceToolTest {
         String firstPage = service.sessions(Map.of("period", "day", "compare", "previous", "page", "1")).toJson();
         String secondPage = service.sessions(Map.of("period", "day", "compare", "previous", "page", "2")).toJson();
 
-        assertTrue(firstPage.contains("\"page_size\":50"));
+        assertTrue(firstPage.contains("\"page_size\":15"));
         assertTrue(firstPage.contains("\"total\":55"));
-        assertTrue(firstPage.contains("\"total_pages\":2"));
+        assertTrue(firstPage.contains("\"total_pages\":4"));
         assertTrue(firstPage.contains("\"session_id\":\"session-54\""));
-        assertFalse(firstPage.contains("\"session_id\":\"session-4\""));
+        assertFalse(firstPage.contains("\"session_id\":\"session-39\""));
         assertTrue(secondPage.contains("\"page\":2"));
-        assertTrue(secondPage.contains("\"session_id\":\"session-4\""));
+        assertTrue(secondPage.contains("\"session_id\":\"session-39\""));
         assertFalse(secondPage.contains("\"session_id\":\"session-54\""));
     }
 

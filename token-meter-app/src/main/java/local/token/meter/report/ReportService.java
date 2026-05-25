@@ -106,9 +106,9 @@ public final class ReportService {
     }
 
     private static int pageSize(Map<String, String> params) {
-        int value = intParam(params, "page_size", 50);
-        if (value < 1 || value > 50) {
-            throw new BadRequestException("page_size must be between 1 and 50");
+        int value = intParam(params, "page_size", 15);
+        if (value < 1 || value > 15) {
+            throw new BadRequestException("page_size must be between 1 and 15");
         }
         return value;
     }

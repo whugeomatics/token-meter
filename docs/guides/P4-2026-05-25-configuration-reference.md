@@ -32,7 +32,7 @@
 | HTTP 端口                 | `--port=18080`                        | `PORT`                                      | `18080`                           | dashboard 和 API 监听端口                             |
 | 监听地址                    | `--bind=127.0.0.1`                    | `TOKEN_METER_BIND`                          | `127.0.0.1`                       | 需要局域网访问时设为 `0.0.0.0`                             |
 | SQLite 目录               | `--db=<path>`                         | `TOKEN_METER_DB`                            | `<user.home>/.token-meter/sqlite` | Local usage、Team registry、Team event DB 都从这个目录派生 |
-| 时区                      | `--timezone=Asia/Shanghai`            | `DASHBOARD_TIMEZONE`                        | Codex 日志时区，否则系统时区                 | 用于按日、周、月聚合                                       |
+| 时区                      | `--timezone=Asia/Shanghai`            | `DASHBOARD_TIMEZONE`                        | Codex 日志时区，否则系统时区                 | 用于按日、周、月聚合，以及 collector `upload_time` 输出     |
 | Codex sessions 目录       | `--sessions-dir=<path>`               | `CODEX_SESSIONS_DIR`                        | `<user.home>/.codex/sessions`     | Local Codex 采集读取这里                               |
 | Claude Code projects 目录 | `--claude-projects-dir=<path>`        | `TOKEN_METER_CLAUDE_PROJECTS_DIR`           | `<user.home>/.claude/projects`    | Local Claude Code 采集读取这里                         |
 | 本地后台采集周期                | `--local-ingest-interval-seconds=300` | `TOKEN_METER_LOCAL_INGEST_INTERVAL_SECONDS` | `300`                             | 单位秒；设为 `0` 表示禁用后台采集                              |

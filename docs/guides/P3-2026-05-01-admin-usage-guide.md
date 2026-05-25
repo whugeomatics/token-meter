@@ -198,18 +198,18 @@ sh scripts/P3-2026-05-01-run-collector.sh
 collector 成功时会输出类似：
 
 ```json
-{"status":"ok","events":12,"batches":1,"accepted":12,"duplicate":0,"rejected":0,"upload_time":"2026-05-01T04:40:00Z","client_user_id":"zhangsan","client_device_id":"zhangsan-macbook","server_url":"http://127.0.0.1:18080","start_date":"2026-04-02","end_date":"2026-05-01"}
+{"status":"ok","events":12,"batches":1,"accepted":12,"duplicate":0,"rejected":0,"upload_time":"2026-05-01T12:40:00+08:00","client_user_id":"zhangsan","client_device_id":"zhangsan-macbook","server_url":"http://127.0.0.1:18080","start_date":"2026-04-02","end_date":"2026-05-01"}
 ```
 
 如果重复运行，可能看到：
 
 ```json
-{"status":"ok","events":12,"batches":1,"accepted":0,"duplicate":12,"rejected":0,"upload_time":"2026-05-01T04:40:00Z","client_user_id":"zhangsan","client_device_id":"zhangsan-macbook","server_url":"http://127.0.0.1:18080","start_date":"2026-04-02","end_date":"2026-05-01"}
+{"status":"ok","events":12,"batches":1,"accepted":0,"duplicate":12,"rejected":0,"upload_time":"2026-05-01T12:40:00+08:00","client_user_id":"zhangsan","client_device_id":"zhangsan-macbook","server_url":"http://127.0.0.1:18080","start_date":"2026-04-02","end_date":"2026-05-01"}
 ```
 
 这是正常的，表示服务端通过 `event_key` 去重，没有重复统计。
 
-collector 输出会包含 `upload_time`、`client_user_id`、`client_device_id`、`server_url`、`start_date`、`end_date` 便于排查；不会输出 device token。
+collector 输出会包含 `upload_time`、`client_user_id`、`client_device_id`、`server_url`、`start_date`、`end_date` 便于排查；`upload_time` 按配置时区输出；不会输出 device token。
 
 ## 5. 把 collector 安装成 mac 服务
 

@@ -120,16 +120,20 @@ final class TokenMeterCollectorAppTest {
 
         assertEquals(new SessionUsageScanner(codexDir, config.zone()).scan().events().get(0).eventKey(),
                 collector.collectRecentEvents(LocalDate.now(config.zone()), LocalDate.now(config.zone())).get(0).eventKey());
+        assertEquals("local_jsonl",
+                collector.collectRecentEvents(LocalDate.now(config.zone()), LocalDate.now(config.zone())).get(0).sourceKind());
+        assertEquals("derived",
+                collector.collectRecentEvents(LocalDate.now(config.zone()), LocalDate.now(config.zone())).get(0).sourceQuality());
     }
 
     @Test
     void errorOutputIncludesUploadTimeForDiagnostics() {
         String json = TokenMeterCollectorApp.errorJson(new IOException("collector cannot connect"),
-                Instant.parse("2026-05-23T11:58:23Z"));
+                Instant.parse("2026-05-23T11:58:23Z"), ZoneId.of("Asia/Shanghai"));
 
         assertTrue(json.contains("\"status\":\"error\""));
         assertTrue(json.contains("\"error_code\":\"collector_upload_failed\""));
-        assertTrue(json.contains("\"upload_time\":\"2026-05-23T11:58:23Z\""));
+        assertTrue(json.contains("\"upload_time\":\"2026-05-23T19:58:23+08:00\""));
         assertTrue(json.contains("\"message\":\"collector cannot connect\""));
     }
 

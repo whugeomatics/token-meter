@@ -1,4 +1,4 @@
-const state = { localPeriod: 'day', teamPeriod: 'day', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], localTool: '', teamTool: '', toolOptions: [], localSessionsPage: 1, localSessionsTotalPages: 1, localSessionsPageSize: 50, teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
+const state = { localPeriod: 'day', teamPeriod: 'day', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], localTool: '', teamTool: '', toolOptions: [], localSessionsPage: 1, localSessionsTotalPages: 1, localSessionsPageSize: 15, teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
 const fmt = new Intl.NumberFormat();
 const qs = (id) => document.getElementById(id);
 const tokens = (n) => fmt.format(n || 0);

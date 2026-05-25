@@ -15,6 +15,7 @@ import local.token.meter.util.Json;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -954,7 +955,11 @@ public final class TeamReportService {
         if (value == null || value.isBlank()) {
             return null;
         }
-        return Instant.parse(value);
+        try {
+            return Instant.parse(value);
+        } catch (RuntimeException e) {
+            return OffsetDateTime.parse(value).toInstant();
+        }
     }
 
     private static Instant min(Instant left, Instant right) {
