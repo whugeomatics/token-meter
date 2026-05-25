@@ -47,6 +47,7 @@ public final class DashboardServer {
 
     public void start() throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress(bindHost, port), 0);
+        server.createContext("/api/report/sessions", this::handleReportSessions);
         server.createContext("/api/report", this::handleReport);
         server.createContext("/api/ingest", this::handleLocalIngest);
         server.createContext("/api/team/ingest", this::handleTeamIngest);
@@ -117,6 +118,22 @@ public final class DashboardServer {
         Map<String, String> query = parseQuery(exchange.getRequestURI().getRawQuery());
         try {
             writeJson(exchange, 200, reportService.report(query).toJson());
+        } catch (BadRequestException e) {
+            writeJson(exchange, 400, error("invalid_query", e.getMessage()));
+        } catch (Exception e) {
+            writeJson(exchange, 500, error("internal_error", e.getMessage()));
+        }
+    }
+
+    private void handleReportSessions(HttpExchange exchange) throws IOException {
+        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+            writeJson(exchange, 405, error("method_not_allowed", "Only GET is supported"));
+            return;
+        }
+
+        Map<String, String> query = parseQuery(exchange.getRequestURI().getRawQuery());
+        try {
+            writeJson(exchange, 200, reportService.sessions(query).toJson());
         } catch (BadRequestException e) {
             writeJson(exchange, 400, error("invalid_query", e.getMessage()));
         } catch (Exception e) {

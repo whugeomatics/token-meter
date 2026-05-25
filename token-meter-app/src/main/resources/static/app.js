@@ -1,4 +1,4 @@
-const state = { localPeriod: 'day', teamPeriod: 'day', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], localTool: '', teamTool: '', toolOptions: [], teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
+const state = { localPeriod: 'day', teamPeriod: 'day', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], localTool: '', teamTool: '', toolOptions: [], localSessionsPage: 1, localSessionsTotalPages: 1, localSessionsPageSize: 50, teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
 const fmt = new Intl.NumberFormat();
 const qs = (id) => document.getElementById(id);
 const tokens = (n) => fmt.format(n || 0);
@@ -35,6 +35,9 @@ document.querySelectorAll('[data-local-section-tab]').forEach((button) => {
   button.addEventListener('click', () => {
     state.localSection = button.dataset.localSectionTab;
     renderLocalSections();
+    if (state.localSection === 'sessions') {
+      loadSessions();
+    }
   });
 });
 document.querySelectorAll('[data-team-section-tab]').forEach((button) => {
@@ -44,6 +47,18 @@ document.querySelectorAll('[data-team-section-tab]').forEach((button) => {
   });
 });
 qs('refresh').addEventListener('click', () => load({ showToast: true }));
+qs('localSessionsPrev').addEventListener('click', () => {
+  if (state.localSessionsPage > 1) {
+    state.localSessionsPage -= 1;
+    loadSessions();
+  }
+});
+qs('localSessionsNext').addEventListener('click', () => {
+  if (state.localSessionsPage < state.localSessionsTotalPages) {
+    state.localSessionsPage += 1;
+    loadSessions();
+  }
+});
 qs('teamFilter').addEventListener('change', () => {
   state.teamId = qs('teamFilter').value;
   load();
@@ -82,6 +97,9 @@ async function load(options = {}) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const report = await response.json();
     state.view === 'team' ? renderTeam(report) : renderLocal(report);
+    if (state.view === 'local' && state.localSection === 'sessions') {
+      await loadSessions();
+    }
     statusEl().textContent = '';
     statusEl().className = 'status';
     if (options.showToast) {
@@ -93,6 +111,24 @@ async function load(options = {}) {
     if (options.showToast) {
       showToast(`${viewLabel()} refresh failed: ${error.message}`, 'error');
     }
+  }
+}
+
+async function loadSessions() {
+  qs('localSessionsStatus').textContent = 'Loading sessions...';
+  qs('localSessionsStatus').className = 'status';
+  try {
+    let query = `${queryForView()}&page=${encodeURIComponent(state.localSessionsPage)}&page_size=${encodeURIComponent(state.localSessionsPageSize)}`;
+    const tool = toolForView();
+    if (tool) {
+      query += `&tool=${encodeURIComponent(tool)}`;
+    }
+    const response = await fetch(`/api/report/sessions?${query}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    renderSessions(await response.json());
+  } catch (error) {
+    qs('localSessionsStatus').textContent = error.message;
+    qs('localSessionsStatus').className = 'status error';
   }
 }
 
@@ -109,6 +145,7 @@ function setPeriodForView(period) {
     state.teamPeriod = period;
   } else {
     state.localPeriod = period;
+    state.localSessionsPage = 1;
   }
 }
 
@@ -121,6 +158,7 @@ function setToolForView(tool) {
     state.teamTool = tool;
   } else {
     state.localTool = tool;
+    state.localSessionsPage = 1;
   }
 }
 
@@ -146,7 +184,6 @@ function renderLocal(report) {
   renderDaily(report.daily || [], 'localDailyChart', 'localDailyStatus', 'localDailyBody');
   renderModels(report.models || [], 'localModelsBody');
   renderTools(report.tools || [], 'localToolsBody', false);
-  renderSessions(report.sessions || []);
   renderLocalSections();
 }
 
@@ -462,10 +499,15 @@ function comparable(value) {
   return typeof value === 'number' ? value : String(value || '').toLowerCase();
 }
 
-function renderSessions(rows) {
-  const visibleRows = rows.slice(0, 50);
-  qs('localSessionsStatus').textContent = rows.length > 50 ? `Latest 50 of ${tokens(rows.length)}` : `${tokens(rows.length)} rows`;
-  qs('localSessionsBody').innerHTML = visibleRows.length ? visibleRows.map((row) => `<tr><td>${toolList(row.tools)}</td><td>${escapeHtml(row.session_id)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.net_tokens)}</td><td>${tokens(row.usage_event_count)}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${formatDuration(row.active_seconds)}</td><td>${escapeHtml(formatDateTime(row.started_at))}</td><td>${escapeHtml(formatDateTime(row.ended_at))}</td><td>${escapeHtml((row.models || []).join(', '))}</td></tr>`).join('') : '<tr><td colspan="10" class="empty">No sessions yet</td></tr>';
+function renderSessions(data) {
+  const rows = data.sessions || [];
+  state.localSessionsPage = data.page || 1;
+  state.localSessionsTotalPages = data.total_pages || 1;
+  qs('localSessionsStatus').textContent = data.total ? `${tokens(data.total)} sessions` : 'No sessions';
+  qs('localSessionsPage').textContent = `Page ${tokens(state.localSessionsPage)} / ${tokens(state.localSessionsTotalPages)}`;
+  qs('localSessionsPrev').disabled = state.localSessionsPage <= 1;
+  qs('localSessionsNext').disabled = state.localSessionsPage >= state.localSessionsTotalPages;
+  qs('localSessionsBody').innerHTML = rows.length ? rows.map((row) => `<tr><td>${toolList(row.tools)}</td><td>${escapeHtml(row.session_id)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.net_tokens)}</td><td>${tokens(row.usage_event_count)}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${formatDuration(row.active_seconds)}</td><td>${escapeHtml(formatDateTime(row.started_at))}</td><td>${escapeHtml(formatDateTime(row.ended_at))}</td><td>${escapeHtml((row.models || []).join(', '))}</td></tr>`).join('') : '<tr><td colspan="10" class="empty">No sessions yet</td></tr>';
 }
 
 function renderLocalSections() {

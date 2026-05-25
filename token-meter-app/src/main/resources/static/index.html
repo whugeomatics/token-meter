@@ -98,7 +98,15 @@
       </section>
 
       <section class="section local-section hidden" data-local-section="sessions">
-        <div class="section-header"><div class="section-title">Sessions</div><div id="localSessionsStatus" class="status"></div></div>
+        <div class="section-header">
+          <div class="section-title">Sessions</div>
+          <div class="pager">
+            <button id="localSessionsPrev" type="button">Previous</button>
+            <span id="localSessionsPage" class="status">Page 1</span>
+            <button id="localSessionsNext" type="button">Next</button>
+          </div>
+          <div id="localSessionsStatus" class="status"></div>
+        </div>
         <div class="table-wrap"><table><thead><tr><th>Tool</th><th>Session</th><th>Total</th><th>Net</th><th>Calls</th><th>Avg / Call</th><th>Active</th><th>Started</th><th>Ended</th><th>Models</th></tr></thead><tbody id="localSessionsBody"></tbody></table></div>
       </section>
       </div>

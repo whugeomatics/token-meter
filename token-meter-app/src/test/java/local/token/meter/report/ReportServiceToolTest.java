@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class ReportServiceToolTest {
@@ -63,8 +64,38 @@ final class ReportServiceToolTest {
         assertTrue(json.contains("\"delta_total_tokens\":100"));
     }
 
+    @Test
+    void localSessionsReportPaginatesFiftyRowsPerPage() throws Exception {
+        LocalDate today = LocalDate.now(ZoneId.of("UTC"));
+        SqliteUsageStore store = new SqliteUsageStore(tempDir.resolve("sessions.sqlite"));
+        store.initialize();
+        for (int index = 0; index < 55; index++) {
+            store.insertLocalUsageEvent("codex", "codex-source", index + 1,
+                    event("codex-" + index, "codex", "session-" + index, 100, today,
+                            Instant.parse(today + "T00:" + String.format("%02d", index) + ":00Z")));
+        }
+
+        ReportService service = new ReportService(store, ZoneId.of("UTC"));
+        String firstPage = service.sessions(Map.of("period", "day", "compare", "previous", "page", "1")).toJson();
+        String secondPage = service.sessions(Map.of("period", "day", "compare", "previous", "page", "2")).toJson();
+
+        assertTrue(firstPage.contains("\"page_size\":50"));
+        assertTrue(firstPage.contains("\"total\":55"));
+        assertTrue(firstPage.contains("\"total_pages\":2"));
+        assertTrue(firstPage.contains("\"session_id\":\"session-54\""));
+        assertFalse(firstPage.contains("\"session_id\":\"session-4\""));
+        assertTrue(secondPage.contains("\"page\":2"));
+        assertTrue(secondPage.contains("\"session_id\":\"session-4\""));
+        assertFalse(secondPage.contains("\"session_id\":\"session-54\""));
+    }
+
     private static TeamUsageEvent event(String key, String tool, String session, long totalTokens, LocalDate date) {
-        return new TeamUsageEvent(key, tool, session, "claude-sonnet", Instant.parse(date + "T00:00:00Z"),
+        return event(key, tool, session, totalTokens, date, Instant.parse(date + "T00:00:00Z"));
+    }
+
+    private static TeamUsageEvent event(String key, String tool, String session, long totalTokens, LocalDate date,
+                                        Instant timestamp) {
+        return new TeamUsageEvent(key, tool, session, "claude-sonnet", timestamp,
                 date, new Snapshot(totalTokens / 2, 0, totalTokens / 2, 0, totalTokens),
                 "", "");
     }

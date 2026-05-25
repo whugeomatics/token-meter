@@ -64,6 +64,59 @@ public final class ReportService {
         return aggregator.toReport();
     }
 
+    public Report sessions(Map<String, String> params) throws SQLException {
+        ReportQuery query = sessionQuery(params);
+        int pageSize = pageSize(params);
+        int page = page(params);
+        Map<String, SessionBucket> sessions = new HashMap<>();
+        for (UsageEvent event : usageStore.loadEvents(query.startDate(), query.endDate())) {
+            if (query.contains(event.timestamp()) && query.matchesTool(event.tool())) {
+                sessions.computeIfAbsent(event.sessionId(), SessionBucket::new).add(event);
+            }
+        }
+        List<SessionBucket> sorted = sessions.values().stream()
+                .sorted(Comparator.comparing((SessionBucket bucket) -> bucket.startedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+        int total = sorted.size();
+        int from = Math.min(total, (page - 1) * pageSize);
+        int to = Math.min(total, from + pageSize);
+        return new SessionPagePayload(query, page, pageSize, total, sorted.subList(from, to));
+    }
+
+    private ReportQuery sessionQuery(Map<String, String> params) {
+        String period = params.getOrDefault("period", "");
+        String compare = params.getOrDefault("compare", "");
+        if (period.isBlank() && compare.isBlank()) {
+            return ReportQuery.from(params, zone);
+        }
+        if ("previous".equals(compare)) {
+            return PeriodComparison.previous(period, LocalDate.now(zone), zone, "", "",
+                    params.getOrDefault("tool", "")).current();
+        }
+        throw new BadRequestException("period and compare must use compare=previous");
+    }
+
+    private static int page(Map<String, String> params) {
+        int value = intParam(params, "page", 1);
+        if (value < 1) {
+            throw new BadRequestException("page must be >= 1");
+        }
+        return value;
+    }
+
+    private static int pageSize(Map<String, String> params) {
+        int value = intParam(params, "page_size", 50);
+        if (value < 1 || value > 50) {
+            throw new BadRequestException("page_size must be between 1 and 50");
+        }
+        return value;
+    }
+
+    private static int intParam(Map<String, String> params, String name, int defaultValue) {
+        String value = params.get(name);
+        return value == null || value.isBlank() ? defaultValue : Integer.parseInt(value);
+    }
+
     private Report periodComparison(Map<String, String> params, String period) throws SQLException {
         String tool = params.getOrDefault("tool", "");
         PeriodComparison comparison = PeriodComparison.previous(period, LocalDate.now(zone), zone, "", "", tool);
@@ -331,6 +384,33 @@ public final class ReportService {
                     .map(entry -> "\"" + Json.escape(entry.getKey()) + "\":" + entry.getValue())
                     .reduce((left, right) -> left + "," + right)
                     .orElse("") + "}";
+        }
+    }
+
+    private record SessionPagePayload(ReportQuery query, int page, int pageSize, int total,
+                                      List<SessionBucket> sessions) implements Report {
+        public String toJson() {
+            int totalPages = Math.max(1, (int) Math.ceil((double) total / pageSize));
+            return "{"
+                    + "\"range\":{\"kind\":\"" + Json.escape(query.kind()) + "\",\"start_date\":\""
+                    + query.startDate() + "\",\"end_date\":\"" + query.endDate() + "\",\"timezone\":\""
+                    + Json.escape(query.zone().getId()) + "\"},"
+                    + "\"page\":" + page + ","
+                    + "\"page_size\":" + pageSize + ","
+                    + "\"total\":" + total + ","
+                    + "\"total_pages\":" + totalPages + ","
+                    + "\"sessions\":" + Json.array(sessions, bucket -> "{"
+                    + "\"session_id\":\"" + Json.escape(bucket.sessionId) + "\","
+                    + "\"started_at\":\"" + formatInstant(bucket.startedAt, query.zone()) + "\","
+                    + "\"ended_at\":\"" + formatInstant(bucket.endedAt, query.zone()) + "\","
+                    + "\"active_seconds\":" + ReportService.activeSeconds(bucket.startedAt, bucket.endedAt) + ","
+                    + "\"tools\":" + Json.stringArray(bucket.tools.stream().sorted().toList()) + ","
+                    + "\"models\":" + Json.stringArray(bucket.models.stream().sorted().toList()) + ","
+                    + "\"usage_event_count\":" + bucket.eventCount + ","
+                    + "\"avg_tokens_per_call\":" + decimal(bucket.eventCount == 0 ? 0.0d : (double) bucket.totals.totalTokens / bucket.eventCount) + ","
+                    + bucket.totals.jsonFields()
+                    + "}")
+                    + "}";
         }
     }
 
