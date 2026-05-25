@@ -13,9 +13,21 @@
 
 ## 2. 当前阶段
 
-当前阶段：P4 实现验证完成，下一阶段尚未启动。
+当前阶段：P5 Unified CLI Usage Metrics 设计进行中，功能实现尚未开始。
 
-P1、P2、P3 已通过验收。P4 聚焦 Claude Code local + teammate usage collection。P4 当前代码已支持 Local 与 Team 默认同时采集 Codex 和 Claude Code，并已完成实现验证；后续改动仍需先对齐 contract、tasks 和 acceptance。
+P1、P2、P3 已通过验收。P4 聚焦 Claude Code local + teammate usage collection。P4 当前代码已支持 Local 与 Team 默认同时采集 Codex 和 Claude Code，并已完成实现验证。
+
+P5 聚焦 Codex 与 Claude Code 的 unified CLI usage metrics：统一 canonical usage event 事实字段、缺失字段 fallback、Local/Team report 派生指标公式和 dashboard 同名指标语义，同时让 schema 支撑未来 CLI source mapping。P5 不接入新 CLI，不实现本地网关，不做 provider 自动路由、费用估算、预算或告警。后续代码改动仍需先对齐 P5 contract、tasks 和 acceptance。
+
+P5 文档基线：
+
+- `docs/P5-2026-05-24-README.md`
+- `docs/contracts/P5-2026-05-24-unified-cli-usage-metrics.md`
+- `docs/integrations/codex.md`
+- `docs/integrations/claude-code.md`
+- `docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-design.md`
+- `docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-tasks.md`
+- `docs/acceptance/P5-2026-05-24-unified-cli-usage-metrics.md`
 
 P4 文档基线：
 

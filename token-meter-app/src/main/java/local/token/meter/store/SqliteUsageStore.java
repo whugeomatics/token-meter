@@ -40,6 +40,7 @@ public final class SqliteUsageStore implements UsageStore {
             statement.executeUpdate(scripts.statement("create_schema_migrations"));
             statement.executeUpdate(scripts.statement("create_source_files"));
             statement.executeUpdate(scripts.statement("create_usage_events"));
+            addUsageEventSourceColumns(statement);
             statement.executeUpdate(scripts.statement("create_idx_usage_events_local_date"));
             statement.executeUpdate(scripts.statement("create_idx_usage_events_model"));
             statement.executeUpdate(scripts.statement("create_idx_usage_events_session"));
@@ -110,7 +111,9 @@ public final class SqliteUsageStore implements UsageStore {
             statement.setLong(11, event.delta().outputTokens());
             statement.setLong(12, event.delta().reasoningOutputTokens());
             statement.setLong(13, event.delta().totalTokens());
-            statement.setString(14, Instant.now().toString());
+            statement.setString(14, "local_jsonl");
+            statement.setString(15, "derived");
+            statement.setString(16, Instant.now().toString());
             return statement.executeUpdate() > 0;
         }
     }
@@ -132,7 +135,9 @@ public final class SqliteUsageStore implements UsageStore {
             statement.setLong(11, event.usage().outputTokens());
             statement.setLong(12, event.usage().reasoningOutputTokens());
             statement.setLong(13, event.usage().totalTokens());
-            statement.setString(14, Instant.now().toString());
+            statement.setString(14, event.sourceKind());
+            statement.setString(15, event.sourceQuality());
+            statement.setString(16, Instant.now().toString());
             return statement.executeUpdate() > 0;
         }
     }
@@ -175,7 +180,8 @@ public final class SqliteUsageStore implements UsageStore {
                             rs.getLong("total_tokens")
                     );
                     events.add(new UsageEvent(rs.getString("tool"), rs.getString("session_id"), rs.getString("model"),
-                            Instant.parse(rs.getString("event_timestamp")), usage));
+                            Instant.parse(rs.getString("event_timestamp")), usage,
+                            rs.getString("source_kind"), rs.getString("source_quality")));
                 }
             }
         }
@@ -207,6 +213,21 @@ public final class SqliteUsageStore implements UsageStore {
 
     private Connection connect() throws SQLException {
         return DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath());
+    }
+
+    private void addUsageEventSourceColumns(Statement statement) throws SQLException {
+        addColumnIfMissing(statement, "alter_usage_events_add_source_kind");
+        addColumnIfMissing(statement, "alter_usage_events_add_source_quality");
+    }
+
+    private void addColumnIfMissing(Statement statement, String scriptName) throws SQLException {
+        try {
+            statement.executeUpdate(scripts.statement(scriptName));
+        } catch (SQLException e) {
+            if (!e.getMessage().toLowerCase().contains("duplicate column")) {
+                throw e;
+            }
+        }
     }
 
 }

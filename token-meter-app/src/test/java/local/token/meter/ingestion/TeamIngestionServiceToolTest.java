@@ -59,6 +59,8 @@ final class TeamIngestionServiceToolTest {
 
         assertTrue(allJson.contains("\"tools\""));
         assertTrue(allJson.contains("\"tool\":\"claude-code\""));
+        assertTrue(allJson.contains("\"source_kind\":{\"otel_metric\":1"));
+        assertTrue(allJson.contains("\"source_quality\":{\"reported\":1"));
         assertTrue(allJson.contains("\"team_models\""));
         assertTrue(allJson.contains("\"tool\":\"claude-code\",\"model\":\"claude-sonnet\""));
         assertTrue(claudeJson.contains("\"total_tokens\":100"));

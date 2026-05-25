@@ -8,9 +8,9 @@ Token Meter is a local AI CLI usage dashboard and future routing tool. The proje
 
 ## Current Status
 
-Current phase: **P4 - Claude Code teammate usage collection implementation verification complete**.
+Current phase: **P5 - Unified CLI usage metrics design in progress**.
 
-P1, P2, P3, and P4 have passed implementation verification. The next phase has not started.
+P1, P2, P3, and P4 have passed implementation verification. P5 design has started; P5 implementation has not started.
 
 P1, the Codex Dashboard MVP:
 
@@ -41,6 +41,13 @@ P4, Claude Code local and team usage collection:
 - Collector config precedence is `CLI args > ~/.token-meter/collector.env > system environment variables`.
 - `--collect-claude-code` is retained only as a legacy compatibility entry point.
 - P4 review and acceptance are recorded; local port-binding smoke can be skipped only when the Codex sandbox blocks local HTTP ports.
+
+P5, Unified CLI usage metrics:
+
+- P5 defines canonical usage event facts for CLI tools, starting with Codex and Claude Code.
+- P5 keeps derived metrics such as net tokens and cache rate in the report layer.
+- P5 may include small code adjustments so Codex and Claude Code match the same metric contract.
+- P5 does not add Cursor, Gemini CLI, a local model gateway, provider routing, pricing, budgets, or alerts.
 
 ## Stage Results
 
@@ -77,6 +84,16 @@ Out of scope for the current phase:
 Current phase:
 
 - [Current AGENTS.md](AGENTS.md)
+
+P5 design baseline:
+
+- [P5 README](docs/P5-2026-05-24-README.md)
+- [P5 Unified CLI Usage Metrics Contract](docs/contracts/P5-2026-05-24-unified-cli-usage-metrics.md)
+- [Codex Integration Mapping](docs/integrations/codex.md)
+- [Claude Code Integration Mapping](docs/integrations/claude-code.md)
+- [P5 Design](docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-design.md)
+- [P5 Tasks](docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-tasks.md)
+- [P5 Acceptance](docs/acceptance/P5-2026-05-24-unified-cli-usage-metrics.md)
 
 P4 implementation baseline:
 

@@ -97,7 +97,7 @@ public final class ShardedTeamUsageStore implements TeamUsageStore {
         return new StoredTeamUsageEvent(event.teamId(), event.userId(),
                 displayName == null || displayName.isBlank() ? event.userId() : displayName,
                 event.deviceId(), displayName, event.tool(), event.sessionId(), event.model(),
-                event.timestamp(), event.usage());
+                event.timestamp(), event.usage(), event.sourceKind(), event.sourceQuality());
     }
 
     private SqliteTeamUsageStore store(YearMonth shard) throws SQLException {

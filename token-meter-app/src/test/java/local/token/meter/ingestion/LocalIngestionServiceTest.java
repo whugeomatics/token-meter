@@ -54,5 +54,7 @@ final class LocalIngestionServiceTest {
         String json = new ReportService(store, ZoneId.of("UTC")).report(Map.of("days", "1")).toJson();
         assertTrue(json.contains("\"tool\":\"claude-code\""));
         assertTrue(json.contains("\"total_tokens\":40"));
+        assertTrue(json.contains("\"input_tokens\":20"));
+        assertTrue(json.contains("\"cached_input_tokens\":10"));
     }
 }
