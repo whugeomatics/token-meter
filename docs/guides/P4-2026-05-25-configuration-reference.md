@@ -106,10 +106,11 @@ java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --create-dev
 
 | 用途                 | CLI 参数                        | env 文件或系统环境变量               | 默认值                                      | 说明                             |
 |--------------------|-------------------------------|-----------------------------|------------------------------------------|--------------------------------|
-| collector env 文件路径 | `--collector-env-file=<path>` | `TOKEN_METER_COLLECTOR_ENV` | `<user.home>/.token-meter/collector.env` | Windows 兼容 `collector.env.cmd` |
+| collector env 文件路径 | `--collector-env-file=<path>` | `TOKEN_METER_COLLECTOR_ENV` | `<user.home>/.token-meter/collector.env` | Windows Git Bash 同样使用 Unix 脚本，兼容旧 `collector.env.cmd` |
+| collector 本地状态库 | `--collector-state-db=<path>` | `TOKEN_METER_COLLECTOR_STATE_DB` | `<user.home>/.token-meter/sqlite/token-meter-collector-state.sqlite` | collector 端轻量 SQLite，只保存待上报/补传所需 usage event |
 
-Windows 上，如果 `%USERPROFILE%\.token-meter\collector.env` 不存在，但 `%USERPROFILE%\.token-meter\collector.env.cmd`
-存在，会读取 `collector.env.cmd`。
+Windows 上推荐通过 Git Bash 执行同一个 `run-collector.sh`。如果 `%USERPROFILE%\.token-meter\collector.env` 不存在，
+但 `%USERPROFILE%\.token-meter\collector.env.cmd` 存在，会读取 `collector.env.cmd`。
 
 ## Collector 采集与上传配置
 

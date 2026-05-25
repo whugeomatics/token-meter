@@ -17,6 +17,7 @@ final class CollectorEnvFile {
             Map.entry("TOKEN_METER_USER_ID", "user-id"),
             Map.entry("TOKEN_METER_DEVICE_ID", "device-id"),
             Map.entry("TOKEN_METER_BATCH_SIZE", "batch-size"),
+            Map.entry("TOKEN_METER_COLLECTOR_STATE_DB", "collector-state-db"),
             Map.entry("TOKEN_METER_DAYS", "days"),
             Map.entry("CODEX_SESSIONS_DIR", "sessions-dir"),
             Map.entry("TOKEN_METER_CLAUDE_SOURCE", "claude-source"),

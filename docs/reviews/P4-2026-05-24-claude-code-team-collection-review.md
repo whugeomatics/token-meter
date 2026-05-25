@@ -77,9 +77,9 @@ Teammate 配置：通过
 
 分发包：通过
 
-- collector jar 不包含 dashboard、HTTP/API、admin、store、SQLite driver 或静态资源。
-- macOS/Linux 和 Windows dist README 已说明 Codex + Claude Code、teammate `.env` 和配置优先级。
-- `dist/` 仍保持 `token-meter-collector-mac-linux/` 与 `token-meter-collector-windows/` 两个目录。
+- collector jar 不包含 dashboard、HTTP/API、admin、app store 或静态资源；collector 仅包含轻量 SQLite 状态库所需 driver。
+- Unix/Git Bash dist README 已说明 Codex + Claude Code、teammate `.env` 和配置优先级。
+- `dist/` 保持 `token-meter-collector-unix/` 一个目录；Windows 通过 Git Bash 执行同一套脚本。
 
 ## 验证记录
 
@@ -91,8 +91,7 @@ mvn -DskipTests package
 node --check token-meter-app/src/main/resources/static/admin.js
 sh scripts/P3-2026-05-01-package-collector.sh all
 sh -n scripts/P3-2026-05-01-package-collector-unix.sh
-sh -n scripts/P3-2026-05-01-package-collector-windows.sh
-sh -n dist/token-meter-collector-mac-linux/run-collector.sh
+sh -n dist/token-meter-collector-unix/run-collector.sh
 ```
 
 新增：

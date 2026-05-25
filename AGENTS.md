@@ -81,10 +81,10 @@ P3 module 细节见：
 
 分发包约束：
 
-- `dist/` 下保持两个 teammate 制品包目录：macOS/Linux 使用 `token-meter-collector-mac-linux/`，Windows 使用 `token-meter-collector-windows/`。
+- `dist/` 下保持一个 teammate 制品包目录：`token-meter-collector-unix/`。Windows 通过 Git Bash 执行同一套 Unix 脚本，不再维护 Windows 专用 collector 包。
 - `dist/` 制品包内的 collector jar 名称必须为 `token-meter-collector.jar`，不包含 `SNAPSHOT`；Maven target 和源码脚本仍保持项目版本命名。
-- 打包脚本按目标平台拆分：总入口 `scripts/P3-2026-05-01-package-collector.sh` 接收 `unix`、`windows` 或 `all`；平台脚本分别为 `scripts/P3-2026-05-01-package-collector-unix.sh` 和 `scripts/P3-2026-05-01-package-collector-windows.sh`。
-- macOS/Linux teammate 默认配置文件为 `~/.token-meter/collector.env`。Windows 优先使用 `%USERPROFILE%\.token-meter\collector.env`，并兼容旧的 `collector.env.cmd`。
+- 打包脚本入口 `scripts/P3-2026-05-01-package-collector.sh` 接收 `unix` 或 `all`，两者都生成同一个 Unix/Git Bash collector 包。
+- teammate 默认配置文件为 `~/.token-meter/collector.env`。Windows Git Bash 下同样使用该路径，并兼容旧的 `collector.env.cmd` 读取。
 
 ## 4. 当前阶段必读
 

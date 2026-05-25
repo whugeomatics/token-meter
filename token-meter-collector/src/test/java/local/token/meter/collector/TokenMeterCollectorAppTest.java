@@ -1,6 +1,8 @@
 package local.token.meter.collector;
 
 import local.token.meter.app.AppConfig;
+import local.token.meter.domain.Snapshot;
+import local.token.meter.domain.TeamUsageEvent;
 import local.token.meter.ingestion.SessionUsageScanner;
 import local.token.meter.ingestion.TeamCollector;
 import org.junit.jupiter.api.Test;
@@ -82,6 +84,45 @@ final class TokenMeterCollectorAppTest {
     }
 
     @Test
+    void collectorStateKeepsCodexAndClaudeCodeEventsForUpload() throws Exception {
+        LocalDate today = LocalDate.now(ZoneId.of("UTC"));
+        CollectorUsageStore store = new CollectorUsageStore(tempDir.resolve("collector-state.sqlite"));
+        store.initialize();
+
+        int inserted = store.insertEvents(List.of(
+                teamEvent("codex-key", "codex", "codex-session", today),
+                teamEvent("claude-key", "claude-code", "claude-session", today),
+                teamEvent("claude-key", "claude-code", "claude-session", today)
+        ));
+        List<TeamUsageEvent> events = store.loadEvents(today, today, "user-a", "device-a");
+
+        assertEquals(2, inserted);
+        assertEquals(2, events.size());
+        assertTrue(events.stream().anyMatch(event -> "codex".equals(event.tool())));
+        assertTrue(events.stream().anyMatch(event -> "claude-code".equals(event.tool())));
+        assertTrue(events.stream().allMatch(event -> "user-a".equals(event.clientUserId())));
+    }
+
+    @Test
+    void codexCollectorUsesCoreEventKey() throws Exception {
+        Path codexDir = tempDir.resolve("codex-key");
+        Files.createDirectories(codexDir);
+        String today = LocalDate.now(ZoneId.systemDefault()).toString();
+        Path session = codexDir.resolve("session.jsonl");
+        Files.writeString(session, ""
+                + "{\"timestamp\":\"" + today + "T00:00:00Z\",\"type\":\"session_meta\",\"payload\":{\"id\":\"codex-session\"}}\n"
+                + "{\"timestamp\":\"" + today + "T00:00:01Z\",\"type\":\"turn_context\",\"payload\":{\"model\":\"gpt-5-codex\"}}\n"
+                + "{\"timestamp\":\"" + today + "T00:00:02Z\",\"type\":\"event_msg\",\"payload\":{\"type\":\"token_count\",\"info\":{\"total_token_usage\":{\"input_tokens\":10,\"cached_input_tokens\":0,\"output_tokens\":5,\"reasoning_output_tokens\":0,\"total_tokens\":15}}}}\n");
+
+        AppConfig config = AppConfig.from(new String[]{"--sessions-dir=" + codexDir});
+        TeamCollector collector = new TeamCollector(new SessionUsageScanner(codexDir, config.zone()),
+                config.zone(), "http://127.0.0.1:1", "test-token", "user-a", "device-a", 500);
+
+        assertEquals(new SessionUsageScanner(codexDir, config.zone()).scan().events().get(0).eventKey(),
+                collector.collectRecentEvents(LocalDate.now(config.zone()), LocalDate.now(config.zone())).get(0).eventKey());
+    }
+
+    @Test
     void errorOutputIncludesUploadTimeForDiagnostics() {
         String json = TokenMeterCollectorApp.errorJson(new IOException("collector cannot connect"),
                 Instant.parse("2026-05-23T11:58:23Z"));
@@ -90,6 +131,11 @@ final class TokenMeterCollectorAppTest {
         assertTrue(json.contains("\"error_code\":\"collector_upload_failed\""));
         assertTrue(json.contains("\"upload_time\":\"2026-05-23T11:58:23Z\""));
         assertTrue(json.contains("\"message\":\"collector cannot connect\""));
+    }
+
+    private static TeamUsageEvent teamEvent(String key, String tool, String session, LocalDate date) {
+        return new TeamUsageEvent(key, tool, session, "model-a", Instant.parse(date + "T00:00:00Z"), date,
+                new Snapshot(1, 0, 1, 0, 2), "", "", "local_jsonl", "reported");
     }
 
     @Test

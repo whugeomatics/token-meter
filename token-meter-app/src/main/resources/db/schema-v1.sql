@@ -192,7 +192,7 @@ INSERT OR IGNORE INTO team_usage_events(team_id, user_id, device_id, event_key, 
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: load_team_usage_events
-SELECT e.team_id, e.user_id, e.device_id, d.display_name, e.tool, e.session_id, e.model, e.event_timestamp,
+SELECT e.event_key, e.team_id, e.user_id, e.device_id, d.display_name, e.tool, e.session_id, e.model, e.event_timestamp,
   e.input_tokens, e.cached_input_tokens, e.output_tokens, e.reasoning_output_tokens, e.total_tokens,
   e.source_kind, e.source_quality
 FROM team_usage_events e
@@ -201,7 +201,7 @@ WHERE e.local_date >= ? AND e.local_date <= ?
 ORDER BY e.event_timestamp, e.id;
 
 -- name: load_team_usage_events_plain
-SELECT e.team_id, e.user_id, e.device_id, NULL AS display_name, e.tool, e.session_id, e.model, e.event_timestamp,
+SELECT e.event_key, e.team_id, e.user_id, e.device_id, NULL AS display_name, e.tool, e.session_id, e.model, e.event_timestamp,
   e.input_tokens, e.cached_input_tokens, e.output_tokens, e.reasoning_output_tokens, e.total_tokens,
   e.source_kind, e.source_quality
 FROM team_usage_events e
@@ -241,7 +241,7 @@ INSERT OR IGNORE INTO usage_events(source_file_id, line_number, event_key, tool,
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: load_usage_events
-SELECT tool, session_id, model, event_timestamp, input_tokens, cached_input_tokens, output_tokens,
+SELECT event_key, tool, session_id, model, event_timestamp, input_tokens, cached_input_tokens, output_tokens,
   reasoning_output_tokens, total_tokens, source_kind, source_quality
 FROM usage_events
 WHERE local_date >= ? AND local_date <= ?

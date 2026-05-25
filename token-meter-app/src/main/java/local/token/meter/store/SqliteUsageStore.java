@@ -179,7 +179,8 @@ public final class SqliteUsageStore implements UsageStore {
                             rs.getLong("reasoning_output_tokens"),
                             rs.getLong("total_tokens")
                     );
-                    events.add(new UsageEvent(rs.getString("tool"), rs.getString("session_id"), rs.getString("model"),
+                    events.add(new UsageEvent(rs.getString("event_key"), rs.getString("tool"),
+                            rs.getString("session_id"), rs.getString("model"),
                             Instant.parse(rs.getString("event_timestamp")), usage,
                             rs.getString("source_kind"), rs.getString("source_quality")));
                 }

@@ -447,7 +447,7 @@ Run:
 sh scripts/P3-2026-05-01-package-collector.sh all
 ```
 
-Expected: `dist/token-meter-collector-mac-linux/token-meter-collector.jar` and `dist/token-meter-collector-windows/token-meter-collector.jar` are generated.
+Expected: `dist/token-meter-collector-unix/token-meter-collector.jar` is generated. Windows teammates run the same Unix package through Git Bash.
 
 - [ ] **Step 5: Update P5 tasks and acceptance**
 

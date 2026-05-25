@@ -231,30 +231,22 @@ teammate 机器不需要完整项目源码。管理员机器先构建 jar：
 mvn -DskipTests package
 ```
 
-然后按 teammate 系统生成 collector 分发目录：
+然后生成统一的 Unix/Git Bash collector 分发目录：
 
 ```sh
-sh scripts/P3-2026-05-01-package-collector.sh unix
-sh scripts/P3-2026-05-01-package-collector.sh windows
+sh scripts/P3-2026-05-01-package-collector.sh all
 ```
 
-按 teammate 系统发送对应目录：
+发送该目录给 teammate。Windows teammate 通过 Git Bash 执行同一套脚本：
 
 ```text
-dist/token-meter-collector-mac-linux/
+dist/token-meter-collector-unix/
   README.md
   token-meter-collector.jar
   run-collector.sh
   run-collector-service.sh
   install-collector-service.sh
   uninstall-collector-service.sh
-
-dist/token-meter-collector-windows/
-  README.md
-  token-meter-collector.jar
-  run-collector.cmd
-  install-collector-task.cmd
-  uninstall-collector-task.cmd
 ```
 
 ### 5.2 teammate 安装服务

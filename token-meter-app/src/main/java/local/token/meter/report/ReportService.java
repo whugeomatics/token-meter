@@ -6,6 +6,7 @@ import local.token.meter.domain.PeriodComparison;
 import local.token.meter.domain.TokenTotals;
 import local.token.meter.domain.UsageEvent;
 import local.token.meter.http.BadRequestException;
+import local.token.meter.ingestion.UsageEventKeys;
 import local.token.meter.store.UsageStore;
 import local.token.meter.util.Json;
 
@@ -144,6 +145,7 @@ public final class ReportService {
         private final Map<String, ToolBucket> tools = new HashMap<>();
         private final Map<String, SessionBucket> sessions = new HashMap<>();
         private final ActiveWindows activeWindows = new ActiveWindows();
+        private final Set<String> callKeys = new HashSet<>();
         private int eventCount;
         private Instant startedAt;
         private Instant endedAt;
@@ -162,6 +164,7 @@ public final class ReportService {
             addSourceDimension(sourceKindCounts, event.sourceKind());
             addSourceQuality(sourceQualityCounts, event.sourceQuality());
             eventCount++;
+            callKeys.add(callKey(event));
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
             activeWindows.add(event.sessionId(), event.timestamp());
@@ -186,7 +189,7 @@ public final class ReportService {
         }
 
         Report toReport(String comparisonJson) {
-            return new ReportPayload(query, summary, eventCount, sessions.size(), activeWindows.activeSeconds(),
+            return new ReportPayload(query, summary, eventCount, callKeys.size(), sessions.size(), activeWindows.activeSeconds(),
                     sourceKindCounts, sourceQualityCounts, new ArrayList<>(daily.values()),
                     models.values().stream()
                             .sorted(Comparator.comparingLong((ModelBucket bucket) -> bucket.totals.totalTokens).reversed())
@@ -206,6 +209,7 @@ public final class ReportService {
         final TokenTotals totals = new TokenTotals();
         final Set<String> models = new HashSet<>();
         final Set<String> tools = new HashSet<>();
+        final Set<String> callKeys = new HashSet<>();
         int eventCount;
         Instant startedAt;
         Instant endedAt;
@@ -219,6 +223,7 @@ public final class ReportService {
             models.add(event.model());
             tools.add(event.tool());
             eventCount++;
+            callKeys.add(callKey(event));
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
         }
@@ -230,6 +235,7 @@ public final class ReportService {
         final Set<String> sessions = new HashSet<>();
         final Set<String> tools = new HashSet<>();
         final ActiveWindows activeWindows = new ActiveWindows();
+        final Set<String> callKeys = new HashSet<>();
         int eventCount;
         Instant startedAt;
         Instant endedAt;
@@ -244,6 +250,7 @@ public final class ReportService {
             tools.add(event.tool());
             activeWindows.add(event.sessionId(), event.timestamp());
             eventCount++;
+            callKeys.add(callKey(event));
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
         }
@@ -256,6 +263,7 @@ public final class ReportService {
         final Map<String, Integer> sourceQualityCounts = new HashMap<>();
         final Set<String> sessions = new HashSet<>();
         final ActiveWindows activeWindows = new ActiveWindows();
+        final Set<String> callKeys = new HashSet<>();
         int eventCount;
 
         ToolBucket(String tool) {
@@ -269,6 +277,7 @@ public final class ReportService {
             sessions.add(event.sessionId());
             activeWindows.add(event.sessionId(), event.timestamp());
             eventCount++;
+            callKeys.add(callKey(event));
         }
     }
 
@@ -277,6 +286,7 @@ public final class ReportService {
         final TokenTotals totals = new TokenTotals();
         final Set<String> sessions = new HashSet<>();
         final ActiveWindows activeWindows = new ActiveWindows();
+        final Set<String> callKeys = new HashSet<>();
         int eventCount;
         Instant startedAt;
         Instant endedAt;
@@ -290,12 +300,13 @@ public final class ReportService {
             sessions.add(event.sessionId());
             activeWindows.add(event.sessionId(), event.timestamp());
             eventCount++;
+            callKeys.add(callKey(event));
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
         }
     }
 
-    private record ReportPayload(ReportQuery query, TokenTotals summary, int eventCount, int sessionCount,
+    private record ReportPayload(ReportQuery query, TokenTotals summary, int eventCount, int callCount, int sessionCount,
                                  long activeSeconds, Map<String, Integer> sourceKindCounts,
                                  Map<String, Integer> sourceQualityCounts, List<DailyBucket> daily,
                                  List<ModelBucket> models, List<ToolBucket> tools, List<SessionBucket> sessions,
@@ -312,13 +323,13 @@ public final class ReportService {
             out.append("\"summary\":{").append(summary.jsonFields())
                     .append(",\"source_kind\":").append(sourceDimensionJson(sourceKindCounts))
                     .append(",\"source_quality\":").append(sourceQualityJson(sourceQualityCounts))
-                    .append(derivedJson(summary, eventCount, sessionCount, activeSeconds)).append("},");
+                    .append(derivedJson(summary, eventCount, callCount, sessionCount, activeSeconds)).append("},");
             out.append("\"daily\":");
             out.append(Json.array(daily, bucket -> "{"
                     + "\"date\":\"" + bucket.date + "\","
                     + bucket.totals.jsonFields() + ","
                     + "\"session_count\":" + bucket.sessions.size()
-                    + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
+                    + derivedJson(bucket.totals, bucket.eventCount, bucket.callKeys.size(), bucket.sessions.size(),
                     bucket.activeWindows.activeSeconds())
                     + "}"));
             out.append(',');
@@ -328,7 +339,7 @@ public final class ReportService {
                     + "\"tools\":" + Json.stringArray(bucket.tools.stream().sorted().toList()) + ","
                     + bucket.totals.jsonFields() + ","
                     + "\"session_count\":" + bucket.sessions.size()
-                    + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
+                    + derivedJson(bucket.totals, bucket.eventCount, bucket.callKeys.size(), bucket.sessions.size(),
                     bucket.activeWindows.activeSeconds())
                     + "}"));
             out.append(',');
@@ -339,7 +350,7 @@ public final class ReportService {
                     + "\"source_kind\":" + sourceDimensionJson(bucket.sourceKindCounts) + ","
                     + "\"source_quality\":" + sourceQualityJson(bucket.sourceQualityCounts) + ","
                     + "\"sessions\":" + bucket.sessions.size()
-                    + derivedJson(bucket.totals, bucket.eventCount, bucket.sessions.size(),
+                    + derivedJson(bucket.totals, bucket.eventCount, bucket.callKeys.size(), bucket.sessions.size(),
                     bucket.activeWindows.activeSeconds())
                     + "}"));
             out.append(',');
@@ -352,7 +363,8 @@ public final class ReportService {
                     + "\"tools\":" + Json.stringArray(bucket.tools.stream().sorted().toList()) + ","
                     + "\"models\":" + Json.stringArray(bucket.models.stream().sorted().toList()) + ","
                     + "\"usage_event_count\":" + bucket.eventCount + ","
-                    + "\"avg_tokens_per_call\":" + decimal(bucket.eventCount == 0 ? 0.0d : (double) bucket.totals.totalTokens / bucket.eventCount) + ","
+                    + "\"call_count\":" + bucket.callKeys.size() + ","
+                    + "\"avg_tokens_per_call\":" + decimal(bucket.callKeys.isEmpty() ? 0.0d : (double) bucket.totals.totalTokens / bucket.callKeys.size()) + ","
                     + bucket.totals.jsonFields()
                     + "}"));
             out.append(comparisonJson);
@@ -360,11 +372,12 @@ public final class ReportService {
             return out.toString();
         }
 
-        private static String derivedJson(TokenTotals totals, int eventCount, int sessions, long activeSeconds) {
+        private static String derivedJson(TokenTotals totals, int eventCount, int callCount, int sessions, long activeSeconds) {
             return ",\"usage_event_count\":" + eventCount
+                    + ",\"call_count\":" + callCount
                     + ",\"active_seconds\":" + activeSeconds
                     + ",\"avg_tokens_per_session\":" + decimal(sessions == 0 ? 0.0d : (double) totals.totalTokens / sessions)
-                    + ",\"avg_tokens_per_call\":" + decimal(eventCount == 0 ? 0.0d : (double) totals.totalTokens / eventCount);
+                    + ",\"avg_tokens_per_call\":" + decimal(callCount == 0 ? 0.0d : (double) totals.totalTokens / callCount);
         }
 
         private static String decimal(double value) {
@@ -407,7 +420,8 @@ public final class ReportService {
                     + "\"tools\":" + Json.stringArray(bucket.tools.stream().sorted().toList()) + ","
                     + "\"models\":" + Json.stringArray(bucket.models.stream().sorted().toList()) + ","
                     + "\"usage_event_count\":" + bucket.eventCount + ","
-                    + "\"avg_tokens_per_call\":" + decimal(bucket.eventCount == 0 ? 0.0d : (double) bucket.totals.totalTokens / bucket.eventCount) + ","
+                    + "\"call_count\":" + bucket.callKeys.size() + ","
+                    + "\"avg_tokens_per_call\":" + decimal(bucket.callKeys.isEmpty() ? 0.0d : (double) bucket.totals.totalTokens / bucket.callKeys.size()) + ","
                     + bucket.totals.jsonFields()
                     + "}")
                     + "}";
@@ -430,6 +444,7 @@ public final class ReportService {
         return "{\"label\":\"" + Json.escape(label) + "\",\"start_date\":\"" + query.startDate()
                 + "\",\"end_date\":\"" + query.endDate() + "\",\"total_tokens\":" + aggregator.summary.totalTokens
                 + ",\"usage_event_count\":" + aggregator.eventCount
+                + ",\"call_count\":" + aggregator.callKeys.size()
                 + ",\"sessions\":" + aggregator.sessions.size() + "}";
     }
 
@@ -438,6 +453,7 @@ public final class ReportService {
         return "{\"total_tokens\":" + tokenDelta
                 + ",\"total_tokens_rate\":" + decimal(rate(tokenDelta, previous.summary.totalTokens))
                 + ",\"usage_event_count\":" + (current.eventCount - previous.eventCount)
+                + ",\"call_count\":" + (current.callKeys.size() - previous.callKeys.size())
                 + ",\"sessions\":" + (current.sessions.size() - previous.sessions.size()) + "}";
     }
 
@@ -539,6 +555,11 @@ public final class ReportService {
             return 0L;
         }
         return endedAt.getEpochSecond() - startedAt.getEpochSecond();
+    }
+
+    private static String callKey(UsageEvent event) {
+        return UsageEventKeys.call(event.tool(), event.sessionId(), event.model(), event.timestamp().toString(),
+                event.usage());
     }
 
     private static final class ActiveWindows {

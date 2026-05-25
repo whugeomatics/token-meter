@@ -217,7 +217,8 @@ public final class SqliteTeamUsageStore implements TeamUsageStore {
                     Snapshot usage = new Snapshot(rs.getLong("input_tokens"), rs.getLong("cached_input_tokens"),
                             rs.getLong("output_tokens"), rs.getLong("reasoning_output_tokens"), rs.getLong("total_tokens"));
                     String displayName = rs.getString("display_name");
-                    events.add(new StoredTeamUsageEvent(rs.getString("team_id"), rs.getString("user_id"),
+                    events.add(new StoredTeamUsageEvent(rs.getString("event_key"),
+                            rs.getString("team_id"), rs.getString("user_id"),
                             displayName == null || displayName.isBlank() ? rs.getString("user_id") : displayName,
                             rs.getString("device_id"), displayName, rs.getString("tool"), rs.getString("session_id"),
                             rs.getString("model"), Instant.parse(rs.getString("event_timestamp")), usage,

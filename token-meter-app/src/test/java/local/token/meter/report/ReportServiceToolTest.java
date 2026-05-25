@@ -89,6 +89,23 @@ final class ReportServiceToolTest {
         assertFalse(secondPage.contains("\"session_id\":\"session-54\""));
     }
 
+    @Test
+    void localReportDeduplicatesCallCountWithoutHidingUsageEvents() throws Exception {
+        LocalDate today = LocalDate.now(ZoneId.of("UTC"));
+        Instant timestamp = Instant.parse(today + "T00:00:00Z");
+        SqliteUsageStore store = new SqliteUsageStore(tempDir.resolve("local-calls.sqlite"));
+        store.initialize();
+        store.insertLocalUsageEvent("claude-code", "source-a", 1,
+                event("event-a", "claude-code", "session-a", 100, today, timestamp));
+        store.insertLocalUsageEvent("claude-code", "source-b", 1,
+                event("event-b", "claude-code", "session-a", 100, today, timestamp));
+
+        String json = new ReportService(store, ZoneId.of("UTC")).report(Map.of("days", "1")).toJson();
+
+        assertTrue(json.contains("\"usage_event_count\":2"));
+        assertTrue(json.contains("\"call_count\":1"));
+    }
+
     private static TeamUsageEvent event(String key, String tool, String session, long totalTokens, LocalDate date) {
         return event(key, tool, session, totalTokens, date, Instant.parse(date + "T00:00:00Z"));
     }

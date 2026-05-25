@@ -9,12 +9,10 @@ import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.HexFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,8 +54,8 @@ public final class TeamCollector {
             if (eventDate.isBefore(start) || eventDate.isAfter(end)) {
                 continue;
             }
-            events.add(new TeamUsageEvent(teamEventKey(event), "codex", event.sessionId(), event.model(), event.timestamp(),
-                    eventDate, event.delta(), userId, deviceId));
+            events.add(new TeamUsageEvent(event.eventKey(), "codex", event.sessionId(), event.model(), event.timestamp(),
+                    eventDate, event.delta(), userId, deviceId, "local_jsonl", "derived"));
         }
         return events;
     }
@@ -87,7 +85,7 @@ public final class TeamCollector {
         }
         return "{\"status\":\"ok\",\"events\":" + events.size() + ",\"batches\":" + batches
                 + ",\"accepted\":" + accepted + ",\"duplicate\":" + duplicate + ",\"rejected\":" + rejected
-                + ",\"upload_time\":\"" + uploadTime + "\""
+                + ",\"upload_time\":\"" + formatUploadTime(uploadTime) + "\""
                 + ",\"client_user_id\":\"" + Json.escape(userId) + "\""
                 + ",\"client_device_id\":\"" + Json.escape(deviceId) + "\""
                 + ",\"server_url\":\"" + Json.escape(safeEndpoint()) + "\""
@@ -159,18 +157,8 @@ public final class TeamCollector {
         return Json.escape(body);
     }
 
-    private String teamEventKey(IngestedUsageEvent event) {
-        return "codex|" + event.sessionId() + "|" + sourceHash(event.sourcePath()) + "|" + event.lineNumber() + "|"
-                + event.cumulative().totalTokens() + "|" + event.cumulative().inputTokens() + "|"
-                + event.cumulative().outputTokens();
+    private String formatUploadTime(Instant uploadTime) {
+        return DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(uploadTime.atZone(zone));
     }
 
-    private String sourceHash(String sourcePath) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(sourcePath.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest).substring(0, 16);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is unavailable", e);
-        }
-    }
 }

@@ -95,6 +95,7 @@ public record AppConfig(Path sessionsDir, Path dbPath, ZoneId zone, int port, St
         putEnv(result, "device-name", "TOKEN_METER_DEVICE_NAME", env);
         putEnv(result, "server-url", "TOKEN_METER_SERVER_URL", env);
         putEnv(result, "batch-size", "TOKEN_METER_BATCH_SIZE", env);
+        putEnv(result, "collector-state-db", "TOKEN_METER_COLLECTOR_STATE_DB", env);
         putEnv(result, "admin-token", "TOKEN_METER_ADMIN_TOKEN", env);
         putEnv(result, "claude-code-usage-file", "CLAUDE_CODE_USAGE_FILE", env);
         putEnv(result, "claude-source", "TOKEN_METER_CLAUDE_SOURCE", env);

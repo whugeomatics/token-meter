@@ -10,8 +10,11 @@ import local.token.meter.util.Json;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,30 +39,38 @@ public final class TokenMeterCollectorApp {
             } else {
                 CliOutput.writeLine(uploadAllTools(config, collector, uploadTime));
             }
-        } catch (IOException e) {
-            CliOutput.writeLine(errorJson(e, uploadTime));
+        } catch (IOException | SQLException e) {
+            CliOutput.writeLine(errorJson(e, uploadTime, config.zone()));
             System.exit(1);
         }
     }
 
-    static String errorJson(IOException e, Instant uploadTime) {
+    static String errorJson(Exception e, Instant uploadTime) {
+        return errorJson(e, uploadTime, ZoneId.of("UTC"));
+    }
+
+    static String errorJson(Exception e, Instant uploadTime, ZoneId zone) {
         return "{\"status\":\"error\",\"error_code\":\"collector_upload_failed\",\"upload_time\":\""
-                + uploadTime + "\",\"message\":\"" + Json.escape(e.getMessage()) + "\"}";
+                + DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(uploadTime.atZone(zone))
+                + "\",\"message\":\"" + Json.escape(e.getMessage()) + "\"}";
     }
 
-    private static String uploadClaudeCode(AppConfig config, TeamCollector collector) throws IOException {
+    private static String uploadClaudeCode(AppConfig config, TeamCollector collector) throws IOException, SQLException {
         int days = reportDays(config);
         LocalDate end = LocalDate.now(config.zone());
         LocalDate start = end.minusDays(days - 1L);
-        return collector.uploadEvents(collectClaudeCodeEvents(config, start, end), start, end, Instant.now());
+        CollectorUsageStore store = collectorStore(config);
+        store.insertEvents(collectClaudeCodeEvents(config, start, end));
+        return collector.uploadEvents(storedEvents(config, store, start, end), start, end, Instant.now());
     }
 
-    private static String uploadAllTools(AppConfig config, TeamCollector collector, Instant uploadTime) throws IOException {
+    private static String uploadAllTools(AppConfig config, TeamCollector collector, Instant uploadTime) throws IOException, SQLException {
         int days = reportDays(config);
         LocalDate end = LocalDate.now(config.zone());
         LocalDate start = end.minusDays(days - 1L);
-        List<TeamUsageEvent> events = collectAllToolEvents(config, collector, start, end);
-        return collector.uploadEvents(events, start, end, uploadTime);
+        CollectorUsageStore store = collectorStore(config);
+        store.insertEvents(collectAllToolEvents(config, collector, start, end));
+        return collector.uploadEvents(storedEvents(config, store, start, end), start, end, uploadTime);
     }
 
     static List<TeamUsageEvent> collectAllToolEvents(AppConfig config, TeamCollector collector,
@@ -120,5 +131,20 @@ public final class TokenMeterCollectorApp {
             return 500;
         }
         return Math.max(1, Math.min(500, Integer.parseInt(batchSize)));
+    }
+
+    private static CollectorUsageStore collectorStore(AppConfig config) throws IOException, SQLException {
+        String override = config.options().get("collector-state-db");
+        Path path = override == null || override.isBlank()
+                ? Path.of(System.getProperty("user.home"), ".token-meter", "sqlite", "token-meter-collector-state.sqlite")
+                : Path.of(override);
+        CollectorUsageStore store = new CollectorUsageStore(path);
+        store.initialize();
+        return store;
+    }
+
+    private static List<TeamUsageEvent> storedEvents(AppConfig config, CollectorUsageStore store,
+                                                     LocalDate start, LocalDate end) throws SQLException {
+        return store.loadEvents(start, end, config.options().get("user-id"), config.options().get("device-id"));
     }
 }
