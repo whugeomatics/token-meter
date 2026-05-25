@@ -6,6 +6,7 @@ import local.token.meter.ingestion.CodexIngestionService;
 import local.token.meter.ingestion.ClaudeCodeLocalIngestionService;
 import local.token.meter.ingestion.IngestionResult;
 import local.token.meter.ingestion.LocalIngestionService;
+import local.token.meter.ingestion.LocalIngestionScheduler;
 import local.token.meter.ingestion.TeamIngestionService;
 import local.token.meter.report.ReportService;
 import local.token.meter.report.TeamReportService;
@@ -81,13 +82,11 @@ public final class TokenMeterApp {
         }
 
         LocalIngestionService localIngestionService = localIngestionService(config, usageStore);
-        IngestionResult startupIngestion = localIngestionService.ingest();
-        LOG.info("Startup ingestion: " + startupIngestion.toJson());
-
         DashboardServer server = new DashboardServer(config.bindHost(), config.port(), reportService, localIngestionService,
                 new TeamIngestionService(teamUsageStore, config.zone()), teamReportService,
                 teamUsageStore, config.options().get("admin-token"));
         server.start();
+        new LocalIngestionScheduler(localIngestionService, config.localIngestIntervalSeconds()).start();
 
         LOG.info("Token Meter listening on http://" + config.bindHost() + ":" + config.port());
         LOG.info("Codex sessions dir: " + config.sessionsDir());

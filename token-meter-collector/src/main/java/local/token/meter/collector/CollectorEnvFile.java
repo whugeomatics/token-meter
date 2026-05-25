@@ -18,6 +18,7 @@ final class CollectorEnvFile {
             Map.entry("TOKEN_METER_DEVICE_ID", "device-id"),
             Map.entry("TOKEN_METER_BATCH_SIZE", "batch-size"),
             Map.entry("TOKEN_METER_DAYS", "days"),
+            Map.entry("CODEX_SESSIONS_DIR", "sessions-dir"),
             Map.entry("TOKEN_METER_CLAUDE_SOURCE", "claude-source"),
             Map.entry("TOKEN_METER_CLAUDE_PROJECTS_DIR", "claude-projects-dir"),
             Map.entry("TOKEN_METER_CLAUDE_OTEL_INPUT", "claude-otel-input"),
@@ -37,7 +38,7 @@ final class CollectorEnvFile {
                 value = env.get(entry.getKey());
             }
             String argName = entry.getValue();
-            if (value != null && !value.isBlank() && !hasArg(args, argName)) {
+            if (value != null && !value.isBlank() && !hasNonBlankArg(args, argName)) {
                 merged.add("--" + argName + "=" + value);
             }
         }
@@ -107,10 +108,10 @@ final class CollectorEnvFile {
         return value;
     }
 
-    private static boolean hasArg(String[] args, String name) {
+    private static boolean hasNonBlankArg(String[] args, String name) {
         String prefix = "--" + name + "=";
         for (String arg : args) {
-            if (arg.startsWith(prefix)) {
+            if (arg.startsWith(prefix) && !arg.substring(prefix.length()).isBlank()) {
                 return true;
             }
         }

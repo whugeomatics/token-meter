@@ -33,7 +33,7 @@ P3, Codex team usage collection:
 
 P4, Claude Code local and team usage collection:
 
-- Local dashboard startup and `/api/ingest` collect Codex and Claude Code when local data exists.
+- Local dashboard APIs read SQLite; the app refreshes Codex and Claude Code data through a background local collection loop.
 - Team collector collects Codex and Claude Code in one default run; teammates do not need a separate Claude flag.
 - Claude Code local JSONL parsing reads only usage metadata from `<user.home>/.claude/projects/**/*.jsonl`.
 - Local and Team reports expose `tool` filtering and tool-level aggregates for `codex` and `claude-code`.
@@ -81,6 +81,7 @@ Current phase:
 P4 implementation baseline:
 
 - [P4 README](docs/P4-2026-05-01-README.md)
+- [P4 Configuration Reference](docs/guides/P4-2026-05-25-configuration-reference.md)
 - [Archived P4 AGENTS](docs/archive/P4-2026-05-24-AGENTS.md)
 - [P4 Claude Code Usage Event Contract](docs/contracts/P4-2026-05-01-claude-code-usage-event.md)
 - [P4 Claude Code Ingestion Source Contract](docs/contracts/P4-2026-05-01-claude-code-ingestion-source.md)
@@ -158,6 +159,8 @@ After packaging:
 ```powershell
 java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --port=18080
 ```
+
+Configuration options and use cases are listed in [P4 Configuration Reference](docs/guides/P4-2026-05-25-configuration-reference.md).
 
 Open:
 

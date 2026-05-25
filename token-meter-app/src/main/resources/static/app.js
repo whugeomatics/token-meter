@@ -69,12 +69,6 @@ async function load(options = {}) {
   statusEl().textContent = 'Loading...';
   statusEl().className = 'status';
   try {
-    if (state.view === 'local') {
-      const ingestResponse = await fetch('/api/ingest', { method: 'POST', cache: 'no-store' });
-      if (!ingestResponse.ok) throw new Error(`Ingest HTTP ${ingestResponse.status}`);
-      const ingestResult = await ingestResponse.json();
-      if (ingestResult.status !== 'ok') throw new Error('Ingest failed');
-    }
     const endpoint = state.view === 'team' ? '/api/team/report' : '/api/report';
     let query = queryForView();
     if (state.view === 'team' && state.teamId) {

@@ -31,7 +31,6 @@ public final class DashboardServer {
     private final TeamReportService teamReportService;
     private final AdminAuth adminAuth;
     private final AdminService adminService;
-    private final Object localIngestionLock = new Object();
 
     public DashboardServer(String bindHost, int port, ReportService reportService, LocalIngestionService localIngestionService,
                            TeamIngestionService teamIngestionService, TeamReportService teamReportService,
@@ -131,10 +130,7 @@ public final class DashboardServer {
             return;
         }
         try {
-            IngestionResult result;
-            synchronized (localIngestionLock) {
-                result = localIngestionService.ingest();
-            }
+            IngestionResult result = localIngestionService.ingest();
             writeJson(exchange, result.errors().isEmpty() ? 200 : 500, result.toJson());
         } catch (Exception e) {
             writeJson(exchange, 500, error("internal_error", e.getClass().getSimpleName()));
