@@ -1,4 +1,4 @@
-const state = { localPeriod: 'day', teamPeriod: 'day', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], localTool: '', teamTool: '', toolOptions: [], teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
+const state = { localPeriod: 'day', teamPeriod: 'day', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], localTool: '', teamTool: '', toolOptions: [], localSessionsPage: 1, localSessionsTotalPages: 1, localSessionsPageSize: 10, teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
 const fmt = new Intl.NumberFormat();
 const qs = (id) => document.getElementById(id);
 const tokens = (n) => fmt.format(n || 0);
@@ -35,6 +35,9 @@ document.querySelectorAll('[data-local-section-tab]').forEach((button) => {
   button.addEventListener('click', () => {
     state.localSection = button.dataset.localSectionTab;
     renderLocalSections();
+    if (state.localSection === 'sessions') {
+      loadSessions();
+    }
   });
 });
 document.querySelectorAll('[data-team-section-tab]').forEach((button) => {
@@ -44,6 +47,18 @@ document.querySelectorAll('[data-team-section-tab]').forEach((button) => {
   });
 });
 qs('refresh').addEventListener('click', () => load({ showToast: true }));
+qs('localSessionsPrev').addEventListener('click', () => {
+  if (state.localSessionsPage > 1) {
+    state.localSessionsPage -= 1;
+    loadSessions();
+  }
+});
+qs('localSessionsNext').addEventListener('click', () => {
+  if (state.localSessionsPage < state.localSessionsTotalPages) {
+    state.localSessionsPage += 1;
+    loadSessions();
+  }
+});
 qs('teamFilter').addEventListener('change', () => {
   state.teamId = qs('teamFilter').value;
   load();
@@ -69,12 +84,6 @@ async function load(options = {}) {
   statusEl().textContent = 'Loading...';
   statusEl().className = 'status';
   try {
-    if (state.view === 'local') {
-      const ingestResponse = await fetch('/api/ingest', { method: 'POST', cache: 'no-store' });
-      if (!ingestResponse.ok) throw new Error(`Ingest HTTP ${ingestResponse.status}`);
-      const ingestResult = await ingestResponse.json();
-      if (ingestResult.status !== 'ok') throw new Error('Ingest failed');
-    }
     const endpoint = state.view === 'team' ? '/api/team/report' : '/api/report';
     let query = queryForView();
     if (state.view === 'team' && state.teamId) {
@@ -88,6 +97,9 @@ async function load(options = {}) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const report = await response.json();
     state.view === 'team' ? renderTeam(report) : renderLocal(report);
+    if (state.view === 'local' && state.localSection === 'sessions') {
+      await loadSessions();
+    }
     statusEl().textContent = '';
     statusEl().className = 'status';
     if (options.showToast) {
@@ -99,6 +111,24 @@ async function load(options = {}) {
     if (options.showToast) {
       showToast(`${viewLabel()} refresh failed: ${error.message}`, 'error');
     }
+  }
+}
+
+async function loadSessions() {
+  qs('localSessionsStatus').textContent = 'Loading sessions...';
+  qs('localSessionsStatus').className = 'status';
+  try {
+    let query = `${queryForView()}&page=${encodeURIComponent(state.localSessionsPage)}&page_size=${encodeURIComponent(state.localSessionsPageSize)}`;
+    const tool = toolForView();
+    if (tool) {
+      query += `&tool=${encodeURIComponent(tool)}`;
+    }
+    const response = await fetch(`/api/report/sessions?${query}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    renderSessions(await response.json());
+  } catch (error) {
+    qs('localSessionsStatus').textContent = error.message;
+    qs('localSessionsStatus').className = 'status error';
   }
 }
 
@@ -115,6 +145,7 @@ function setPeriodForView(period) {
     state.teamPeriod = period;
   } else {
     state.localPeriod = period;
+    state.localSessionsPage = 1;
   }
 }
 
@@ -127,6 +158,7 @@ function setToolForView(tool) {
     state.teamTool = tool;
   } else {
     state.localTool = tool;
+    state.localSessionsPage = 1;
   }
 }
 
@@ -144,7 +176,7 @@ function renderLocal(report) {
   qs('localNetTokens').textContent = tokens(report.summary.net_tokens);
   qs('localCachedTokens').textContent = tokens(report.summary.cached_input_tokens);
   qs('localCacheRate').textContent = pct(report.summary.cache_hit_rate);
-  qs('localCalls').textContent = tokens(report.summary.usage_event_count);
+  qs('localCalls').textContent = tokens(callCount(report.summary));
   qs('localAvgCall').textContent = tokens(report.summary.avg_tokens_per_call);
   qs('localAvgSession').textContent = tokens(report.summary.avg_tokens_per_session);
   qs('localReasoningRatio').textContent = pct(report.summary.reasoning_ratio);
@@ -152,7 +184,6 @@ function renderLocal(report) {
   renderDaily(report.daily || [], 'localDailyChart', 'localDailyStatus', 'localDailyBody');
   renderModels(report.models || [], 'localModelsBody');
   renderTools(report.tools || [], 'localToolsBody', false);
-  renderSessions(report.sessions || []);
   renderLocalSections();
 }
 
@@ -165,7 +196,7 @@ function renderTeam(report) {
   qs('teamNetTokens').textContent = tokens(report.summary.net_tokens);
   qs('teamUsers').textContent = tokens(report.summary.users);
   qs('teamDevices').textContent = tokens(report.summary.devices);
-  qs('teamCalls').textContent = tokens(report.summary.usage_event_count);
+  qs('teamCalls').textContent = tokens(callCount(report.summary));
   qs('teamAvgCall').textContent = tokens(report.summary.avg_tokens_per_call);
   qs('teamCacheRate').textContent = pct(report.summary.cache_hit_rate);
   qs('teamReasoningRatio').textContent = pct(report.summary.reasoning_ratio);
@@ -223,8 +254,8 @@ function renderPeriodComparison(comparison) {
   }
   qs('teamWeekTokens').textContent = tokens(comparison.current.total_tokens);
   setTrendNote('teamWeekTokensDelta', comparison.delta.total_tokens, comparison.delta.total_tokens_rate, comparison.previous.label);
-  qs('teamWeekCalls').textContent = tokens(comparison.current.usage_event_count);
-  setTrendNote('teamWeekCallsDelta', comparison.delta.usage_event_count, undefined, comparison.previous.label);
+  qs('teamWeekCalls').textContent = tokens(callCount(comparison.current));
+  setTrendNote('teamWeekCallsDelta', comparison.delta.call_count ?? comparison.delta.usage_event_count, undefined, comparison.previous.label);
   qs('teamWeekSessions').textContent = tokens(comparison.current.sessions);
   setTrendNote('teamWeekSessionsDelta', comparison.delta.sessions, undefined, comparison.previous.label);
   qs('teamWeekUsers').textContent = tokens(comparison.current.users);
@@ -264,7 +295,7 @@ function renderOverviewModels(rows, bodyId) {
   qs(bodyId).innerHTML = visibleRows.length ? visibleRows.map((row) => `<tr>
     <td>${escapeHtml(row.model)}</td>
     <td>${tokens(row.total_tokens)}</td>
-    <td>${tokens(row.usage_event_count)}</td>
+    <td>${tokens(callCount(row))}</td>
     <td>${pct(row.cache_hit_rate)}</td>
   </tr>`).join('') : '<tr><td colspan="4" class="empty">No model usage yet</td></tr>';
 }
@@ -380,7 +411,7 @@ function renderDailyLineChart(rows) {
     if (rows.length > 12 && index % Math.ceil(rows.length / 6) !== 0 && index !== rows.length - 1) return '';
     return `<text class="daily-axis-label" x="${point.x}" y="${height - 10}" text-anchor="middle">${escapeHtml(String(point.row.date).slice(5))}</text>`;
   }).join('');
-  const markers = points.map((point) => `<circle class="daily-point" cx="${point.x}" cy="${point.y}" r="4"><title>${escapeHtml(point.row.date)}: ${tokens(point.row.total_tokens)} tokens, ${tokens(point.row.usage_event_count)} calls</title></circle>`).join('');
+  const markers = points.map((point) => `<circle class="daily-point" cx="${point.x}" cy="${point.y}" r="4"><title>${escapeHtml(point.row.date)}: ${tokens(point.row.total_tokens)} tokens, ${tokens(callCount(point.row))} calls</title></circle>`).join('');
   return `<svg class="daily-line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Daily total token trend">
     <line class="daily-axis" x1="${padX}" y1="${padTop + plotHeight}" x2="${width - padX}" y2="${padTop + plotHeight}"></line>
     <line class="daily-grid" x1="${padX}" y1="${padTop}" x2="${width - padX}" y2="${padTop}"></line>
@@ -396,7 +427,7 @@ function renderDailyTable(rows, bodyId) {
     <td>${tokens(row.total_tokens)}</td>
     <td>${tokens(row.input_tokens)}</td>
     <td>${tokens(row.output_tokens)}</td>
-    <td>${tokens(row.usage_event_count)}</td>
+    <td>${tokens(callCount(row))}</td>
     <td>${tokens(row.users ?? row.sessions)}</td>
     <td>${tokens(row.avg_tokens_per_call)}</td>
     <td>${pct(row.cache_hit_rate)}</td>
@@ -405,7 +436,7 @@ function renderDailyTable(rows, bodyId) {
 }
 
 function renderModels(rows, bodyId) {
-  qs(bodyId).innerHTML = rows.length ? rows.map((row) => `<tr><td>${toolList(row.tools)}</td><td>${escapeHtml(row.model)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.input_tokens)}</td><td>${tokens(row.cached_input_tokens)}</td><td>${tokens(row.output_tokens)}</td><td>${tokens(row.reasoning_output_tokens)}</td><td>${tokens(row.session_count ?? row.sessions)}</td><td>${tokens(row.usage_event_count)}</td><td>${tokens(row.avg_tokens_per_session)}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${pct(row.cache_hit_rate)}</td><td>${pct(row.reasoning_ratio)}</td><td>${formatDuration(row.active_seconds)}</td></tr>`).join('') : '<tr><td colspan="14" class="empty">No model usage yet</td></tr>';
+  qs(bodyId).innerHTML = rows.length ? rows.map((row) => `<tr><td>${toolList(row.tools)}</td><td>${escapeHtml(row.model)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.input_tokens)}</td><td>${tokens(row.cached_input_tokens)}</td><td>${tokens(row.output_tokens)}</td><td>${tokens(row.reasoning_output_tokens)}</td><td>${tokens(row.session_count ?? row.sessions)}</td><td>${tokens(callCount(row))}</td><td>${tokens(row.avg_tokens_per_session)}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${pct(row.cache_hit_rate)}</td><td>${pct(row.reasoning_ratio)}</td><td>${formatDuration(row.active_seconds)}</td></tr>`).join('') : '<tr><td colspan="14" class="empty">No model usage yet</td></tr>';
 }
 
 function renderTools(rows, bodyId, teamView) {
@@ -418,7 +449,7 @@ function renderTools(rows, bodyId, teamView) {
     <td>${tokens(row.reasoning_output_tokens)}</td>
     <td>${tokens(row.sessions)}</td>
     ${teamView ? `<td>${tokens(row.users)}</td><td>${tokens(row.devices)}</td>` : ''}
-    <td>${tokens(row.usage_event_count)}</td>
+    <td>${tokens(callCount(row))}</td>
     <td>${tokens(row.avg_tokens_per_call)}</td>
     <td>${pct(row.cache_hit_rate)}</td>
     <td>${pct(row.reasoning_ratio)}</td>
@@ -442,7 +473,7 @@ function renderTeamModels(rows) {
     <td>${tokens(row.output_tokens)}</td>
     <td>${tokens(row.reasoning_output_tokens)}</td>
     <td>${tokens(row.sessions)}</td>
-    <td>${tokens(row.usage_event_count)}</td>
+    <td>${tokens(callCount(row))}</td>
     <td>${tokens(row.avg_tokens_per_call)}</td>
     <td>${pct(row.cache_hit_rate)}</td>
     <td>${pct(row.reasoning_ratio)}</td>
@@ -468,10 +499,19 @@ function comparable(value) {
   return typeof value === 'number' ? value : String(value || '').toLowerCase();
 }
 
-function renderSessions(rows) {
-  const visibleRows = rows.slice(0, 50);
-  qs('localSessionsStatus').textContent = rows.length > 50 ? `Latest 50 of ${tokens(rows.length)}` : `${tokens(rows.length)} rows`;
-  qs('localSessionsBody').innerHTML = visibleRows.length ? visibleRows.map((row) => `<tr><td>${toolList(row.tools)}</td><td>${escapeHtml(row.session_id)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.net_tokens)}</td><td>${tokens(row.usage_event_count)}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${formatDuration(row.active_seconds)}</td><td>${escapeHtml(formatDateTime(row.started_at))}</td><td>${escapeHtml(formatDateTime(row.ended_at))}</td><td>${escapeHtml((row.models || []).join(', '))}</td></tr>`).join('') : '<tr><td colspan="10" class="empty">No sessions yet</td></tr>';
+function callCount(row) {
+  return row?.call_count ?? row?.usage_event_count ?? 0;
+}
+
+function renderSessions(data) {
+  const rows = data.sessions || [];
+  state.localSessionsPage = data.page || 1;
+  state.localSessionsTotalPages = data.total_pages || 1;
+  qs('localSessionsStatus').textContent = data.total ? `${tokens(data.total)} sessions` : 'No sessions';
+  qs('localSessionsPage').textContent = `Page ${tokens(state.localSessionsPage)} / ${tokens(state.localSessionsTotalPages)}`;
+  qs('localSessionsPrev').disabled = state.localSessionsPage <= 1;
+  qs('localSessionsNext').disabled = state.localSessionsPage >= state.localSessionsTotalPages;
+  qs('localSessionsBody').innerHTML = rows.length ? rows.map((row) => `<tr><td>${toolList(row.tools)}</td><td>${escapeHtml(row.session_id)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.net_tokens)}</td><td>${tokens(callCount(row))}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${formatDuration(row.active_seconds)}</td><td>${escapeHtml(formatDateTime(row.started_at))}</td><td>${escapeHtml(formatDateTime(row.ended_at))}</td><td>${escapeHtml((row.models || []).join(', '))}</td></tr>`).join('') : '<tr><td colspan="10" class="empty">No sessions yet</td></tr>';
 }
 
 function renderLocalSections() {
@@ -486,11 +526,11 @@ function renderLocalSections() {
 }
 
 function renderUsers(rows) {
-  qs('teamUsersBody').innerHTML = rows.length ? rows.map((row) => `<tr><td>${escapeHtml(row.team_id)}</td><td>${escapeHtml(row.display_name || row.user_id)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.input_tokens)}</td><td>${tokens(row.output_tokens)}</td><td>${tokens(row.sessions)}</td><td>${tokens(row.usage_event_count)}</td><td>${tokens(row.avg_tokens_per_session)}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${pct(row.cache_hit_rate)}</td><td>${pct(row.reasoning_ratio)}</td><td>${formatDuration(row.active_seconds)}</td><td>${tokens(row.devices)}</td><td>${escapeHtml(formatDateTime(row.last_seen_at))}</td></tr>`).join('') : '<tr><td colspan="14" class="empty">No users yet</td></tr>';
+  qs('teamUsersBody').innerHTML = rows.length ? rows.map((row) => `<tr><td>${escapeHtml(row.team_id)}</td><td>${escapeHtml(row.display_name || row.user_id)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.input_tokens)}</td><td>${tokens(row.output_tokens)}</td><td>${tokens(row.sessions)}</td><td>${tokens(callCount(row))}</td><td>${tokens(row.avg_tokens_per_session)}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${pct(row.cache_hit_rate)}</td><td>${pct(row.reasoning_ratio)}</td><td>${formatDuration(row.active_seconds)}</td><td>${tokens(row.devices)}</td><td>${escapeHtml(formatDateTime(row.last_seen_at))}</td></tr>`).join('') : '<tr><td colspan="14" class="empty">No users yet</td></tr>';
 }
 
 function renderDevices(rows) {
-  qs('teamDevicesBody').innerHTML = rows.length ? rows.map((row) => `<tr><td>${escapeHtml(row.team_id)}</td><td>${escapeHtml(row.display_name || row.device_id)}</td><td>${escapeHtml(row.user_id)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.sessions)}</td><td>${tokens(row.usage_event_count)}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${formatDuration(row.active_seconds)}</td><td>${escapeHtml(formatDateTime(row.last_seen_at))}</td></tr>`).join('') : '<tr><td colspan="9" class="empty">No devices yet</td></tr>';
+  qs('teamDevicesBody').innerHTML = rows.length ? rows.map((row) => `<tr><td>${escapeHtml(row.team_id)}</td><td>${escapeHtml(row.display_name || row.device_id)}</td><td>${escapeHtml(row.user_id)}</td><td>${tokens(row.total_tokens)}</td><td>${tokens(row.sessions)}</td><td>${tokens(callCount(row))}</td><td>${tokens(row.avg_tokens_per_call)}</td><td>${formatDuration(row.active_seconds)}</td><td>${escapeHtml(formatDateTime(row.last_seen_at))}</td></tr>`).join('') : '<tr><td colspan="9" class="empty">No devices yet</td></tr>';
 }
 
 function renderUploadHealth(rows) {

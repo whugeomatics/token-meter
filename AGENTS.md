@@ -13,9 +13,21 @@
 
 ## 2. 当前阶段
 
-当前阶段：P4 实现验证。
+当前阶段：P5 Unified CLI Usage Metrics 设计进行中，功能实现尚未开始。
 
-P1、P2、P3 已通过验收。P4 聚焦 Claude Code local + teammate usage collection。P4 当前代码已支持 Local 与 Team 默认同时采集 Codex 和 Claude Code，并进入实现验证阶段；后续改动仍需先对齐 contract、tasks 和 acceptance。
+P1、P2、P3 已通过验收。P4 聚焦 Claude Code local + teammate usage collection。P4 当前代码已支持 Local 与 Team 默认同时采集 Codex 和 Claude Code，并已完成实现验证。
+
+P5 聚焦 Codex 与 Claude Code 的 unified CLI usage metrics：统一 canonical usage event 事实字段、缺失字段 fallback、Local/Team report 派生指标公式和 dashboard 同名指标语义，同时让 schema 支撑未来 CLI source mapping。P5 不接入新 CLI，不实现本地网关，不做 provider 自动路由、费用估算、预算或告警。后续代码改动仍需先对齐 P5 contract、tasks 和 acceptance。
+
+P5 文档基线：
+
+- `docs/P5-2026-05-24-README.md`
+- `docs/contracts/P5-2026-05-24-unified-cli-usage-metrics.md`
+- `docs/integrations/codex.md`
+- `docs/integrations/claude-code.md`
+- `docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-design.md`
+- `docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-tasks.md`
+- `docs/acceptance/P5-2026-05-24-unified-cli-usage-metrics.md`
 
 P4 文档基线：
 
@@ -26,6 +38,7 @@ P4 文档基线：
 - `docs/milestones/P4-claude-code-team-collection/P4-2026-05-01-design.md`
 - `docs/milestones/P4-claude-code-team-collection/P4-2026-05-01-tasks.md`
 - `docs/acceptance/P4-2026-05-01-claude-code-team-collection.md`
+- `docs/reviews/P4-2026-05-24-claude-code-team-collection-review.md`
 
 P4 禁止：
 
@@ -68,10 +81,10 @@ P3 module 细节见：
 
 分发包约束：
 
-- `dist/` 下保持两个 teammate 制品包目录：macOS/Linux 使用 `token-meter-collector-mac-linux/`，Windows 使用 `token-meter-collector-windows/`。
+- `dist/` 下保持一个 teammate 制品包目录：`token-meter-collector-unix/`。Windows 通过 Git Bash 执行同一套 Unix 脚本，不再维护 Windows 专用 collector 包。
 - `dist/` 制品包内的 collector jar 名称必须为 `token-meter-collector.jar`，不包含 `SNAPSHOT`；Maven target 和源码脚本仍保持项目版本命名。
-- 打包脚本按目标平台拆分：总入口 `scripts/P3-2026-05-01-package-collector.sh` 接收 `unix`、`windows` 或 `all`；平台脚本分别为 `scripts/P3-2026-05-01-package-collector-unix.sh` 和 `scripts/P3-2026-05-01-package-collector-windows.sh`。
-- macOS/Linux teammate 默认配置文件为 `~/.token-meter/collector.env`。Windows 优先使用 `%USERPROFILE%\.token-meter\collector.env`，并兼容旧的 `collector.env.cmd`。
+- 打包脚本入口 `scripts/P3-2026-05-01-package-collector.sh` 接收 `unix` 或 `all`，两者都生成同一个 Unix/Git Bash collector 包。
+- teammate 默认配置文件为 `~/.token-meter/collector.env`。Windows Git Bash 下同样使用该路径，并兼容旧的 `collector.env.cmd` 读取。
 
 ## 4. 当前阶段必读
 

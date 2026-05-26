@@ -31,7 +31,6 @@ public final class DashboardServer {
     private final TeamReportService teamReportService;
     private final AdminAuth adminAuth;
     private final AdminService adminService;
-    private final Object localIngestionLock = new Object();
 
     public DashboardServer(String bindHost, int port, ReportService reportService, LocalIngestionService localIngestionService,
                            TeamIngestionService teamIngestionService, TeamReportService teamReportService,
@@ -48,6 +47,7 @@ public final class DashboardServer {
 
     public void start() throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress(bindHost, port), 0);
+        server.createContext("/api/report/sessions", this::handleReportSessions);
         server.createContext("/api/report", this::handleReport);
         server.createContext("/api/ingest", this::handleLocalIngest);
         server.createContext("/api/team/ingest", this::handleTeamIngest);
@@ -125,16 +125,29 @@ public final class DashboardServer {
         }
     }
 
+    private void handleReportSessions(HttpExchange exchange) throws IOException {
+        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+            writeJson(exchange, 405, error("method_not_allowed", "Only GET is supported"));
+            return;
+        }
+
+        Map<String, String> query = parseQuery(exchange.getRequestURI().getRawQuery());
+        try {
+            writeJson(exchange, 200, reportService.sessions(query).toJson());
+        } catch (BadRequestException e) {
+            writeJson(exchange, 400, error("invalid_query", e.getMessage()));
+        } catch (Exception e) {
+            writeJson(exchange, 500, error("internal_error", e.getMessage()));
+        }
+    }
+
     private void handleLocalIngest(HttpExchange exchange) throws IOException {
         if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
             writeJson(exchange, 405, error("method_not_allowed", "Only POST is supported"));
             return;
         }
         try {
-            IngestionResult result;
-            synchronized (localIngestionLock) {
-                result = localIngestionService.ingest();
-            }
+            IngestionResult result = localIngestionService.ingest();
             writeJson(exchange, result.errors().isEmpty() ? 200 : 500, result.toJson());
         } catch (Exception e) {
             writeJson(exchange, 500, error("internal_error", e.getClass().getSimpleName()));

@@ -2,13 +2,13 @@
 
 ## 目标
 
-扩展 P3 `/api/team/report`，让 Team dashboard 可以横向展示 Codex 和 Claude Code 的用量。
+扩展 Local `/api/report` 和 P3 `/api/team/report`，让 Local 和 Team dashboard 可以横向展示 Codex 和 Claude Code 的用量。
 
-P4 不破坏 P3 response 既有字段，只新增 tool 维度字段和可选筛选参数。
+P4 不破坏 P1/P2/P3 response 既有字段，只新增 tool 维度字段和可选筛选参数。
 
 ## Query Extension
 
-`GET /api/team/report` 新增可选参数：
+`GET /api/report` 和 `GET /api/team/report` 新增可选参数：
 
 ```text
 tool=<optional-tool>
@@ -20,7 +20,8 @@ tool=<optional-tool>
 - 允许值：`codex`、`claude-code`。
 - 缺省时返回所有工具聚合。
 - `tool` 筛选必须同时应用到 current 和 previous period comparison。
-- `team_id`、`user_id`、`period`、`compare` 行为沿用 P3 contract。
+- Local `period`、`compare` 行为沿用 P1 report contract。
+- Team `team_id`、`user_id`、`period`、`compare` 行为沿用 P3 contract。
 
 ## Response Extension
 
@@ -109,10 +110,11 @@ P4 不允许移除或重命名 P3 字段：
 
 ## Dashboard 要求
 
-P4 Team dashboard 至少支持：
+P4 Local 和 Team dashboard 至少支持：
 
 - All Tools 总览。
 - Codex tool 过滤。
 - Claude Code tool 过滤。
 - tool 维度排行。
 - 日、周、月 period comparison 下的 tool delta。
+- Models/Sessions 等表格展示 tool 来源。

@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS usage_events (
   output_tokens INTEGER NOT NULL,
   reasoning_output_tokens INTEGER NOT NULL,
   total_tokens INTEGER NOT NULL,
+  source_kind TEXT NOT NULL DEFAULT '',
+  source_quality TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
   FOREIGN KEY(source_file_id) REFERENCES source_files(id),
   UNIQUE(event_key)
@@ -68,6 +70,12 @@ CREATE TABLE IF NOT EXISTS device_tokens (
 -- name: alter_device_tokens_add_token_secret
 ALTER TABLE device_tokens ADD COLUMN token_secret TEXT;
 
+-- name: alter_usage_events_add_source_kind
+ALTER TABLE usage_events ADD COLUMN source_kind TEXT NOT NULL DEFAULT '';
+
+-- name: alter_usage_events_add_source_quality
+ALTER TABLE usage_events ADD COLUMN source_quality TEXT NOT NULL DEFAULT '';
+
 -- name: create_team_usage_events
 CREATE TABLE IF NOT EXISTS team_usage_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,6 +93,8 @@ CREATE TABLE IF NOT EXISTS team_usage_events (
   output_tokens INTEGER NOT NULL,
   reasoning_output_tokens INTEGER NOT NULL,
   total_tokens INTEGER NOT NULL,
+  source_kind TEXT NOT NULL DEFAULT '',
+  source_quality TEXT NOT NULL DEFAULT '',
   received_at TEXT NOT NULL,
   UNIQUE(team_id, user_id, device_id, event_key)
 );
@@ -104,6 +114,12 @@ CREATE TABLE IF NOT EXISTS team_uploads (
   status TEXT NOT NULL,
   message TEXT
 );
+
+-- name: alter_team_usage_events_add_source_kind
+ALTER TABLE team_usage_events ADD COLUMN source_kind TEXT NOT NULL DEFAULT '';
+
+-- name: alter_team_usage_events_add_source_quality
+ALTER TABLE team_usage_events ADD COLUMN source_quality TEXT NOT NULL DEFAULT '';
 
 -- name: create_idx_team_usage_events_local_date
 CREATE INDEX IF NOT EXISTS idx_team_usage_events_local_date ON team_usage_events(local_date);
@@ -172,20 +188,22 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 -- name: insert_team_usage_event
 INSERT OR IGNORE INTO team_usage_events(team_id, user_id, device_id, event_key, tool, session_id, model,
   event_timestamp, local_date, input_tokens, cached_input_tokens, output_tokens,
-  reasoning_output_tokens, total_tokens, received_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+  reasoning_output_tokens, total_tokens, source_kind, source_quality, received_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: load_team_usage_events
-SELECT e.team_id, e.user_id, e.device_id, d.display_name, e.tool, e.session_id, e.model, e.event_timestamp,
-  e.input_tokens, e.cached_input_tokens, e.output_tokens, e.reasoning_output_tokens, e.total_tokens
+SELECT e.event_key, e.team_id, e.user_id, e.device_id, d.display_name, e.tool, e.session_id, e.model, e.event_timestamp,
+  e.input_tokens, e.cached_input_tokens, e.output_tokens, e.reasoning_output_tokens, e.total_tokens,
+  e.source_kind, e.source_quality
 FROM team_usage_events e
 LEFT JOIN device_tokens d ON d.team_id = e.team_id AND d.user_id = e.user_id AND d.device_id = e.device_id
 WHERE e.local_date >= ? AND e.local_date <= ?
 ORDER BY e.event_timestamp, e.id;
 
 -- name: load_team_usage_events_plain
-SELECT e.team_id, e.user_id, e.device_id, NULL AS display_name, e.tool, e.session_id, e.model, e.event_timestamp,
-  e.input_tokens, e.cached_input_tokens, e.output_tokens, e.reasoning_output_tokens, e.total_tokens
+SELECT e.event_key, e.team_id, e.user_id, e.device_id, NULL AS display_name, e.tool, e.session_id, e.model, e.event_timestamp,
+  e.input_tokens, e.cached_input_tokens, e.output_tokens, e.reasoning_output_tokens, e.total_tokens,
+  e.source_kind, e.source_quality
 FROM team_usage_events e
 WHERE e.local_date >= ? AND e.local_date <= ?
 ORDER BY e.event_timestamp, e.id;
@@ -219,12 +237,12 @@ ON CONFLICT(tool, path) DO UPDATE SET
 -- name: insert_usage_event
 INSERT OR IGNORE INTO usage_events(source_file_id, line_number, event_key, tool, session_id,
   model, event_timestamp, local_date, input_tokens, cached_input_tokens, output_tokens,
-  reasoning_output_tokens, total_tokens, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+  reasoning_output_tokens, total_tokens, source_kind, source_quality, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: load_usage_events
-SELECT tool, session_id, model, event_timestamp, input_tokens, cached_input_tokens, output_tokens,
-  reasoning_output_tokens, total_tokens
+SELECT event_key, tool, session_id, model, event_timestamp, input_tokens, cached_input_tokens, output_tokens,
+  reasoning_output_tokens, total_tokens, source_kind, source_quality
 FROM usage_events
 WHERE local_date >= ? AND local_date <= ?
 ORDER BY event_timestamp, id;

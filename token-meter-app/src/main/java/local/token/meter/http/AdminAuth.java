@@ -3,9 +3,7 @@ package local.token.meter.http;
 import com.sun.net.httpserver.HttpExchange;
 import local.token.meter.store.TokenHasher;
 
-import java.net.HttpCookie;
 import java.time.Duration;
-import java.util.List;
 
 public final class AdminAuth {
     private static final String COOKIE_NAME = "token_meter_admin";
@@ -33,13 +31,22 @@ public final class AdminAuth {
         if (matches(headerToken)) {
             return true;
         }
-        String cookie = exchange.getRequestHeaders().getFirst("Cookie");
+        return authorizedCookie(exchange.getRequestHeaders().getFirst("Cookie"));
+    }
+
+    boolean authorizedCookie(String cookie) {
         if (cookie == null || cookie.isBlank()) {
             return false;
         }
-        List<HttpCookie> cookies = HttpCookie.parse(cookie);
-        for (HttpCookie item : cookies) {
-            if (COOKIE_NAME.equals(item.getName()) && adminTokenHash.equals(item.getValue())) {
+        for (String part : cookie.split(";")) {
+            String item = part.trim();
+            int index = item.indexOf('=');
+            if (index <= 0) {
+                continue;
+            }
+            String name = item.substring(0, index).trim();
+            String value = item.substring(index + 1).trim();
+            if (COOKIE_NAME.equals(name) && adminTokenHash.equals(value)) {
                 return true;
             }
         }

@@ -74,7 +74,7 @@ final class ClaudeCodeUsageSourceTest {
         assertEquals("claude-code", event.tool());
         assertEquals("claude-local-session", event.sessionId());
         assertEquals("claude-sonnet", event.model());
-        assertEquals(11, event.usage().inputTokens());
+        assertEquals(16, event.usage().inputTokens());
         assertEquals(5, event.usage().cachedInputTokens());
         assertEquals(7, event.usage().outputTokens());
         assertEquals(23, event.usage().totalTokens());
@@ -95,6 +95,8 @@ final class ClaudeCodeUsageSourceTest {
 
         assertEquals(1, events.size());
         assertEquals(23, events.get(0).usage().totalTokens());
+        assertEquals(16, events.get(0).usage().inputTokens());
+        assertEquals(5, events.get(0).usage().cachedInputTokens());
     }
 
     private static String claudeProjectLine(String uuid, String parentUuid, String messageId, String timestamp) {

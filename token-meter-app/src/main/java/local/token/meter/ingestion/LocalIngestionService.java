@@ -9,7 +9,7 @@ public final class LocalIngestionService {
         this.claudeCode = claudeCode;
     }
 
-    public IngestionResult ingest() {
+    public synchronized IngestionResult ingest() {
         IngestionResult result = new IngestionResult();
         result.merge(codex.ingest());
         result.merge(claudeCode.ingest());

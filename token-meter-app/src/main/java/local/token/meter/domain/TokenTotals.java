@@ -9,7 +9,6 @@ public final class TokenTotals {
     public long reasoningOutputTokens;
     public long totalTokens;
     private long nonCachedInputTokens;
-    private long cacheHitRateDenominatorTokens;
 
     public void add(Snapshot snapshot) {
         add("codex", snapshot);
@@ -21,26 +20,30 @@ public final class TokenTotals {
         outputTokens += snapshot.outputTokens();
         reasoningOutputTokens += snapshot.reasoningOutputTokens();
         totalTokens += snapshot.totalTokens();
-        if ("claude-code".equals(tool) && snapshot.cachedInputTokens() > snapshot.inputTokens()) {
-            nonCachedInputTokens += snapshot.inputTokens();
-            cacheHitRateDenominatorTokens += snapshot.inputTokens() + snapshot.cachedInputTokens();
-            return;
-        }
         nonCachedInputTokens += Math.max(0L, snapshot.inputTokens() - snapshot.cachedInputTokens());
-        cacheHitRateDenominatorTokens += snapshot.inputTokens();
     }
 
     public long nonCachedInputTokens() {
         return nonCachedInputTokens;
     }
 
+    public long netInputTokens() {
+        return nonCachedInputTokens();
+    }
+
+    public long netTotalTokens() {
+        return netInputTokens() + outputTokens + reasoningOutputTokens;
+    }
+
     public long netTokens() {
-        return nonCachedInputTokens() + outputTokens;
+        return netTotalTokens();
     }
 
     public double cacheHitRate() {
-        return cacheHitRateDenominatorTokens == 0L ? 0.0d
-                : (double) cachedInputTokens / (double) cacheHitRateDenominatorTokens;
+        if (inputTokens == 0L) {
+            return 0.0d;
+        }
+        return Math.min(1.0d, (double) cachedInputTokens / (double) inputTokens);
     }
 
     public double reasoningRatio() {
@@ -53,6 +56,8 @@ public final class TokenTotals {
                 + ",\"output_tokens\":" + outputTokens
                 + ",\"reasoning_output_tokens\":" + reasoningOutputTokens
                 + ",\"total_tokens\":" + totalTokens
+                + ",\"net_input_tokens\":" + netInputTokens()
+                + ",\"net_total_tokens\":" + netTotalTokens()
                 + ",\"non_cached_input_tokens\":" + nonCachedInputTokens()
                 + ",\"net_tokens\":" + netTokens()
                 + ",\"cache_hit_rate\":" + String.format(Locale.ROOT, "%.6f", cacheHitRate())

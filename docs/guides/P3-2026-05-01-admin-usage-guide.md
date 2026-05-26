@@ -198,18 +198,18 @@ sh scripts/P3-2026-05-01-run-collector.sh
 collector 成功时会输出类似：
 
 ```json
-{"status":"ok","events":12,"batches":1,"accepted":12,"duplicate":0,"rejected":0,"upload_time":"2026-05-01T04:40:00Z","client_user_id":"zhangsan","client_device_id":"zhangsan-macbook","server_url":"http://127.0.0.1:18080","start_date":"2026-04-02","end_date":"2026-05-01"}
+{"status":"ok","events":12,"batches":1,"accepted":12,"duplicate":0,"rejected":0,"upload_time":"2026-05-01T12:40:00+08:00","client_user_id":"zhangsan","client_device_id":"zhangsan-macbook","server_url":"http://127.0.0.1:18080","start_date":"2026-04-02","end_date":"2026-05-01"}
 ```
 
 如果重复运行，可能看到：
 
 ```json
-{"status":"ok","events":12,"batches":1,"accepted":0,"duplicate":12,"rejected":0,"upload_time":"2026-05-01T04:40:00Z","client_user_id":"zhangsan","client_device_id":"zhangsan-macbook","server_url":"http://127.0.0.1:18080","start_date":"2026-04-02","end_date":"2026-05-01"}
+{"status":"ok","events":12,"batches":1,"accepted":0,"duplicate":12,"rejected":0,"upload_time":"2026-05-01T12:40:00+08:00","client_user_id":"zhangsan","client_device_id":"zhangsan-macbook","server_url":"http://127.0.0.1:18080","start_date":"2026-04-02","end_date":"2026-05-01"}
 ```
 
 这是正常的，表示服务端通过 `event_key` 去重，没有重复统计。
 
-collector 输出会包含 `upload_time`、`client_user_id`、`client_device_id`、`server_url`、`start_date`、`end_date` 便于排查；不会输出 device token。
+collector 输出会包含 `upload_time`、`client_user_id`、`client_device_id`、`server_url`、`start_date`、`end_date` 便于排查；`upload_time` 按配置时区输出；不会输出 device token。
 
 ## 5. 把 collector 安装成 mac 服务
 
@@ -231,30 +231,22 @@ teammate 机器不需要完整项目源码。管理员机器先构建 jar：
 mvn -DskipTests package
 ```
 
-然后按 teammate 系统生成 collector 分发目录：
+然后生成统一的 Unix/Git Bash collector 分发目录：
 
 ```sh
-sh scripts/P3-2026-05-01-package-collector.sh unix
-sh scripts/P3-2026-05-01-package-collector.sh windows
+sh scripts/P3-2026-05-01-package-collector.sh all
 ```
 
-按 teammate 系统发送对应目录：
+发送该目录给 teammate。Windows teammate 通过 Git Bash 执行同一套脚本：
 
 ```text
-dist/token-meter-collector-mac-linux/
+dist/token-meter-collector-unix/
   README.md
   token-meter-collector.jar
   run-collector.sh
   run-collector-service.sh
   install-collector-service.sh
   uninstall-collector-service.sh
-
-dist/token-meter-collector-windows/
-  README.md
-  token-meter-collector.jar
-  run-collector.cmd
-  install-collector-task.cmd
-  uninstall-collector-task.cmd
 ```
 
 ### 5.2 teammate 安装服务
@@ -391,6 +383,36 @@ http://127.0.0.1:18080
 
 除非 dashboard 服务也运行在 teammate 自己的机器上。
 
+### 7.4.1 401 unknown device token
+
+如果 collector 输出：
+
+```text
+HTTP 401 ... unknown device token
+```
+
+优先按下面顺序检查：
+
+1. 回到 `admin.html`，复制当前设备绑定生成的 teammate `.env`。
+2. 用复制结果完整覆盖 teammate 本机 `~/.token-meter/collector.env`。
+3. 确认 collector 读到的是这个文件；macOS/Linux 默认路径是 `~/.token-meter/collector.env`，也可以用 `TOKEN_METER_COLLECTOR_ENV` 或 `--collector-env-file` 覆盖。
+4. 重新启动 collector 或服务任务。已运行的 launchd/Task Scheduler 进程不会自动继承你后来在 shell 里 export 的新 token。
+5. 确认 dashboard server 使用的是创建 token 的同一个 `--db` 目录；server 换了 DB 时，registry 里没有旧 token，也会返回 `unknown device token`。
+
+不要把完整 token 写进日志、issue 或聊天记录。排查时只比较 token 长度、前后缀或 hash 摘要即可。
+
+建议权限：
+
+```sh
+chmod 600 ~/.token-meter/collector.env
+```
+
+collector 配置优先级固定为：
+
+```text
+CLI 参数 > ~/.token-meter/collector.env > 系统环境变量
+```
+
 ### 7.5 日期范围不包含数据
 
 Team Tab 默认看 Day，即今天和昨天的对比。
@@ -399,7 +421,7 @@ Team Tab 默认看 Day，即今天和昨天的对比。
 
 ### 7.6 服务端负责 DB，collector 不使用 DB
 
-服务端 `--db` 是中央库，collector 只读取本机 Codex sessions 并调用服务端 API。
+服务端 `--db` 是中央库，collector 只读取本机 Codex sessions 和 Claude Code projects 并调用服务端 API。
 
 Team 页面只读取服务端 `--db` 里的 team shard：
 

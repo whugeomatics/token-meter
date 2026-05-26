@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -83,7 +84,7 @@ public final class TeamIngestionService {
             }
             store.updateDeviceTokenSeen(token);
             store.insertTeamUpload(new TeamUploadRecord(binding.teamId(), binding.userId(), binding.deviceId(),
-                    uploadDate, uploadTime.toString(), eventObjects.size(), accepted, duplicate, rejected,
+                    uploadDate, formatUploadTime(uploadTime), eventObjects.size(), accepted, duplicate, rejected,
                     "ok", ""));
             return TeamIngestResult.ok(accepted, duplicate, rejected, eventObjects.size(), binding, uploadDate);
         } catch (SQLException e) {
@@ -97,7 +98,7 @@ public final class TeamIngestionService {
                                      int eventCount, String message) {
         try {
             store.insertTeamUpload(new TeamUploadRecord(binding.teamId(), binding.userId(), binding.deviceId(),
-                    uploadDate, uploadTime.toString(), eventCount, 0, 0, 0, "error", message));
+                    uploadDate, formatUploadTime(uploadTime), eventCount, 0, 0, 0, "error", message));
         } catch (SQLException ignored) {
             // Upload diagnostics are best-effort; never expose tokens or raw payloads.
         }
@@ -141,6 +142,10 @@ public final class TeamIngestionService {
         } catch (RuntimeException e) {
             return null;
         }
+    }
+
+    private String formatUploadTime(Instant uploadTime) {
+        return DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(uploadTime.atZone(zone));
     }
 
     private boolean knownTool(String tool) {

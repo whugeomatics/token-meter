@@ -8,9 +8,9 @@ Token Meter is a local AI CLI usage dashboard and future routing tool. The proje
 
 ## Current Status
 
-Current phase: **P4 - Claude Code teammate usage collection implementation verification**.
+Current phase: **P5 - Unified CLI usage metrics design in progress**.
 
-P1, P2, and P3 have passed acceptance. P4 implementation is in verification.
+P1, P2, P3, and P4 have passed implementation verification. P5 design has started; P5 implementation has not started.
 
 P1, the Codex Dashboard MVP:
 
@@ -33,13 +33,21 @@ P3, Codex team usage collection:
 
 P4, Claude Code local and team usage collection:
 
-- Local dashboard startup and `/api/ingest` collect Codex and Claude Code when local data exists.
+- Local dashboard APIs read SQLite; the app refreshes Codex and Claude Code data through a background local collection loop.
 - Team collector collects Codex and Claude Code in one default run; teammates do not need a separate Claude flag.
 - Claude Code local JSONL parsing reads only usage metadata from `<user.home>/.claude/projects/**/*.jsonl`.
 - Local and Team reports expose `tool` filtering and tool-level aggregates for `codex` and `claude-code`.
 - The admin token creation flow produces a teammate `.env` block for the collector.
 - Collector config precedence is `CLI args > ~/.token-meter/collector.env > system environment variables`.
 - `--collect-claude-code` is retained only as a legacy compatibility entry point.
+- P4 review and acceptance are recorded; local port-binding smoke can be skipped only when the Codex sandbox blocks local HTTP ports.
+
+P5, Unified CLI usage metrics:
+
+- P5 defines canonical usage event facts for CLI tools, starting with Codex and Claude Code.
+- P5 keeps derived metrics such as net tokens and cache rate in the report layer.
+- P5 may include small code adjustments so Codex and Claude Code match the same metric contract.
+- P5 does not add Cursor, Gemini CLI, a local model gateway, provider routing, pricing, budgets, or alerts.
 
 ## Stage Results
 
@@ -77,15 +85,28 @@ Current phase:
 
 - [Current AGENTS.md](AGENTS.md)
 
+P5 design baseline:
+
+- [P5 README](docs/P5-2026-05-24-README.md)
+- [P5 Unified CLI Usage Metrics Contract](docs/contracts/P5-2026-05-24-unified-cli-usage-metrics.md)
+- [Codex Integration Mapping](docs/integrations/codex.md)
+- [Claude Code Integration Mapping](docs/integrations/claude-code.md)
+- [P5 Design](docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-design.md)
+- [P5 Tasks](docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-tasks.md)
+- [P5 Acceptance](docs/acceptance/P5-2026-05-24-unified-cli-usage-metrics.md)
+
 P4 implementation baseline:
 
 - [P4 README](docs/P4-2026-05-01-README.md)
+- [P4 Configuration Reference](docs/guides/P4-2026-05-25-configuration-reference.md)
+- [Archived P4 AGENTS](docs/archive/P4-2026-05-24-AGENTS.md)
 - [P4 Claude Code Usage Event Contract](docs/contracts/P4-2026-05-01-claude-code-usage-event.md)
 - [P4 Claude Code Ingestion Source Contract](docs/contracts/P4-2026-05-01-claude-code-ingestion-source.md)
 - [P4 Tool Usage Report Extension](docs/contracts/P4-2026-05-01-tool-usage-report-extension.md)
 - [P4 Design](docs/milestones/P4-claude-code-team-collection/P4-2026-05-01-design.md)
 - [P4 Tasks](docs/milestones/P4-claude-code-team-collection/P4-2026-05-01-tasks.md)
 - [P4 Acceptance](docs/acceptance/P4-2026-05-01-claude-code-team-collection.md)
+- [P4 Review](docs/reviews/P4-2026-05-24-claude-code-team-collection-review.md)
 
 Completed P3:
 
@@ -155,6 +176,8 @@ After packaging:
 ```powershell
 java -jar token-meter-app\target\token-meter-app-0.1.0-SNAPSHOT.jar --port=18080
 ```
+
+Configuration options and use cases are listed in [P4 Configuration Reference](docs/guides/P4-2026-05-25-configuration-reference.md).
 
 Open:
 

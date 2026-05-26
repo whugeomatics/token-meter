@@ -80,7 +80,11 @@ final class ClaudeCodeLocalIngestionServiceTest {
         String json = new ReportService(store, ZoneId.of("UTC"))
                 .report(Map.of("days", "1", "tool", "claude-code")).toJson();
         assertTrue(json.contains("\"total_tokens\":35"));
+        assertTrue(json.contains("\"input_tokens\":20"));
         assertTrue(json.contains("\"cached_input_tokens\":10"));
+        assertTrue(json.contains("\"net_input_tokens\":10"));
+        assertTrue(json.contains("\"source_kind\":{\"local_jsonl\":1"));
+        assertTrue(json.contains("\"source_quality\":{\"reported\":1"));
         assertTrue(json.contains("\"tool\":\"claude-code\""));
     }
 }

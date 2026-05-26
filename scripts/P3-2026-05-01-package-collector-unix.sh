@@ -6,7 +6,7 @@ SOURCE_JAR_NAME="token-meter-collector-0.1.0-SNAPSHOT.jar"
 DIST_JAR_NAME="token-meter-collector.jar"
 JAR="$ROOT/token-meter-collector/target/$SOURCE_JAR_NAME"
 DIST_ROOT="$ROOT/dist"
-PACKAGE="$DIST_ROOT/token-meter-collector-mac-linux"
+PACKAGE="$DIST_ROOT/token-meter-collector-unix"
 UNDATED_PACKAGE="$DIST_ROOT/token-meter-collector"
 DATED_PACKAGE="$DIST_ROOT/token-meter-collector-P3-2026-05-01"
 
@@ -29,24 +29,29 @@ cleanup_package_dir() {
   fi
 }
 
+replace_dist_jar_name() {
+  file="$1"
+  tmp="$file.tmp.$$"
+  sed "s/$SOURCE_JAR_NAME/$DIST_JAR_NAME/g" "$file" > "$tmp"
+  mv "$tmp" "$file"
+}
+
 if [ ! -f "$JAR" ]; then
   printf '%s\n' "collector jar not found: $JAR" >&2
   printf '%s\n' "Run: mvn -DskipTests package" >&2
   exit 1
 fi
-if jar tf "$JAR" | grep -E '(^static/|local/token/meter/http/|local/token/meter/report/|local/token/meter/store/|local/token/meter/app/TokenMeterApp|DashboardServer|AdminService|AdminAuth|DashboardPage|org/sqlite/|sqlite-jdbc)' >/dev/null; then
+if jar tf "$JAR" | grep -E '(^static/|local/token/meter/http/|local/token/meter/report/|local/token/meter/store/|local/token/meter/app/TokenMeterApp|DashboardServer|AdminService|AdminAuth|DashboardPage)' >/dev/null; then
   printf '%s\n' "collector jar contains dashboard/database classes or static assets: $JAR" >&2
   exit 1
 fi
 
 cleanup_package_dir "$DATED_PACKAGE" \
   README.md token-meter-collector.jar run-collector.sh run-collector-service.sh \
-  install-collector-service.sh uninstall-collector-service.sh run-collector.cmd \
-  install-collector-task.cmd uninstall-collector-task.cmd
+  install-collector-service.sh uninstall-collector-service.sh
 cleanup_package_dir "$UNDATED_PACKAGE" \
   README.md token-meter-collector.jar run-collector.sh run-collector-service.sh \
-  install-collector-service.sh uninstall-collector-service.sh run-collector.cmd \
-  install-collector-task.cmd uninstall-collector-task.cmd
+  install-collector-service.sh uninstall-collector-service.sh
 cleanup_package_dir "$PACKAGE" \
   README.md token-meter-collector.jar run-collector.sh run-collector-service.sh \
   install-collector-service.sh uninstall-collector-service.sh
@@ -57,12 +62,14 @@ cp "$ROOT/scripts/P3-2026-05-01-run-collector.sh" "$PACKAGE/run-collector.sh"
 cp "$ROOT/scripts/P3-2026-05-01-run-collector-service.sh" "$PACKAGE/run-collector-service.sh"
 cp "$ROOT/scripts/P3-2026-05-01-install-collector-service.sh" "$PACKAGE/install-collector-service.sh"
 cp "$ROOT/scripts/P3-2026-05-01-uninstall-collector-service.sh" "$PACKAGE/uninstall-collector-service.sh"
-sed -i '' "s/$SOURCE_JAR_NAME/$DIST_JAR_NAME/g" "$PACKAGE/run-collector.sh" "$PACKAGE/run-collector-service.sh" "$PACKAGE/install-collector-service.sh"
+replace_dist_jar_name "$PACKAGE/run-collector.sh"
+replace_dist_jar_name "$PACKAGE/run-collector-service.sh"
+replace_dist_jar_name "$PACKAGE/install-collector-service.sh"
 chmod +x "$PACKAGE"/*.sh
 cat > "$PACKAGE/README.md" <<'README'
 # Token Meter Collector Teammate Guide
 
-This macOS/Linux package uploads local Codex and Claude Code usage summaries to the team token-meter dashboard.
+This Unix/Git Bash package uploads local Codex and Claude Code usage summaries to the team token-meter dashboard.
 
 ## Files
 
@@ -146,10 +153,15 @@ The uninstall script keeps `~/.token-meter/collector.env`. To remove the local t
 ```sh
 rm ~/.token-meter/collector.env
 ```
+
+## Windows
+
+Use Git Bash and run the same `run-collector.sh` script. Windows Task Scheduler can call Git Bash with this script path
+when periodic teammate uploads are needed.
 README
 
 printf '%s\n' "collector package: $PACKAGE"
-printf '%s\n' "macOS/Linux package files:"
+printf '%s\n' "Unix/Git Bash package files:"
 printf '%s\n' "  README.md"
 printf '%s\n' "  token-meter-collector.jar"
 printf '%s\n' "  run-collector.sh"

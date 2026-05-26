@@ -23,6 +23,7 @@ final class CollectorEnvFileTest {
                 export TOKEN_METER_USER_ID="file-user"
                 export TOKEN_METER_DEVICE_ID="file-device"
                 TOKEN_METER_DAYS="14"
+                CODEX_SESSIONS_DIR="/tmp/file-codex-sessions"
                 """);
 
         AppConfig config = AppConfig.from(CollectorEnvFile.withEnvFileDefaults(
@@ -33,6 +34,7 @@ final class CollectorEnvFileTest {
         assertEquals("file-user", config.options().get("user-id"));
         assertEquals("file-device", config.options().get("device-id"));
         assertEquals("14", config.reportQuery().get("days"));
+        assertEquals(Path.of("/tmp/file-codex-sessions"), config.sessionsDir());
     }
 
     @Test
@@ -56,6 +58,32 @@ final class CollectorEnvFileTest {
         assertEquals("http://cli-server:18080", config.options().get("server-url"));
         assertEquals("3", config.reportQuery().get("days"));
         assertEquals("file-token", config.options().get("device-token"));
+    }
+
+    @Test
+    void emptyCliOptionsDoNotOverrideEnvFileValues() throws Exception {
+        Path envFile = tempDir.resolve("collector.env");
+        Files.writeString(envFile, """
+                TOKEN_METER_SERVER_URL="http://file-server:18080"
+                TOKEN_METER_DEVICE_TOKEN="file-token"
+                TOKEN_METER_DAYS="14"
+                """);
+
+        AppConfig config = AppConfig.from(CollectorEnvFile.withEnvFileDefaults(new String[]{
+                "--collect-team",
+                "--collector-env-file=" + envFile,
+                "--server-url=",
+                "--device-token=",
+                "--days="
+        }, Map.of(
+                "TOKEN_METER_SERVER_URL", "http://env-server:18080",
+                "TOKEN_METER_DEVICE_TOKEN", "env-token",
+                "TOKEN_METER_DAYS", "21"
+        )));
+
+        assertEquals("http://file-server:18080", config.options().get("server-url"));
+        assertEquals("file-token", config.options().get("device-token"));
+        assertEquals("14", config.reportQuery().get("days"));
     }
 
     @Test
