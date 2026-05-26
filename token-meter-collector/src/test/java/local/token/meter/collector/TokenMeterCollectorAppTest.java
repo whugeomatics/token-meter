@@ -74,6 +74,13 @@ final class TokenMeterCollectorAppTest {
     }
 
     @Test
+    void defaultTeamCollectionBackfillsEnoughDaysForCurrentMonthReports() {
+        AppConfig config = AppConfig.from(new String[]{});
+
+        assertEquals(35, TokenMeterCollectorApp.reportDays(config));
+    }
+
+    @Test
     void claudeCodeCollectionAllowsExplicitProjectsDirectory() throws Exception {
         AppConfig config = AppConfig.from(new String[]{
                 "--collect-claude-code",

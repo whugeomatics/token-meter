@@ -120,9 +120,9 @@ public final class TokenMeterCollectorApp {
         return "hook".equals(source) ? "estimated" : "reported";
     }
 
-    private static int reportDays(AppConfig config) {
+    static int reportDays(AppConfig config) {
         String days = config.reportQuery().get("days");
-        return days == null || days.isBlank() ? 7 : Integer.parseInt(days);
+        return days == null || days.isBlank() ? 35 : Integer.parseInt(days);
     }
 
     private static int batchSize(AppConfig config) {

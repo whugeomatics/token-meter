@@ -123,7 +123,7 @@ Windows 上推荐通过 Git Bash 执行同一个 `run-collector.sh`。如果 `%U
 | User id             | `--user-id=<user>`               | `TOKEN_METER_USER_ID`      | 无                             | 写入 Team usage event       |
 | Device id           | `--device-id=<device>`           | `TOKEN_METER_DEVICE_ID`    | 无                             | 写入 Team usage event       |
 | 上传 batch size       | `--batch-size=500`               | `TOKEN_METER_BATCH_SIZE`   | `500`                         | 代码会限制在 `1..500`           |
-| 采集回看天数              | `--days=7`                       | `TOKEN_METER_DAYS`         | `7`                           | 上传最近 N 天 usage            |
+| 采集回看天数              | `--days=35`                      | `TOKEN_METER_DAYS`         | `35`                          | 上传最近 N 天 usage，默认覆盖当前月常见回填场景 |
 | Codex sessions 目录   | `--sessions-dir=<path>`          | `CODEX_SESSIONS_DIR`       | `<user.home>/.codex/sessions` | collector 采集 Codex 时读取这里  |
 
 典型 `collector.env`：

@@ -1,8 +1,10 @@
 package local.token.meter.ingestion;
 
 import local.token.meter.domain.DeviceTokenBinding;
+import local.token.meter.domain.StoredTeamUsageEvent;
 import local.token.meter.domain.TeamIngestResult;
 import local.token.meter.report.TeamReportService;
+import local.token.meter.store.ShardedTeamUsageStore;
 import local.token.meter.store.SqliteTeamUsageStore;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -10,6 +12,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -21,14 +24,15 @@ final class TeamIngestionServiceToolTest {
 
     @Test
     void acceptsClaudeCodeEventsAndReportCanFilterByTool() throws Exception {
-        LocalDate today = LocalDate.now(ZoneId.of("UTC"));
+        ZoneId zone = ZoneId.of("Asia/Shanghai");
+        LocalDate today = LocalDate.now(zone);
         String timestamp = today + "T00:00:00Z";
         SqliteTeamUsageStore store = new SqliteTeamUsageStore(tempDir.resolve("team.sqlite"));
         store.initialize();
         store.upsertDeviceToken("secret-token",
                 new DeviceTokenBinding("team-a", "user-a", "device-a", "Alice", "active"));
 
-        TeamIngestionService ingestion = new TeamIngestionService(store, ZoneId.of("UTC"));
+        TeamIngestionService ingestion = new TeamIngestionService(store, zone);
         TeamIngestResult result = ingestion.ingest("secret-token", "{"
                 + "\"collector_version\":\"0.1.0\","
                 + "\"client_user_id\":\"user-a\","
@@ -52,7 +56,7 @@ final class TeamIngestionServiceToolTest {
         assertEquals("ok", result.status());
         assertEquals(1, result.accepted());
 
-        TeamReportService reports = new TeamReportService(store, ZoneId.of("UTC"));
+        TeamReportService reports = new TeamReportService(store, zone);
         String allJson = reports.report(Map.of("days", "1")).toJson();
         String claudeJson = reports.report(Map.of("days", "1", "tool", "claude-code")).toJson();
         String codexJson = reports.report(Map.of("days", "1", "tool", "codex")).toJson();
@@ -64,7 +68,7 @@ final class TeamIngestionServiceToolTest {
         assertTrue(allJson.contains("\"team_models\""));
         assertTrue(allJson.contains("\"tool\":\"claude-code\",\"model\":\"claude-sonnet\""));
         assertTrue(allJson.contains("\"upload_time\":\"" + today + "T"));
-        assertTrue(allJson.contains("+00:00\""));
+        assertTrue(allJson.contains("+08:00\""));
         assertTrue(claudeJson.contains("\"total_tokens\":100"));
         assertTrue(codexJson.contains("\"total_tokens\":0"));
     }
@@ -94,14 +98,15 @@ final class TeamIngestionServiceToolTest {
 
     @Test
     void teamReportDeduplicatesCallCountWithoutHidingUsageEvents() throws Exception {
-        LocalDate today = LocalDate.now(ZoneId.of("UTC"));
+        ZoneId zone = ZoneId.of("Asia/Shanghai");
+        LocalDate today = LocalDate.now(zone);
         String timestamp = today + "T00:00:00Z";
         SqliteTeamUsageStore store = new SqliteTeamUsageStore(tempDir.resolve("team-calls.sqlite"));
         store.initialize();
         store.upsertDeviceToken("secret-token",
                 new DeviceTokenBinding("team-a", "user-a", "device-a", "Alice", "active"));
 
-        TeamIngestionService ingestion = new TeamIngestionService(store, ZoneId.of("UTC"));
+        TeamIngestionService ingestion = new TeamIngestionService(store, zone);
         TeamIngestResult result = ingestion.ingest("secret-token", "{"
                 + "\"client_user_id\":\"user-a\","
                 + "\"client_device_id\":\"device-a\","
@@ -116,6 +121,32 @@ final class TeamIngestionServiceToolTest {
         String json = new TeamReportService(store, ZoneId.of("UTC")).report(Map.of("days", "1")).toJson();
         assertTrue(json.contains("\"usage_event_count\":2"));
         assertTrue(json.contains("\"call_count\":1"));
+    }
+
+    @Test
+    void shardedTeamStorePreservesEventKeyWhenEnrichingDeviceBinding() throws Exception {
+        ZoneId zone = ZoneId.of("Asia/Shanghai");
+        LocalDate today = LocalDate.now(zone);
+        String timestamp = today + "T00:00:00Z";
+        ShardedTeamUsageStore store = new ShardedTeamUsageStore(tempDir.resolve("team-shards"));
+        store.initialize();
+        store.upsertDeviceToken("secret-token",
+                new DeviceTokenBinding("team-a", "user-a", "device-a", "Alice", "active"));
+
+        TeamIngestionService ingestion = new TeamIngestionService(store, zone);
+        TeamIngestResult result = ingestion.ingest("secret-token", "{"
+                + "\"client_user_id\":\"user-a\","
+                + "\"client_device_id\":\"device-a\","
+                + "\"events\":["
+                + eventJson("event-a", "\"tool\":\"codex\"", timestamp, 100)
+                + "]"
+                + "}");
+
+        assertEquals(1, result.accepted());
+        List<StoredTeamUsageEvent> events = store.loadTeamEvents(today, today);
+        assertEquals(1, events.size());
+        assertEquals("event-a", events.get(0).eventKey());
+        assertEquals("Alice", events.get(0).userDisplayName());
     }
 
     private static String eventJson(String key, String toolFields) {

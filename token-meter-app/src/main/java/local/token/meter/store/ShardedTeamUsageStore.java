@@ -70,13 +70,14 @@ public final class ShardedTeamUsageStore implements TeamUsageStore {
 
     public List<StoredTeamUsageEvent> loadTeamEvents(LocalDate startDate, LocalDate endDate) throws SQLException {
         List<StoredTeamUsageEvent> events = new ArrayList<>();
+        Map<String, DeviceTokenBinding> bindings = new HashMap<>();
         YearMonth month = YearMonth.from(startDate);
         YearMonth endMonth = YearMonth.from(endDate);
         while (!month.isAfter(endMonth)) {
             Path path = dbPath(month);
             if (Files.isRegularFile(path)) {
                 for (StoredTeamUsageEvent event : store(month).loadTeamEvents(startDate, endDate)) {
-                    events.add(enrich(event));
+                    events.add(enrich(event, bindings));
                 }
             }
             month = month.plusMonths(1);
@@ -88,13 +89,19 @@ public final class ShardedTeamUsageStore implements TeamUsageStore {
         return registry.loadTeamUploads(startDate, endDate);
     }
 
-    private StoredTeamUsageEvent enrich(StoredTeamUsageEvent event) throws SQLException {
-        DeviceTokenBinding binding = registry.findDeviceBinding(event.teamId(), event.userId(), event.deviceId());
+    private StoredTeamUsageEvent enrich(StoredTeamUsageEvent event, Map<String, DeviceTokenBinding> bindings)
+            throws SQLException {
+        String bindingKey = event.teamId() + "\u0000" + event.userId() + "\u0000" + event.deviceId();
+        DeviceTokenBinding binding = bindings.get(bindingKey);
+        if (!bindings.containsKey(bindingKey)) {
+            binding = registry.findDeviceBinding(event.teamId(), event.userId(), event.deviceId());
+            bindings.put(bindingKey, binding);
+        }
         if (binding == null) {
             return event;
         }
         String displayName = binding.displayName();
-        return new StoredTeamUsageEvent(event.teamId(), event.userId(),
+        return new StoredTeamUsageEvent(event.eventKey(), event.teamId(), event.userId(),
                 displayName == null || displayName.isBlank() ? event.userId() : displayName,
                 event.deviceId(), displayName, event.tool(), event.sessionId(), event.model(),
                 event.timestamp(), event.usage(), event.sourceKind(), event.sourceQuality());
