@@ -70,7 +70,7 @@ Windows 默认读取：
 
 ## Privacy Boundary
 
-Codex integration 不得保存或上传：
+Codex canonical event、team payload、report、export、stdout 和日志不得包含：
 
 - prompt。
 - response。
@@ -82,4 +82,6 @@ Codex integration 不得保存或上传：
 - device token hash。
 - 完整本地路径。
 
-本地路径只能以 hash 形式参与 event key。
+本地路径只能以 hash 形式参与 event key、team payload、report、export、stdout 和日志。
+
+Local SQLite 的 `source_files.path` 允许保存 Codex 完整本地路径，仅作为本机内部增量采集索引和问题定位依据。

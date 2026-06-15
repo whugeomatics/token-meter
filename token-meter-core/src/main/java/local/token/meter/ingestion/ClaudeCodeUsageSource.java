@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Set;
 
 public final class ClaudeCodeUsageSource {
+    private static final String UNKNOWN_MODEL = "unknown";
+
     private final Path usagePath;
     private final ZoneId zone;
     private final String userId;
@@ -72,16 +74,26 @@ public final class ClaudeCodeUsageSource {
 
     private void scanFile(Path file, List<ScannedClaudeCodeUsageEvent> events, Set<String> eventKeys)
             throws IOException {
+        List<ScannedClaudeCodeUsageEvent> fileEvents = new ArrayList<>();
+        String firstKnownModel = "";
         int lineNumber = 0;
         for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
             lineNumber++;
             if (line.isBlank()) {
                 continue;
             }
+            if (firstKnownModel.isBlank()) {
+                firstKnownModel = modelFromLine(line);
+            }
             TeamUsageEvent event = parseLine(line);
-            if (event != null && eventKeys.add(event.eventKey())) {
-                events.add(new ScannedClaudeCodeUsageEvent(file.toAbsolutePath().normalize().toString(),
+            if (event != null) {
+                fileEvents.add(new ScannedClaudeCodeUsageEvent(file.toAbsolutePath().normalize().toString(),
                         lineNumber, event));
+            }
+        }
+        for (ScannedClaudeCodeUsageEvent event : backfillUnknownModels(fileEvents, firstKnownModel)) {
+            if (eventKeys.add(event.event().eventKey())) {
+                events.add(event);
             }
         }
     }
@@ -89,6 +101,10 @@ public final class ClaudeCodeUsageSource {
     private TeamUsageEvent parseLine(String json) {
         try {
             TeamUsageEvent localEvent = parseClaudeProjectLine(json);
+            if (localEvent != null) {
+                return localEvent;
+            }
+            localEvent = parseToolUseResultLine(json);
             if (localEvent != null) {
                 return localEvent;
             }
@@ -110,7 +126,9 @@ public final class ClaudeCodeUsageSource {
             return null;
         }
         String messageId = Json.firstString(message.get(), "id").orElse("");
-        String model = Json.firstString(message.get(), "model").orElse("unknown");
+        String model = Json.firstString(message.get(), "model")
+                .or(() -> Json.firstString(json, "model"))
+                .orElse(UNKNOWN_MODEL);
         Instant timestamp = Instant.parse(timestampValue);
         Snapshot usage = usageFromClaudeUsage(usageJson.get());
         if (!usage.hasPositiveUsage()) {
@@ -122,11 +140,36 @@ public final class ClaudeCodeUsageSource {
                 timestamp, localDate, usage, userId, deviceId, sourceKind, sourceQuality);
     }
 
+    private TeamUsageEvent parseToolUseResultLine(String json) {
+        String sessionId = Json.firstString(json, "sessionId").orElse("");
+        String timestampValue = Json.firstString(json, "timestamp").orElse("");
+        var toolUseResult = Json.objectSection(json, "toolUseResult");
+        if (sessionId.isBlank() || timestampValue.isBlank() || toolUseResult.isEmpty()) {
+            return null;
+        }
+        var usageJson = Json.objectSection(toolUseResult.get(), "usage");
+        if (usageJson.isEmpty()) {
+            return null;
+        }
+        String model = Json.firstString(toolUseResult.get(), "model")
+                .or(() -> Json.firstString(json, "model"))
+                .orElse(UNKNOWN_MODEL);
+        Instant timestamp = Instant.parse(timestampValue);
+        Snapshot usage = usageFromClaudeUsage(usageJson.get());
+        if (!usage.hasPositiveUsage()) {
+            return null;
+        }
+        LocalDate localDate = timestamp.atZone(zone).toLocalDate();
+        String sourceIdentity = Json.firstString(json, "uuid").orElse(timestamp.toString());
+        return new TeamUsageEvent(eventKey(sessionId, model, sourceIdentity, usage), "claude-code", sessionId, model,
+                timestamp, localDate, usage, userId, deviceId, sourceKind, sourceQuality);
+    }
+
     private TeamUsageEvent parseFlatUsageLine(String json) {
         String sessionId = Json.firstString(json, "session_id")
                 .or(() -> Json.firstString(json, "sessionId"))
                 .orElse("");
-        String model = Json.firstString(json, "model").orElse("unknown");
+        String model = Json.firstString(json, "model").orElse(UNKNOWN_MODEL);
         String timestampValue = Json.firstString(json, "timestamp")
                 .or(() -> Json.firstString(json, "time"))
                 .orElse("");
@@ -148,7 +191,7 @@ public final class ClaudeCodeUsageSource {
         long cached = Json.longValue(json, "cached_input_tokens").orElse(0L);
         long output = Json.longValue(json, "output_tokens").orElse(0L);
         long reasoning = Json.longValue(json, "reasoning_output_tokens").orElse(0L);
-        long total = Json.longValue(json, "total_tokens").orElse(input + cached + output + reasoning);
+        long total = Json.longValue(json, "total_tokens").orElse(input + output + reasoning);
         return new Snapshot(input, cached, output, reasoning, total);
     }
 
@@ -167,6 +210,61 @@ public final class ClaudeCodeUsageSource {
     private String eventKey(String sessionId, String model, String sourceIdentity, Snapshot usage) {
         return "claude-code|" + sourceKind + "|" + sessionId + "|" + hash(sourceIdentity) + "|" + model + "|"
                 + hash(usageKey(usage));
+    }
+
+    private String modelFromLine(String json) {
+        var message = Json.objectSection(json, "message");
+        if (message.isPresent()) {
+            String model = Json.firstString(message.get(), "model").orElse("");
+            if (isKnownModel(model)) {
+                return model;
+            }
+        }
+        var toolUseResult = Json.objectSection(json, "toolUseResult");
+        if (toolUseResult.isPresent()) {
+            String model = Json.firstString(toolUseResult.get(), "model").orElse("");
+            if (isKnownModel(model)) {
+                return model;
+            }
+        }
+        String model = Json.firstString(json, "model").orElse("");
+        return isKnownModel(model) ? model : "";
+    }
+
+    private List<ScannedClaudeCodeUsageEvent> backfillUnknownModels(List<ScannedClaudeCodeUsageEvent> events,
+                                                                     String fallbackModel) {
+        if (!isKnownModel(fallbackModel)) {
+            return events;
+        }
+        List<ScannedClaudeCodeUsageEvent> backfilled = new ArrayList<>(events.size());
+        for (ScannedClaudeCodeUsageEvent event : events) {
+            String model = isKnownModel(event.event().model()) ? event.event().model() : fallbackModel;
+            backfilled.add(new ScannedClaudeCodeUsageEvent(event.sourcePath(), event.lineNumber(),
+                    withModel(event.event(), model)));
+        }
+        return backfilled;
+    }
+
+    private TeamUsageEvent withModel(TeamUsageEvent event, String model) {
+        if (event.model().equals(model)) {
+            return event;
+        }
+        return new TeamUsageEvent(eventKeyWithModel(event.eventKey(), model), event.tool(), event.sessionId(), model,
+                event.timestamp(), event.localDate(), event.usage(), event.clientUserId(), event.clientDeviceId(),
+                event.sourceKind(), event.sourceQuality());
+    }
+
+    private String eventKeyWithModel(String eventKey, String model) {
+        String[] parts = eventKey.split("\\|", -1);
+        if (parts.length == 6) {
+            parts[4] = model;
+            return String.join("|", parts);
+        }
+        return eventKey;
+    }
+
+    private boolean isKnownModel(String model) {
+        return model != null && !model.isBlank() && !UNKNOWN_MODEL.equals(model);
     }
 
     private String usageKey(Snapshot usage) {

@@ -22,11 +22,11 @@ Review whether the P5 implementation matches the unified CLI usage metrics contr
 
 ## Conclusion
 
-Status: follow-up required before P5 can be treated as fully closed.
+Status: follow-up resolved.
 
 The implementation has the main P5 report-layer derived metric model in place: `TokenTotals` computes `net_input_tokens`, `net_total_tokens`, and clamped cache rate once, and both Local and Team report services use that shared type. Codex and Claude Code collection also carry `source_kind` and `source_quality` through storage and report summaries/tools.
 
-However, the review found contract mismatches in fallback and privacy handling. These should be fixed before changing the project status to "P5 complete".
+The review originally found contract mismatches in fallback and privacy handling. The follow-up changes resolved them by fixing token fallback code, adding regression tests, defining server-side `unknown` source metadata fallback, and clarifying that complete local paths may exist only in Local SQLite internal source indexing.
 
 ## Findings
 
@@ -54,10 +54,10 @@ Evidence:
 - `token-meter-core/src/main/java/local/token/meter/ingestion/ClaudeCodeUsageSource.java:151`
 - `docs/contracts/P5-2026-05-24-unified-cli-usage-metrics.md` fallback rules
 
-Recommended fix:
+Resolution:
 
-- Change the flat-line fallback to `input + output + reasoning`.
-- Add a unit test where flat usage has `input_tokens=100`, `cached_input_tokens=40`, `output_tokens=10`, no `total_tokens`, and expected total is `110`.
+- Fixed flat-line fallback to `input + output + reasoning`.
+- Added `ClaudeCodeUsageSourceTest.flatUsageFallbackTotalDoesNotDoubleCountCachedInput`.
 
 ### P1: Team ingestion does not apply canonical total fallback
 
@@ -71,17 +71,16 @@ Evidence:
 - `token-meter-app/src/main/java/local/token/meter/ingestion/TeamIngestionService.java:132`
 - `docs/contracts/P5-2026-05-24-unified-cli-usage-metrics.md` fallback rules
 
-Recommended fix:
+Resolution:
 
-- Parse token facts into locals first.
-- Use `Json.longValue(json, "total_tokens").orElse(input + output + reasoning)`.
-- Add a team ingestion test for missing `total_tokens`.
+- Fixed Team ingest to parse token facts first and use `input + output + reasoning` when `total_tokens` is missing.
+- Added `TeamIngestionServiceToolTest.appliesCanonicalFallbacksForMissingTotalAndSourceMetadata`.
 
-### P1: Local SQLite still stores full source paths despite the P5 privacy boundary
+### P1: Local SQLite path storage needed contract clarification
 
-The P5 privacy boundary says DB must not contain complete local paths. The local store schema still persists `source_files.path`, keyed by `UNIQUE(tool, path)`, and app/Claude local ingestion pass normalized absolute source paths into local storage.
+The original P5 privacy boundary said DB must not contain complete local paths. The local store schema intentionally persists `source_files.path`, keyed by `UNIQUE(tool, path)`, and app/Claude local ingestion pass normalized absolute source paths into local storage.
 
-Impact: Local SQLite can contain full Codex/Claude source file paths. That contradicts the P5 privacy acceptance text and can expose usernames, project names, and filesystem layout to anyone with DB access.
+Decision: Local SQLite may store complete local paths for internal incremental ingestion state and issue diagnosis. Complete local paths remain forbidden in canonical events, team payloads, reports, exports, stdout, and logs.
 
 Evidence:
 
@@ -91,11 +90,9 @@ Evidence:
 - `token-meter-app/src/main/resources/db/schema-v1.sql:224`
 - `docs/contracts/P5-2026-05-24-unified-cli-usage-metrics.md` privacy boundary
 
-Recommended fix:
+Resolution:
 
-- Decide whether P5 intends to forbid complete local paths in all DB tables or only in canonical event/team payload/report surfaces.
-- If DB paths are forbidden, migrate `source_files.path` to a non-reversible source identity plus non-sensitive display label, and keep incremental scan identity outside report/export surfaces.
-- If local DB path storage is intentionally retained for incremental ingestion, amend P5 contract and acceptance to narrow the privacy claim. Do not leave the current contradiction.
+- Updated P5 contract and integration docs to narrow the privacy claim and explicitly allow Local SQLite `source_files.path` as a local-only internal source index.
 
 ### P2: Team ingestion accepts missing source metadata even though P5 marks it required
 
@@ -109,9 +106,10 @@ Evidence:
 - `token-meter-app/src/main/java/local/token/meter/ingestion/TeamIngestionService.java:139`
 - `docs/contracts/P5-2026-05-24-unified-cli-usage-metrics.md` canonical usage event field rules
 
-Recommended fix:
+Resolution:
 
-- Either reject blank `source_kind`/`source_quality`, or explicitly define the server-side fallback to `unknown` in the P5 contract.
+- Implemented server-side fallback to `unknown` for missing `source_kind` and `source_quality`.
+- Updated P5 contract to preserve compatibility with old payloads while requiring collectors and new source mappings to send explicit source metadata.
 
 ## Passing Checks
 
@@ -141,8 +139,12 @@ Privacy-positive behavior:
 
 ## Suggested Closeout
 
-1. Fix the two token fallback issues.
-2. Resolve the local DB path privacy contradiction by either code migration or contract clarification.
-3. Re-run targeted fallback/privacy tests and full `mvn test`.
-4. Update P5 acceptance after the follow-up fixes.
-5. Only then mark P5 as complete.
+P5 review follow-up is closed after targeted fallback tests and full Java tests passed.
+
+Verification:
+
+```text
+mvn -pl token-meter-collector -am -Dtest=ClaudeCodeUsageSourceTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn -pl token-meter-app -am -Dtest=TeamIngestionServiceToolTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn test
+```

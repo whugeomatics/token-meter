@@ -8,9 +8,9 @@ Token Meter is a local AI CLI usage dashboard and future routing tool. The proje
 
 ## Current Status
 
-Current phase: **P5 - Unified CLI usage metrics review follow-up pending**.
+Current phase: **P5 - Unified CLI usage metrics complete; next phase not started**.
 
-P1, P2, P3, and P4 have passed implementation verification. P5 implementation and acceptance records exist, but the 2026-06-15 P5 review found follow-up issues that must be resolved before P5 is treated as fully closed.
+P1, P2, P3, P4, and P5 have passed implementation verification. P5 review follow-up was resolved on 2026-06-15.
 
 P1, the Codex Dashboard MVP:
 
@@ -46,8 +46,8 @@ P5, Unified CLI usage metrics:
 
 - P5 defines canonical usage event facts for CLI tools, starting with Codex and Claude Code.
 - P5 keeps derived metrics such as net tokens and cache rate in the report layer.
-- P5 implementation has been verified, but review follow-up is still pending.
-- Review follow-up covers canonical fallback mismatches and the local DB path privacy contract conflict.
+- P5 implementation and review follow-up have been verified.
+- Local SQLite may keep complete source paths only as local internal ingestion state; complete paths must not enter canonical events, team payloads, reports, exports, stdout, or logs.
 - P5 does not add Cursor, Gemini CLI, a local model gateway, provider routing, pricing, budgets, or alerts.
 
 ## Stage Results

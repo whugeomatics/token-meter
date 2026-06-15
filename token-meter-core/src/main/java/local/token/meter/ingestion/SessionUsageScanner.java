@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Optional;
 
 public final class SessionUsageScanner {
+    private static final String UNKNOWN_MODEL = "unknown";
+
     private final Path sessionsDir;
     private final ZoneId zone;
 
@@ -69,7 +71,8 @@ public final class SessionUsageScanner {
         List<IngestedUsageEvent> events = new ArrayList<>();
         List<IngestionError> errors = new ArrayList<>();
         String sessionId = fallbackSessionId(file);
-        String currentModel = "unknown";
+        String currentModel = UNKNOWN_MODEL;
+        String firstKnownModel = "";
         Snapshot previous = null;
         int lineNumber = 0;
         Instant lastEventTimestamp = null;
@@ -87,6 +90,9 @@ public final class SessionUsageScanner {
                 }
                 if ("turn_context".equals(topType)) {
                     currentModel = Json.firstString(line, "model").orElse(currentModel);
+                    if (firstKnownModel.isBlank() && isKnownModel(currentModel)) {
+                        firstKnownModel = currentModel;
+                    }
                     continue;
                 }
                 if (!"event_msg".equals(topType) || !Json.stringOccurrences(line, "type").contains("token_count")) {
@@ -112,11 +118,31 @@ public final class SessionUsageScanner {
                 errors.add(new IngestionError(file.toString(), lineNumber, "parse error: " + e.getClass().getSimpleName()));
             }
         }
-        return new SessionUsageFile(events, errors, lineNumber, lastEventTimestamp);
+        return new SessionUsageFile(backfillUnknownModels(events, firstKnownModel), errors, lineNumber, lastEventTimestamp);
     }
 
     private String fallbackSessionId(Path file) {
         String name = file.getFileName().toString();
         return name.endsWith(".jsonl") ? name.substring(0, name.length() - ".jsonl".length()) : name;
+    }
+
+    private List<IngestedUsageEvent> backfillUnknownModels(List<IngestedUsageEvent> events, String model) {
+        if (!isKnownModel(model)) {
+            return events;
+        }
+        List<IngestedUsageEvent> backfilled = new ArrayList<>(events.size());
+        for (IngestedUsageEvent event : events) {
+            if (isKnownModel(event.model())) {
+                backfilled.add(event);
+                continue;
+            }
+            backfilled.add(new IngestedUsageEvent(event.sourcePath(), event.lineNumber(), event.sessionId(), model,
+                    event.timestamp(), event.localDate(), event.cumulative(), event.delta()));
+        }
+        return backfilled;
+    }
+
+    private boolean isKnownModel(String model) {
+        return model != null && !model.isBlank() && !UNKNOWN_MODEL.equals(model);
     }
 }

@@ -124,24 +124,27 @@ public final class TeamIngestionService {
                 return null;
             }
             Instant timestamp = Instant.parse(timestampValue);
-            Snapshot usage = new Snapshot(
-                    Json.longValue(json, "input_tokens").orElse(0L),
-                    Json.longValue(json, "cached_input_tokens").orElse(0L),
-                    Json.longValue(json, "output_tokens").orElse(0L),
-                    Json.longValue(json, "reasoning_output_tokens").orElse(0L),
-                    Json.longValue(json, "total_tokens").orElse(0L)
-            );
+            long input = Json.longValue(json, "input_tokens").orElse(0L);
+            long cached = Json.longValue(json, "cached_input_tokens").orElse(0L);
+            long output = Json.longValue(json, "output_tokens").orElse(0L);
+            long reasoning = Json.longValue(json, "reasoning_output_tokens").orElse(0L);
+            long total = Json.longValue(json, "total_tokens").orElse(input + output + reasoning);
+            Snapshot usage = new Snapshot(input, cached, output, reasoning, total);
             if (!usage.hasPositiveUsage()) {
                 return null;
             }
             LocalDate localDate = timestamp.atZone(zone).toLocalDate();
-            String sourceKind = Json.firstString(json, "source_kind").orElse("");
-            String sourceQuality = Json.firstString(json, "source_quality").orElse("");
+            String sourceKind = canonicalSourceMetadata(Json.firstString(json, "source_kind").orElse(""));
+            String sourceQuality = canonicalSourceMetadata(Json.firstString(json, "source_quality").orElse(""));
             return new TeamUsageEvent(eventKey, tool, sessionId, model, timestamp, localDate, usage, clientUserId,
                     clientDeviceId, sourceKind, sourceQuality);
         } catch (RuntimeException e) {
             return null;
         }
+    }
+
+    private String canonicalSourceMetadata(String value) {
+        return value == null || value.isBlank() ? "unknown" : value;
     }
 
     private String formatUploadTime(Instant uploadTime) {

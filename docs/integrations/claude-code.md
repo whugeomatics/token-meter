@@ -23,7 +23,7 @@ P4 也保留 OTel 和 hook metadata fixture 支持。Hook 只允许作为受限 
 | `source_kind` | `local_jsonl`、`otel_metric`、`otel_log`、`hook_metadata` 或 `fixture` |
 | `source_quality` | 来源明确上报 token 时为 `reported`；total 由 usage metadata 相加得到时为 `derived`；session/timestamp 等非 token 维度推导时为 `estimated` |
 | `session_id` | Claude Code session id；缺失时使用稳定 source identity 或 `unknown` |
-| `model` | `message.model` 或 OTel model metadata；缺失时使用 `unknown` |
+| `model` | `message.model`、`toolUseResult.model` 或 OTel model metadata；缺失时优先用同 session 文件中的已知 model 回填，仍缺失时使用 `unknown` |
 | `timestamp` | Claude Code event timestamp |
 | `input_tokens` | Claude Code `input_tokens + cache_creation_input_tokens + cache_read_input_tokens` |
 | `cached_input_tokens` | `cache_creation_input_tokens + cache_read_input_tokens` |
@@ -45,7 +45,7 @@ claude-code|<source_kind>|<session_id>|<source_identity>|<model>|<token_fingerpr
 
 ## Fallback
 
-- 缺失 model 使用 `unknown`。
+- 缺失 model 优先使用同 session 文件中前序或后续的已知 model 回填；仍缺失时使用 `unknown`。
 - 缺失 session 优先使用稳定 source identity，仍缺失时使用 `unknown`。
 - 缺失 cache token 使用 0。
 - 缺失 reasoning token 使用 0。
@@ -73,7 +73,7 @@ CLI 参数 > collector.env > 系统环境变量
 
 ## Privacy Boundary
 
-Claude Code integration 不得保存或上传：
+Claude Code canonical event、team payload、report、export、stdout 和日志不得包含：
 
 - prompt。
 - response。
@@ -89,4 +89,6 @@ Claude Code integration 不得保存或上传：
 - device token hash。
 - 完整本地路径。
 
-本地路径只能以 hash 形式参与 event key 或 source identity。
+本地路径只能以 hash 形式参与 event key、source identity、team payload、report、export、stdout 和日志。
+
+Local SQLite 的 `source_files.path` 允许保存 Claude Code 完整本地路径，仅作为本机内部增量采集索引和问题定位依据。

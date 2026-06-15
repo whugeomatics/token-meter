@@ -67,6 +67,7 @@ reported > derived > estimated
 - 缺失 `cached_input_tokens` 时使用 0。
 - 缺失 `reasoning_output_tokens` 时使用 0。
 - 缺失 `total_tokens` 时使用 `input_tokens + output_tokens + reasoning_output_tokens`。因为 `input_tokens` 已包含可识别 cached input，fallback 不再额外相加 `cached_input_tokens`。
+- Team ingest 为兼容旧 payload，缺失 `source_kind` 或 `source_quality` 时服务端写入 `unknown`；collector 和新 source mapping 仍应显式上报这两个字段。
 - 如果 `input_tokens + cached_input_tokens + output_tokens + reasoning_output_tokens + total_tokens` 全部为 0，不生成 usage event。
 - 不得根据 prompt、response、raw transcript、raw API body、文件大小或字符数估算 token。
 
@@ -125,7 +126,7 @@ P5 覆盖：
 
 ## Privacy Boundary
 
-canonical event、payload、DB、report、stdout 和日志不得包含：
+canonical event、team payload、report、export、stdout 和日志不得包含：
 
 - prompt。
 - response。
@@ -141,4 +142,6 @@ canonical event、payload、DB、report、stdout 和日志不得包含：
 - device token hash。
 - 完整本地路径。
 
-如果需要关联本地来源，只能使用 hash 或来源自身稳定 id。
+如果需要在 canonical event、team payload、report、export、stdout 或日志中关联本地来源，只能使用 hash 或来源自身稳定 id。
+
+Local SQLite 的 `source_files.path` 允许保存完整本地路径，仅作为本机内部增量采集索引和问题定位依据。该路径不得进入 canonical event、team payload、report、export、stdout 或日志。

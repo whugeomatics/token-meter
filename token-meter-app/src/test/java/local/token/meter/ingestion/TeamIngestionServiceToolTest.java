@@ -74,6 +74,42 @@ final class TeamIngestionServiceToolTest {
     }
 
     @Test
+    void appliesCanonicalFallbacksForMissingTotalAndSourceMetadata() throws Exception {
+        ZoneId zone = ZoneId.of("Asia/Shanghai");
+        LocalDate today = LocalDate.now(zone);
+        String timestamp = today + "T00:00:00Z";
+        SqliteTeamUsageStore store = new SqliteTeamUsageStore(tempDir.resolve("team-fallback.sqlite"));
+        store.initialize();
+        store.upsertDeviceToken("secret-token",
+                new DeviceTokenBinding("team-a", "user-a", "device-a", "Alice", "active"));
+
+        TeamIngestionService ingestion = new TeamIngestionService(store, zone);
+        TeamIngestResult result = ingestion.ingest("secret-token", "{"
+                + "\"client_user_id\":\"user-a\","
+                + "\"client_device_id\":\"device-a\","
+                + "\"events\":[{"
+                + "\"event_key\":\"missing-total\","
+                + "\"tool\":\"claude-code\","
+                + "\"session_id\":\"session-a\","
+                + "\"model\":\"claude-sonnet\","
+                + "\"timestamp\":\"" + timestamp + "\","
+                + "\"input_tokens\":100,"
+                + "\"cached_input_tokens\":40,"
+                + "\"output_tokens\":10,"
+                + "\"reasoning_output_tokens\":3"
+                + "}]"
+                + "}");
+
+        assertEquals("ok", result.status());
+        assertEquals(1, result.accepted());
+        List<StoredTeamUsageEvent> events = store.loadTeamEvents(today, today);
+        assertEquals(1, events.size());
+        assertEquals(113, events.get(0).usage().totalTokens());
+        assertEquals("unknown", events.get(0).sourceKind());
+        assertEquals("unknown", events.get(0).sourceQuality());
+    }
+
+    @Test
     void rejectsUnknownToolsAndForbiddenContentFields() throws Exception {
         SqliteTeamUsageStore store = new SqliteTeamUsageStore(tempDir.resolve("team.sqlite"));
         store.initialize();

@@ -1,6 +1,6 @@
 # P5 Unified CLI Usage Metrics Acceptance
 
-> 2026-06-15 review update: 本文件保留 2026-05-24 验收记录。后续 review 发现 P5 仍有 follow-up，解决前不应视为完全关闭。详见 `docs/reviews/P5-2026-06-15-unified-cli-usage-metrics-review.md`。
+> 2026-06-15 review update: P5 review follow-up 已处理并验证。详见 `docs/reviews/P5-2026-06-15-unified-cli-usage-metrics-review.md`。
 
 ## 目标
 
@@ -77,7 +77,7 @@
 - DB 不保存 prompt、response、raw JSONL、raw API body、raw transcript、tool input 或 tool output。
 - report 不返回 prompt、response、raw JSONL、raw API body、raw transcript、tool input 或 tool output。
 - stdout/stderr 和日志不包含 admin token、device token 明文或 token hash。
-- 完整本地路径不进入 payload、DB 或 report。
+- 完整本地路径不进入 canonical event、team payload、report、export、stdout 或日志。Local SQLite 的 `source_files.path` 允许保存完整本地路径，仅作为本机内部增量采集索引和问题定位依据。
 
 ### 6. 回归
 
@@ -124,3 +124,36 @@ sh scripts/P3-2026-05-01-package-collector.sh all
 - Maven package 通过。
 - JS 语法检查通过。
 - Collector macOS/Linux 与 Windows 分发包生成通过。
+
+## 2026-06-15 review follow-up 验证
+
+本轮修复：
+
+- Claude Code flat usage 缺失 `total_tokens` 时不再额外相加 `cached_input_tokens`。
+- Team ingest 缺失 `total_tokens` 时按 `input_tokens + output_tokens + reasoning_output_tokens` 补齐。
+- Team ingest 缺失 `source_kind` / `source_quality` 时写入 `unknown`，兼容旧 payload。
+- P5 privacy boundary 明确 Local SQLite `source_files.path` 可保存完整本地路径，仅用于本机内部增量采集和问题定位。
+- Codex session 中 `token_count` 早于 `turn_context.model` 时，scanner 使用同文件后续第一条已知 model 回填，减少新增 `model=unknown`。
+- Claude Code `toolUseResult.usage` 行缺失 model 时，collector 使用同 session 文件前序或后续的已知 model 回填，避免 subagent/tool-use usage 生成新增 `model=unknown`。
+
+新增测试：
+
+- `ClaudeCodeUsageSourceTest.flatUsageFallbackTotalDoesNotDoubleCountCachedInput`
+- `ClaudeCodeUsageSourceTest.backfillsToolUseResultModelFromSameClaudeProjectSession`
+- `TeamIngestionServiceToolTest.appliesCanonicalFallbacksForMissingTotalAndSourceMetadata`
+- `LocalIngestionServiceTest.scannerBackfillsModelWhenTokenCountAppearsBeforeTurnContext`
+
+已执行：
+
+```text
+mvn -pl token-meter-collector -am -Dtest=ClaudeCodeUsageSourceTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn -pl token-meter-app -am -Dtest=TeamIngestionServiceToolTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn -pl token-meter-app -am -Dtest=LocalIngestionServiceTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn test
+```
+
+结果：
+
+- Targeted Claude Code source tests 通过：4 tests，0 failures。
+- Targeted Team ingest tests 通过：5 tests，0 failures。
+- Java 全量测试通过：app 26 tests，collector 18 tests，0 failures。

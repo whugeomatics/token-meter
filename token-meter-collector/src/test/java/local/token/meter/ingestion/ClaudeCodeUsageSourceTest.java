@@ -44,6 +44,28 @@ final class ClaudeCodeUsageSourceTest {
     }
 
     @Test
+    void flatUsageFallbackTotalDoesNotDoubleCountCachedInput() throws Exception {
+        Path fixture = tempDir.resolve("claude-flat-no-total.jsonl");
+        Files.writeString(fixture, "{"
+                + "\"session_id\":\"claude-session\","
+                + "\"model\":\"claude-sonnet\","
+                + "\"timestamp\":\"2026-05-22T01:02:03Z\","
+                + "\"input_tokens\":100,"
+                + "\"cached_input_tokens\":40,"
+                + "\"output_tokens\":10,"
+                + "\"reasoning_output_tokens\":3"
+                + "}\n");
+
+        List<TeamUsageEvent> events = new ClaudeCodeUsageSource(fixture, ZoneId.of("UTC"), "user-a", "device-a")
+                .events();
+
+        assertEquals(1, events.size());
+        assertEquals(100, events.get(0).usage().inputTokens());
+        assertEquals(40, events.get(0).usage().cachedInputTokens());
+        assertEquals(113, events.get(0).usage().totalTokens());
+    }
+
+    @Test
     void readsClaudeCodeProjectJsonlUsageWithoutContent() throws Exception {
         Path fixture = tempDir.resolve("project").resolve("session.jsonl");
         Files.createDirectories(fixture.getParent());
@@ -80,6 +102,38 @@ final class ClaudeCodeUsageSourceTest {
         assertEquals(23, event.usage().totalTokens());
         assertEquals("local_jsonl", event.sourceKind());
         assertEquals("reported", event.sourceQuality());
+    }
+
+    @Test
+    void backfillsToolUseResultModelFromSameClaudeProjectSession() throws Exception {
+        Path fixture = tempDir.resolve("project").resolve("session.jsonl");
+        Files.createDirectories(fixture.getParent());
+        String toolUseResult = "{"
+                + "\"type\":\"user\","
+                + "\"uuid\":\"tool-use-1\","
+                + "\"sessionId\":\"claude-local-session\","
+                + "\"timestamp\":\"2026-05-22T01:01:00Z\","
+                + "\"message\":{\"role\":\"user\",\"content\":[]},"
+                + "\"toolUseResult\":{"
+                + "\"usage\":{"
+                + "\"input_tokens\":11,"
+                + "\"cache_creation_input_tokens\":3,"
+                + "\"cache_read_input_tokens\":2,"
+                + "\"output_tokens\":7"
+                + "}"
+                + "}"
+                + "}";
+        Files.writeString(fixture, toolUseResult + "\n"
+                + claudeProjectLine("uuid-2", "tool-use-1", "msg-2", "2026-05-22T01:02:03.100Z")
+                + "\n");
+
+        List<TeamUsageEvent> events = new ClaudeCodeUsageSource(tempDir.resolve("project"), ZoneId.of("UTC"),
+                "user-a", "device-a").events();
+
+        assertEquals(2, events.size());
+        assertEquals("claude-sonnet", events.get(0).model());
+        assertEquals(23, events.get(0).usage().totalTokens());
+        assertEquals("claude-sonnet", events.get(1).model());
     }
 
     @Test
