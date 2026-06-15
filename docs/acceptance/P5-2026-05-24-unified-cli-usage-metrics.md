@@ -1,5 +1,7 @@
 # P5 Unified CLI Usage Metrics Acceptance
 
+> 2026-06-15 review update: 本文件保留 2026-05-24 验收记录。后续 review 发现 P5 仍有 follow-up，解决前不应视为完全关闭。详见 `docs/reviews/P5-2026-06-15-unified-cli-usage-metrics-review.md`。
+
 ## 目标
 
 定义 P5 unified CLI usage metrics 的验收标准。P5 通过后，Codex 和 Claude Code 的 canonical event 字段、report 派生指标和 dashboard 展示语义一致，并且 schema 可以支撑未来 CLI source mapping。

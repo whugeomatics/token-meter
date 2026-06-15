@@ -8,9 +8,9 @@ Token Meter is a local AI CLI usage dashboard and future routing tool. The proje
 
 ## Current Status
 
-Current phase: **P5 - Unified CLI usage metrics design in progress**.
+Current phase: **P5 - Unified CLI usage metrics review follow-up pending**.
 
-P1, P2, P3, and P4 have passed implementation verification. P5 design has started; P5 implementation has not started.
+P1, P2, P3, and P4 have passed implementation verification. P5 implementation and acceptance records exist, but the 2026-06-15 P5 review found follow-up issues that must be resolved before P5 is treated as fully closed.
 
 P1, the Codex Dashboard MVP:
 
@@ -46,7 +46,8 @@ P5, Unified CLI usage metrics:
 
 - P5 defines canonical usage event facts for CLI tools, starting with Codex and Claude Code.
 - P5 keeps derived metrics such as net tokens and cache rate in the report layer.
-- P5 may include small code adjustments so Codex and Claude Code match the same metric contract.
+- P5 implementation has been verified, but review follow-up is still pending.
+- Review follow-up covers canonical fallback mismatches and the local DB path privacy contract conflict.
 - P5 does not add Cursor, Gemini CLI, a local model gateway, provider routing, pricing, budgets, or alerts.
 
 ## Stage Results
@@ -85,7 +86,7 @@ Current phase:
 
 - [Current AGENTS.md](AGENTS.md)
 
-P5 design baseline:
+P5 implementation baseline:
 
 - [P5 README](docs/P5-2026-05-24-README.md)
 - [P5 Unified CLI Usage Metrics Contract](docs/contracts/P5-2026-05-24-unified-cli-usage-metrics.md)
@@ -94,6 +95,8 @@ P5 design baseline:
 - [P5 Design](docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-design.md)
 - [P5 Tasks](docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-tasks.md)
 - [P5 Acceptance](docs/acceptance/P5-2026-05-24-unified-cli-usage-metrics.md)
+- [P5 Review](docs/reviews/P5-2026-06-15-unified-cli-usage-metrics-review.md)
+- [Archived P5 AGENTS](docs/archive/P5-2026-05-24-AGENTS.md)
 
 P4 implementation baseline:
 

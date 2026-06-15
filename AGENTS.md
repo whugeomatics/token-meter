@@ -13,11 +13,20 @@
 
 ## 2. 当前阶段
 
-当前阶段：P5 Unified CLI Usage Metrics 设计进行中，功能实现尚未开始。
+当前阶段：P5 Unified CLI Usage Metrics 已实现并有验收记录，但 2026-06-15 review 发现 follow-up，P5 尚不应视为完全关闭。
 
-P1、P2、P3 已通过验收。P4 聚焦 Claude Code local + teammate usage collection。P4 当前代码已支持 Local 与 Team 默认同时采集 Codex 和 Claude Code，并已完成实现验证。
+P1、P2、P3、P4 已通过验收。P4 聚焦 Claude Code local + teammate usage collection。P4 当前代码已支持 Local 与 Team 默认同时采集 Codex 和 Claude Code，并已完成实现验证。
 
-P5 聚焦 Codex 与 Claude Code 的 unified CLI usage metrics：统一 canonical usage event 事实字段、缺失字段 fallback、Local/Team report 派生指标公式和 dashboard 同名指标语义，同时让 schema 支撑未来 CLI source mapping。P5 不接入新 CLI，不实现本地网关，不做 provider 自动路由、费用估算、预算或告警。后续代码改动仍需先对齐 P5 contract、tasks 和 acceptance。
+P5 聚焦 Codex 与 Claude Code 的 unified CLI usage metrics：统一 canonical usage event 事实字段、缺失字段 fallback、Local/Team report 派生指标公式和 dashboard 同名指标语义，同时让 schema 支撑未来 CLI source mapping。P5 不接入新 CLI，不实现本地网关，不做 provider 自动路由、费用估算、预算或告警。后续代码改动仍需先对齐 P5 contract、tasks、acceptance 和 review。
+
+P5 review follow-up：
+
+- 修复 Claude Code flat usage 缺失 `total_tokens` 时额外加 `cached_input_tokens` 的 fallback 口径。
+- 修复 Team ingest 缺失 `total_tokens` 时写入 0、未按 canonical fallback 补齐的问题。
+- 处理 P5 隐私边界与 Local SQLite `source_files.path` 保存完整本地路径之间的冲突：要么改代码迁移为非可逆 source identity，要么收窄 contract/acceptance 的 DB 隐私表述。
+- 明确 Team ingest 对缺失 `source_kind` / `source_quality` 的行为：拒绝或在 contract 中定义 `unknown` fallback。
+
+在以上问题解决前，不启动 P6 功能实现。
 
 P5 文档基线：
 
@@ -28,6 +37,8 @@ P5 文档基线：
 - `docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-design.md`
 - `docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-tasks.md`
 - `docs/acceptance/P5-2026-05-24-unified-cli-usage-metrics.md`
+- `docs/reviews/P5-2026-06-15-unified-cli-usage-metrics-review.md`
+- `docs/archive/P5-2026-05-24-AGENTS.md`
 
 P4 文档基线：
 
@@ -88,11 +99,13 @@ P3 module 细节见：
 
 ## 4. 当前阶段必读
 
-进入 P4 设计前至少先读：
+处理 P5 follow-up 前至少先读：
 
 - `docs/archive/P1-2026-04-29-AGENTS.md`
 - `docs/archive/P2-2026-04-30-AGENTS.md`
 - `docs/archive/P3-2026-04-30-AGENTS.md`
+- `docs/archive/P4-2026-05-24-AGENTS.md`
+- `docs/archive/P5-2026-05-24-AGENTS.md`
 - `docs/P2-2026-04-30-README.md`
 - `docs/P3-2026-04-30-README.md`
 - `docs/contracts/P1-2026-04-29-report-api.md`
@@ -106,6 +119,13 @@ P3 module 细节见：
 - `docs/milestones/P3-codex-team-collection/P3-2026-05-21-period-comparison-design.md`
 - `docs/acceptance/P2-2026-04-30-codex-sqlite.md`
 - `docs/acceptance/P3-2026-04-30-codex-team-collection.md`
+- `docs/contracts/P5-2026-05-24-unified-cli-usage-metrics.md`
+- `docs/integrations/codex.md`
+- `docs/integrations/claude-code.md`
+- `docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-design.md`
+- `docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-tasks.md`
+- `docs/acceptance/P5-2026-05-24-unified-cli-usage-metrics.md`
+- `docs/reviews/P5-2026-06-15-unified-cli-usage-metrics-review.md`
 
 ## 5. 阶段索引
 
@@ -144,6 +164,30 @@ P3：Codex 团队用量采集，通过。
 - `docs/reviews/P3-2026-04-30-codex-team-collection-design-review.md`
 - `docs/acceptance/P3-2026-04-30-codex-team-collection.md`
 - `docs/guides/P3-2026-05-01-admin-usage-guide.md`
+
+P4：Claude Code 本地与团队用量采集，通过。
+
+- `docs/archive/P4-2026-05-24-AGENTS.md`
+- `docs/P4-2026-05-01-README.md`
+- `docs/contracts/P4-2026-05-01-claude-code-usage-event.md`
+- `docs/contracts/P4-2026-05-01-claude-code-ingestion-source.md`
+- `docs/contracts/P4-2026-05-01-tool-usage-report-extension.md`
+- `docs/milestones/P4-claude-code-team-collection/P4-2026-05-01-design.md`
+- `docs/milestones/P4-claude-code-team-collection/P4-2026-05-01-tasks.md`
+- `docs/reviews/P4-2026-05-24-claude-code-team-collection-review.md`
+- `docs/acceptance/P4-2026-05-01-claude-code-team-collection.md`
+
+P5：Unified CLI Usage Metrics，已实现验证但 review follow-up 待处理。
+
+- `docs/archive/P5-2026-05-24-AGENTS.md`
+- `docs/P5-2026-05-24-README.md`
+- `docs/contracts/P5-2026-05-24-unified-cli-usage-metrics.md`
+- `docs/integrations/codex.md`
+- `docs/integrations/claude-code.md`
+- `docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-design.md`
+- `docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-tasks.md`
+- `docs/reviews/P5-2026-06-15-unified-cli-usage-metrics-review.md`
+- `docs/acceptance/P5-2026-05-24-unified-cli-usage-metrics.md`
 
 ## 6. 验证命令
 
