@@ -210,6 +210,7 @@ public final class ReportService {
         final Set<String> models = new HashSet<>();
         final Set<String> tools = new HashSet<>();
         final Set<String> callKeys = new HashSet<>();
+        final ActiveWindows activeWindows = new ActiveWindows();
         int eventCount;
         Instant startedAt;
         Instant endedAt;
@@ -224,6 +225,7 @@ public final class ReportService {
             tools.add(event.tool());
             eventCount++;
             callKeys.add(callKey(event));
+            activeWindows.add(sessionId, event.timestamp());
             startedAt = min(startedAt, event.timestamp());
             endedAt = max(endedAt, event.timestamp());
         }
@@ -359,7 +361,7 @@ public final class ReportService {
                     + "\"session_id\":\"" + Json.escape(bucket.sessionId) + "\","
                     + "\"started_at\":\"" + formatInstant(bucket.startedAt, query.zone()) + "\","
                     + "\"ended_at\":\"" + formatInstant(bucket.endedAt, query.zone()) + "\","
-                    + "\"active_seconds\":" + ReportService.activeSeconds(bucket.startedAt, bucket.endedAt) + ","
+                    + "\"active_seconds\":" + bucket.activeWindows.activeSeconds() + ","
                     + "\"tools\":" + Json.stringArray(bucket.tools.stream().sorted().toList()) + ","
                     + "\"models\":" + Json.stringArray(bucket.models.stream().sorted().toList()) + ","
                     + "\"usage_event_count\":" + bucket.eventCount + ","
@@ -416,7 +418,7 @@ public final class ReportService {
                     + "\"session_id\":\"" + Json.escape(bucket.sessionId) + "\","
                     + "\"started_at\":\"" + formatInstant(bucket.startedAt, query.zone()) + "\","
                     + "\"ended_at\":\"" + formatInstant(bucket.endedAt, query.zone()) + "\","
-                    + "\"active_seconds\":" + ReportService.activeSeconds(bucket.startedAt, bucket.endedAt) + ","
+                    + "\"active_seconds\":" + bucket.activeWindows.activeSeconds() + ","
                     + "\"tools\":" + Json.stringArray(bucket.tools.stream().sorted().toList()) + ","
                     + "\"models\":" + Json.stringArray(bucket.models.stream().sorted().toList()) + ","
                     + "\"usage_event_count\":" + bucket.eventCount + ","

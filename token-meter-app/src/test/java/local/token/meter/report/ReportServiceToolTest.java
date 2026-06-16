@@ -106,6 +106,26 @@ final class ReportServiceToolTest {
         assertTrue(json.contains("\"call_count\":1"));
     }
 
+    @Test
+    void localSessionsActiveSecondsIgnoreLongIdleGaps() throws Exception {
+        LocalDate today = LocalDate.now(ZoneId.of("UTC"));
+        Instant first = Instant.parse(today.minusDays(8) + "T10:00:00Z");
+        Instant second = Instant.parse(today + "T10:00:00Z");
+        SqliteUsageStore store = new SqliteUsageStore(tempDir.resolve("local-active.sqlite"));
+        store.initialize();
+        store.insertLocalUsageEvent("codex", "source-a", 1,
+                event("event-a", "codex", "long-session", 100, today.minusDays(8), first));
+        store.insertLocalUsageEvent("codex", "source-a", 2,
+                event("event-b", "codex", "long-session", 100, today, second));
+
+        String json = new ReportService(store, ZoneId.of("UTC"))
+                .sessions(Map.of("period", "month", "compare", "previous", "page", "1")).toJson();
+
+        assertTrue(json.contains("\"session_id\":\"long-session\""));
+        assertTrue(json.contains("\"active_seconds\":0"), json);
+        assertFalse(json.contains("\"active_seconds\":691200"), json);
+    }
+
     private static TeamUsageEvent event(String key, String tool, String session, long totalTokens, LocalDate date) {
         return event(key, tool, session, totalTokens, date, Instant.parse(date + "T00:00:00Z"));
     }
