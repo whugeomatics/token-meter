@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class TeamIngestionServiceToolTest {
@@ -157,6 +158,34 @@ final class TeamIngestionServiceToolTest {
         String json = new TeamReportService(store, ZoneId.of("UTC")).report(Map.of("days", "1")).toJson();
         assertTrue(json.contains("\"usage_event_count\":2"));
         assertTrue(json.contains("\"call_count\":1"));
+    }
+
+    @Test
+    void teamReportActiveSecondsIgnoreLongIdleGapsInSameSession() throws Exception {
+        ZoneId zone = ZoneId.of("UTC");
+        LocalDate today = LocalDate.now(zone);
+        String firstTimestamp = today.minusDays(8) + "T10:00:00Z";
+        String secondTimestamp = today + "T10:00:00Z";
+        SqliteTeamUsageStore store = new SqliteTeamUsageStore(tempDir.resolve("team-active.sqlite"));
+        store.initialize();
+        store.upsertDeviceToken("secret-token",
+                new DeviceTokenBinding("team-a", "user-a", "device-a", "Alice", "active"));
+
+        TeamIngestionService ingestion = new TeamIngestionService(store, zone);
+        TeamIngestResult result = ingestion.ingest("secret-token", "{"
+                + "\"client_user_id\":\"user-a\","
+                + "\"client_device_id\":\"device-a\","
+                + "\"events\":["
+                + eventJson("idle-start", "\"tool\":\"codex\"", firstTimestamp, 100)
+                + ","
+                + eventJson("idle-end", "\"tool\":\"codex\"", secondTimestamp, 100)
+                + "]"
+                + "}");
+
+        assertEquals(2, result.accepted());
+        String json = new TeamReportService(store, zone).report(Map.of("days", "30")).toJson();
+        assertTrue(json.contains("\"active_seconds\":0"));
+        assertFalse(json.contains("\"active_seconds\":691200"), json);
     }
 
     @Test
