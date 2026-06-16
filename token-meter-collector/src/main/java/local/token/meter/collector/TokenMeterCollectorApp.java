@@ -24,22 +24,25 @@ public final class TokenMeterCollectorApp {
 
     public static void main(String[] args) throws Exception {
         AppConfig config = AppConfig.from(CollectorEnvFile.withEnvFileDefaults(args, System.getenv()));
-        runCollector(config);
+        runCollector(config, CollectorProgress.stderr());
     }
 
-    private static void runCollector(AppConfig config) throws Exception {
+    private static void runCollector(AppConfig config, CollectorProgress progress) throws Exception {
         Instant uploadTime = Instant.now();
+        progress.step(10, "Loading collector configuration");
         TeamCollector collector = new TeamCollector(new SessionUsageScanner(config.sessionsDir(), config.zone()),
                 config.zone(), config.options().get("server-url"),
                 config.options().get("device-token"), config.options().get("user-id"), config.options().get("device-id"),
                 batchSize(config));
         try {
             if (config.collectClaudeCodeMode()) {
-                CliOutput.writeLine(uploadClaudeCode(config, collector));
+                CliOutput.writeLine(uploadClaudeCode(config, collector, progress));
             } else {
-                CliOutput.writeLine(uploadAllTools(config, collector, uploadTime));
+                CliOutput.writeLine(uploadAllTools(config, collector, uploadTime, progress));
             }
+            progress.step(100, "Collector finished");
         } catch (IOException | SQLException e) {
+            progress.step(100, "Collector failed");
             CliOutput.writeLine(errorJson(e, uploadTime, config.zone()));
             System.exit(1);
         }
@@ -55,22 +58,38 @@ public final class TokenMeterCollectorApp {
                 + "\",\"message\":\"" + Json.escape(e.getMessage()) + "\"}";
     }
 
-    private static String uploadClaudeCode(AppConfig config, TeamCollector collector) throws IOException, SQLException {
+    private static String uploadClaudeCode(AppConfig config, TeamCollector collector, CollectorProgress progress)
+            throws IOException, SQLException {
         int days = reportDays(config);
         LocalDate end = LocalDate.now(config.zone());
         LocalDate start = end.minusDays(days - 1L);
+        progress.step(20, "Opening local collector cache");
         CollectorUsageStore store = collectorStore(config);
-        store.insertEvents(collectClaudeCodeEvents(config, start, end));
-        return collector.uploadEvents(storedEvents(config, store, start, end), start, end, Instant.now());
+        progress.step(45, "Scanning Claude Code usage");
+        List<TeamUsageEvent> collected = collectClaudeCodeEvents(config, start, end);
+        progress.step(70, "Updating local collector cache (" + collected.size() + " events)");
+        store.insertEvents(collected);
+        List<TeamUsageEvent> events = storedEvents(config, store, start, end);
+        progress.step(85, "Uploading usage snapshot (" + events.size() + " events)");
+        return collector.uploadEvents(events, start, end, Instant.now());
     }
 
-    private static String uploadAllTools(AppConfig config, TeamCollector collector, Instant uploadTime) throws IOException, SQLException {
+    private static String uploadAllTools(AppConfig config, TeamCollector collector, Instant uploadTime,
+                                         CollectorProgress progress) throws IOException, SQLException {
         int days = reportDays(config);
         LocalDate end = LocalDate.now(config.zone());
         LocalDate start = end.minusDays(days - 1L);
+        progress.step(20, "Opening local collector cache");
         CollectorUsageStore store = collectorStore(config);
-        store.insertEvents(collectAllToolEvents(config, collector, start, end));
-        return collector.uploadEvents(storedEvents(config, store, start, end), start, end, uploadTime);
+        progress.step(35, "Scanning Codex usage");
+        List<TeamUsageEvent> collected = new ArrayList<>(collector.collectRecentEvents(start, end));
+        progress.step(55, "Scanning Claude Code usage");
+        collected.addAll(collectClaudeCodeEvents(config, start, end));
+        progress.step(70, "Updating local collector cache (" + collected.size() + " events)");
+        store.insertEvents(collected);
+        List<TeamUsageEvent> events = storedEvents(config, store, start, end);
+        progress.step(85, "Uploading usage snapshot (" + events.size() + " events)");
+        return collector.uploadEvents(events, start, end, uploadTime);
     }
 
     static List<TeamUsageEvent> collectAllToolEvents(AppConfig config, TeamCollector collector,
