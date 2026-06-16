@@ -24,4 +24,21 @@ final class DashboardScriptTest {
         assertTrue(html.contains("id=\"localSessionsNext\""));
         assertFalse(script.contains("renderSessions(report.sessions || [])"));
     }
+
+    @Test
+    void dashboardShowsContinuousCollectionNotice() throws Exception {
+        String script = DashboardPage.resource("/static/app.js");
+        String html = DashboardPage.resource("/static/index.html");
+
+        assertTrue(html.contains("Reports show the latest stored snapshot"));
+        assertTrue(script.contains("hasUsage(report)"));
+        assertTrue(script.contains("No usage data collected for the current filters yet."));
+        assertTrue(script.contains("renderPeriodComparison(comparison, hasData)"));
+        assertTrue(script.contains("renderDaily(report.daily || [], 'localDailyChart', 'localDailyStatus', 'localDailyBody', hasData)"));
+        assertTrue(script.contains("renderDaily(report.daily || [], 'teamDailyChart', 'teamDailyStatus', 'teamDailyBody', hasData)"));
+        assertTrue(script.contains("setTrendEmpty"));
+        assertFalse(script.contains("Data is being generated"));
+        assertFalse(script.contains("renderIngestionStatus"));
+        assertFalse(script.contains("/api/ingest/status"));
+    }
 }

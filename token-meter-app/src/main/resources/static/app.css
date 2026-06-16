@@ -162,6 +162,7 @@ select {
 }
 .section-title { font-weight: 700; }
 .status { color: var(--muted); }
+.status.warning { color: #8a5a00; }
 .status.error { color: var(--danger); }
 .pager {
   display: flex;

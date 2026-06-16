@@ -100,8 +100,10 @@ async function load(options = {}) {
     if (state.view === 'local' && state.localSection === 'sessions') {
       await loadSessions();
     }
-    statusEl().textContent = '';
-    statusEl().className = 'status';
+    if (!statusEl().classList.contains('warning')) {
+      statusEl().textContent = '';
+      statusEl().className = 'status';
+    }
     if (options.showToast) {
       showToast(`${viewLabel()} refreshed`);
     }
@@ -170,38 +172,42 @@ function renderPeriodButtons() {
 }
 
 function renderLocal(report) {
+  const hasData = hasUsage(report);
   qs('rangeMeta').textContent = `Local: ${report.range.start_date} to ${report.range.end_date} (${report.range.timezone})`;
+  renderEmptyState(hasData, 'No usage data collected for the current filters yet.');
   renderToolFilter(report.tools || []);
-  qs('localTotalTokens').textContent = tokens(report.summary.total_tokens);
-  qs('localNetTokens').textContent = tokens(report.summary.net_tokens);
-  qs('localCachedTokens').textContent = tokens(report.summary.cached_input_tokens);
-  qs('localCacheRate').textContent = pct(report.summary.cache_hit_rate);
-  qs('localCalls').textContent = tokens(callCount(report.summary));
-  qs('localAvgCall').textContent = tokens(report.summary.avg_tokens_per_call);
-  qs('localAvgSession').textContent = tokens(report.summary.avg_tokens_per_session);
-  qs('localReasoningRatio').textContent = pct(report.summary.reasoning_ratio);
+  qs('localTotalTokens').textContent = metricValue(hasData, tokens(report.summary.total_tokens));
+  qs('localNetTokens').textContent = metricValue(hasData, tokens(report.summary.net_tokens));
+  qs('localCachedTokens').textContent = metricValue(hasData, tokens(report.summary.cached_input_tokens));
+  qs('localCacheRate').textContent = metricValue(hasData, pct(report.summary.cache_hit_rate));
+  qs('localCalls').textContent = metricValue(hasData, tokens(callCount(report.summary)));
+  qs('localAvgCall').textContent = metricValue(hasData, tokens(report.summary.avg_tokens_per_call));
+  qs('localAvgSession').textContent = metricValue(hasData, tokens(report.summary.avg_tokens_per_session));
+  qs('localReasoningRatio').textContent = metricValue(hasData, pct(report.summary.reasoning_ratio));
   renderLocalOverview(report);
-  renderDaily(report.daily || [], 'localDailyChart', 'localDailyStatus', 'localDailyBody');
+  renderDaily(report.daily || [], 'localDailyChart', 'localDailyStatus', 'localDailyBody', hasData);
   renderModels(report.models || [], 'localModelsBody');
   renderTools(report.tools || [], 'localToolsBody', false);
   renderLocalSections();
 }
 
 function renderTeam(report) {
+  const hasData = hasUsage(report);
   state.teamReport = report;
   qs('rangeMeta').textContent = `Team: ${report.range.start_date} to ${report.range.end_date} (${report.range.timezone})`;
+  renderEmptyState(hasData, 'No team usage data for the current filters yet.');
   renderTeamFilter(report.teams || []);
   renderToolFilter(report.tools || []);
-  qs('teamTotalTokens').textContent = tokens(report.summary.total_tokens);
-  qs('teamNetTokens').textContent = tokens(report.summary.net_tokens);
-  qs('teamUsers').textContent = tokens(report.summary.users);
-  qs('teamDevices').textContent = tokens(report.summary.devices);
-  qs('teamCalls').textContent = tokens(callCount(report.summary));
-  qs('teamAvgCall').textContent = tokens(report.summary.avg_tokens_per_call);
-  qs('teamCacheRate').textContent = pct(report.summary.cache_hit_rate);
-  qs('teamReasoningRatio').textContent = pct(report.summary.reasoning_ratio);
+  qs('teamTotalTokens').textContent = metricValue(hasData, tokens(report.summary.total_tokens));
+  qs('teamNetTokens').textContent = metricValue(hasData, tokens(report.summary.net_tokens));
+  qs('teamUsers').textContent = metricValue(hasData, tokens(report.summary.users));
+  qs('teamDevices').textContent = metricValue(hasData, tokens(report.summary.devices));
+  qs('teamCalls').textContent = metricValue(hasData, tokens(callCount(report.summary)));
+  qs('teamAvgCall').textContent = metricValue(hasData, tokens(report.summary.avg_tokens_per_call));
+  qs('teamCacheRate').textContent = metricValue(hasData, pct(report.summary.cache_hit_rate));
+  qs('teamReasoningRatio').textContent = metricValue(hasData, pct(report.summary.reasoning_ratio));
   renderTeamOverview(report);
-  renderDaily(report.daily || [], 'teamDailyChart', 'teamDailyStatus', 'teamDailyBody');
+  renderDaily(report.daily || [], 'teamDailyChart', 'teamDailyStatus', 'teamDailyBody', hasData);
   renderTeamModels(report.team_models || []);
   renderTools(report.tools || [], 'teamToolsBody', true);
   renderUsers(report.users || []);
@@ -211,11 +217,17 @@ function renderTeam(report) {
 }
 
 function renderLocalOverview(report) {
+  const hasData = hasUsage(report);
   const daily = report.daily || [];
   const comparison = report.comparison;
   qs('localOverviewStatus').textContent = comparison
     ? `${comparison.current.label}: ${comparison.current.start_date} to ${comparison.current.end_date}`
     : (daily.length ? `${daily.length} days` : 'No data');
+  if (!hasData) {
+    qs('localOverviewChart').innerHTML = '<div class="empty">No daily trend yet</div>';
+    qs('localOverviewModelsBody').innerHTML = '<tr><td colspan="4" class="empty">No model data yet</td></tr>';
+    return;
+  }
   qs('localOverviewChart').innerHTML = comparison
     ? renderPeriodComparisonChart(comparison.daily || [])
     : renderDailyLineChart(daily);
@@ -227,6 +239,7 @@ function renderLocalOverview(report) {
 }
 
 function renderTeamOverview(report) {
+  const hasData = hasUsage(report);
   const label = state.teamId ? `Team ${state.teamId}` : 'All Teams';
   const comparison = report.comparison;
   qs('teamOverviewStatus').textContent = comparison
@@ -238,14 +251,16 @@ function renderTeamOverview(report) {
   qs('teamComparisonChartTitle').textContent = comparison
     ? `${comparison.current.label} vs ${comparison.previous.label}`
     : 'Current vs Previous';
-  renderPeriodComparison(comparison);
+  renderPeriodComparison(comparison, hasData);
   renderOverviewHealth(report.upload_health || []);
 }
 
-function renderPeriodComparison(comparison) {
-  if (!comparison) {
-    qs('teamWeekTokens').textContent = '0';
-    qs('teamWeekTokensDelta').textContent = 'No comparison data';
+function renderPeriodComparison(comparison, hasData) {
+  if (!comparison || !hasData) {
+    setTrendEmpty('teamWeekTokens', 'teamWeekTokensDelta');
+    setTrendEmpty('teamWeekCalls', 'teamWeekCallsDelta');
+    setTrendEmpty('teamWeekSessions', 'teamWeekSessionsDelta');
+    setTrendEmpty('teamWeekUsers', 'teamWeekUsersDelta');
     qs('teamWeekChart').innerHTML = '<div class="empty">No weekly trend yet</div>';
     qs('teamOverviewUsersBody').innerHTML = '<tr><td colspan="4" class="empty">No user changes yet</td></tr>';
     qs('teamOverviewModelsBody').innerHTML = '<tr><td colspan="4" class="empty">No model changes yet</td></tr>';
@@ -264,6 +279,13 @@ function renderPeriodComparison(comparison) {
   renderComparisonRows(comparison.users || [], 'teamOverviewUsersBody', 'user');
   renderComparisonRows(comparison.models || [], 'teamOverviewModelsBody', 'model');
   renderComparisonRows(comparison.tools || [], 'teamOverviewToolsBody', 'tool');
+}
+
+function setTrendEmpty(valueId, noteId) {
+  qs(valueId).textContent = '--';
+  const note = qs(noteId);
+  note.textContent = 'No comparison data';
+  note.classList.remove('trend-up', 'trend-down');
 }
 
 function setTrendNote(id, delta, rate, previousLabel = 'previous') {
@@ -382,7 +404,14 @@ function renderToolFilter(rows) {
   setToolForView(select.value);
 }
 
-function renderDaily(rows, chartId, statusId, bodyId) {
+function renderDaily(rows, chartId, statusId, bodyId, hasData = rows.length > 0) {
+  if (!hasData) {
+    qs(statusId).textContent = 'No data';
+    qs(statusId).className = 'status';
+    qs(chartId).innerHTML = '<div class="empty">No daily usage yet</div>';
+    qs(bodyId).innerHTML = '<tr><td colspan="9" class="empty">No daily usage yet</td></tr>';
+    return;
+  }
   qs(statusId).textContent = rows.length ? `${rows.length} days` : 'No data';
   qs(statusId).className = 'status';
   qs(chartId).innerHTML = renderDailyLineChart(rows);
@@ -501,6 +530,25 @@ function comparable(value) {
 
 function callCount(row) {
   return row?.call_count ?? row?.usage_event_count ?? 0;
+}
+
+function hasUsage(report) {
+  const summary = report?.summary || {};
+  return callCount(summary) > 0 || Number(summary.total_tokens || 0) > 0;
+}
+
+function metricValue(hasData, value) {
+  return hasData ? value : '--';
+}
+
+function renderEmptyState(hasData, message) {
+  if (hasData) {
+    statusEl().textContent = '';
+    statusEl().className = 'status';
+    return;
+  }
+  statusEl().textContent = message;
+  statusEl().className = 'status warning';
 }
 
 function renderSessions(data) {
