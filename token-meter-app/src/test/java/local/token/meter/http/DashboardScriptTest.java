@@ -41,4 +41,27 @@ final class DashboardScriptTest {
         assertFalse(script.contains("renderIngestionStatus"));
         assertFalse(script.contains("/api/ingest/status"));
     }
+
+    @Test
+    void uploadHealthRecentUploadsColumnUsesTextAlignment() throws Exception {
+        String script = DashboardPage.resource("/static/app.js");
+        String html = DashboardPage.resource("/static/index.html");
+        String css = DashboardPage.resource("/static/app.css");
+
+        assertTrue(html.contains("class=\"recent-uploads\""));
+        assertTrue(script.contains("class=\"recent-uploads\""));
+        assertTrue(css.contains(".recent-uploads"));
+        assertTrue(css.contains("text-align: left"));
+        assertTrue(html.contains("Latest Upload"));
+        assertTrue(script.contains("rows.slice(0, 1)"));
+        assertFalse(script.contains("rows.slice(0, 3)"));
+    }
+
+    @Test
+    void teamDashboardDefaultsToWeekPeriod() throws Exception {
+        String script = DashboardPage.resource("/static/app.js");
+
+        assertTrue(script.contains("localPeriod: 'day', teamPeriod: 'week'"));
+        assertFalse(script.contains("localPeriod: 'day', teamPeriod: 'day'"));
+    }
 }

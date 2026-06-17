@@ -1,4 +1,4 @@
-const state = { localPeriod: 'day', teamPeriod: 'day', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], localTool: '', teamTool: '', toolOptions: [], localSessionsPage: 1, localSessionsTotalPages: 1, localSessionsPageSize: 10, teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
+const state = { localPeriod: 'day', teamPeriod: 'week', view: 'local', localSection: 'overview', teamId: '', teamOptions: [], localTool: '', teamTool: '', toolOptions: [], localSessionsPage: 1, localSessionsTotalPages: 1, localSessionsPageSize: 10, teamSection: 'overview', teamModelSort: 'date', teamModelDir: 'desc', teamReport: null };
 const fmt = new Intl.NumberFormat();
 const qs = (id) => document.getElementById(id);
 const tokens = (n) => fmt.format(n || 0);
@@ -594,12 +594,12 @@ function renderUploadHealth(rows) {
     <td>${tokens(row.latest_accepted)}</td>
     <td>${tokens(row.latest_duplicate)}</td>
     <td>${tokens(row.latest_rejected)}</td>
-    <td>${renderRecentUploads(row.recent_uploads || [])}</td>
+    <td class="recent-uploads">${renderRecentUploads(row.recent_uploads || [])}</td>
   </tr>`).join('') : '<tr><td colspan="11" class="empty">No upload data yet</td></tr>';
 }
 
 function renderRecentUploads(rows) {
-  return rows.slice(0, 3).map((row) => `${escapeHtml(formatDateTime(row.upload_time))} ${escapeHtml(row.status)} A:${tokens(row.accepted)} D:${tokens(row.duplicate)} R:${tokens(row.rejected)}`).join('<br>');
+  return rows.slice(0, 1).map((row) => `${escapeHtml(formatDateTime(row.upload_time))} ${escapeHtml(row.status)} A:${tokens(row.accepted)} D:${tokens(row.duplicate)} R:${tokens(row.rejected)}`).join('<br>');
 }
 
 function renderTeamSections() {

@@ -250,6 +250,12 @@ table { width: 100%; min-width: 840px; border-collapse: collapse; }
 th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
 th:first-child, td:first-child { text-align: left; }
 th { color: var(--muted); font-size: 12px; background: #fbfcfd; }
+.recent-uploads {
+  min-width: 300px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
 .sort-header {
   min-height: auto;
   border: 0;
