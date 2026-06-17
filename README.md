@@ -4,11 +4,11 @@
 
 **English** | [中文](README.zh-CN.md)
 
-Token Meter is a local and team AI CLI token usage dashboard. The project started with Codex usage analytics and now collects both Codex and Claude Code usage for Local and Team views. The next product direction is stronger team token statistics and trend intelligence, not a request gateway or provider routing layer.
+Token Meter is a local and team AI CLI token usage dashboard. The project started with Codex usage analytics and now collects both Codex and Claude Code usage for Local and Team views. The next product direction is reliable incremental team collection first, then stronger trend intelligence, not a request gateway or provider routing layer.
 
 ## Current Status
 
-Current phase: **P5 - Unified CLI usage metrics complete; P6 trend intelligence planned but not implemented**.
+Current phase: **P5 - Unified CLI usage metrics complete; P6 incremental team collection planned but not implemented**.
 
 P1, P2, P3, P4, and P5 have passed implementation verification. P5 review follow-up was resolved on 2026-06-15.
 
@@ -50,11 +50,15 @@ P5, Unified CLI usage metrics:
 - Local SQLite may keep complete source paths only as local internal ingestion state; complete paths must not enter canonical events, team payloads, reports, exports, stdout, or logs.
 - P5 does not add Cursor, Gemini CLI, a local model gateway, provider routing, pricing, budgets, or alerts.
 
-P6, Team Trend Intelligence:
+P6, Incremental Team Collection:
 
 - P6 is the planned next phase.
-- P6 focuses on explaining token usage changes across users, devices, models, tools, and upload health.
-- P6 should answer "what changed?" for week-over-week and month-to-date usage.
+- P6 focuses on making teammate collector uploads truly incremental.
+- The collector should upload only events after the last successful upload cursor.
+- The cursor should use event timestamp plus event key to avoid skipping same-timestamp events.
+- Once a cursor exists, source discovery should use the cursor as the lower bound instead of only the default lookback window.
+- Failed uploads should not advance the cursor; retries can use server-side event-key deduplication as a safety net.
+- Empty successful uploads should act as heartbeat for Upload Health without duplicate usage noise.
 - P6 uses existing canonical usage events and upload health data; it does not collect prompt or response content.
 - P6 does not add a local model gateway, request proxy, provider routing, pricing, billing, or budget control.
 
@@ -97,10 +101,10 @@ Current phase:
 P6 planned baseline:
 
 - [P6 README](docs/P6-2026-06-17-README.md)
-- [P6 Trend Intelligence Contract](docs/contracts/P6-2026-06-17-trend-intelligence.md)
-- [P6 Design](docs/milestones/P6-trend-intelligence/P6-2026-06-17-design.md)
-- [P6 Tasks](docs/milestones/P6-trend-intelligence/P6-2026-06-17-tasks.md)
-- [P6 Acceptance](docs/acceptance/P6-2026-06-17-trend-intelligence.md)
+- [P6 Incremental Team Collection Contract](docs/contracts/P6-2026-06-17-incremental-team-collection.md)
+- [P6 Design](docs/milestones/P6-incremental-team-collection/P6-2026-06-17-design.md)
+- [P6 Tasks](docs/milestones/P6-incremental-team-collection/P6-2026-06-17-tasks.md)
+- [P6 Acceptance](docs/acceptance/P6-2026-06-17-incremental-team-collection.md)
 
 P5 implementation baseline:
 

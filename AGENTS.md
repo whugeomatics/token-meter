@@ -13,7 +13,7 @@
 
 ## 2. 当前阶段
 
-当前阶段：P5 Unified CLI Usage Metrics 已完成并归档。下一阶段计划为 P6 Team Trend Intelligence，已完成规划文档，尚未开始实现。
+当前阶段：P5 Unified CLI Usage Metrics 已完成并归档。下一阶段计划为 P6 Incremental Team Collection，已完成规划文档，尚未开始实现。
 
 P1、P2、P3、P4 已通过验收。P4 聚焦 Claude Code local + teammate usage collection。P4 当前代码已支持 Local 与 Team 默认同时采集 Codex 和 Claude Code，并已完成实现验证。
 
@@ -28,19 +28,24 @@ P5 closeout 结论：
 
 P6 planned scope：
 
-- P6 聚焦团队 token 使用统计和趋势变化解释，不改变采集边界。
-- P6 应回答“本周/本月 token 变化主要来自哪个 user、device、model、tool，以及 upload health 是否异常”。
-- P6 使用现有 canonical usage event、period comparison 和 upload health 数据派生洞察。
-- P6 可以增加 What changed、趋势信号、异常提示和 Markdown summary，但不得采集 prompt、response、raw JSONL、raw API body 或 transcript 正文。
+- P6 聚焦 teammate collector 增量收集/增量上报可靠性，不做大型 dashboard BI 面板。
+- 当前问题：collector 本地 state 已按 `event_key` 去重存储，但上传时仍按 lookback window 重新加载并上传所有已存事件，server 虽然去重但会造成 duplicate upload 噪声。
+- P6 应改为记录上次成功上传 cursor，并在下一次运行时只上传 cursor 之后到本轮 cutoff 之前的 usage events。
+- Cursor 至少包含 `last_successful_event_timestamp` 和 `last_successful_event_key`，避免同一 timestamp 多事件被跳过。
+- 已有 cursor 时，collector source discovery 必须以 cursor 为下界；配置的 lookback window 只用于首次无 cursor 的 bootstrap，避免长时间未运行后漏掉 cursor 之后的事件。
+- 上传失败不得推进 cursor；下次从旧 cursor 重试，server 端 `event_key` 去重只作为失败补偿兜底。
+- 无新增事件时可发送空 payload heartbeat 更新 Upload Health，但不得造成 duplicate usage 噪声。
+- Local dashboard ingestion 是独立路径：Codex local 已有 `source_files` checkpoint + `event_key` 去重；Claude Code local 已有 `event_key` 幂等，若 P6 顺手补 checkpoint，只能作为可靠性清理且不得改变 Local report 语义。
+- P6 不采集 prompt、response、raw JSONL、raw API body 或 transcript 正文。
 - P6 不实现本地模型网关、请求转发代理、provider 自动路由、provider adapter、费用估算、预算、billing 或云同步。
 
 P6 文档基线：
 
 - `docs/P6-2026-06-17-README.md`
-- `docs/contracts/P6-2026-06-17-trend-intelligence.md`
-- `docs/milestones/P6-trend-intelligence/P6-2026-06-17-design.md`
-- `docs/milestones/P6-trend-intelligence/P6-2026-06-17-tasks.md`
-- `docs/acceptance/P6-2026-06-17-trend-intelligence.md`
+- `docs/contracts/P6-2026-06-17-incremental-team-collection.md`
+- `docs/milestones/P6-incremental-team-collection/P6-2026-06-17-design.md`
+- `docs/milestones/P6-incremental-team-collection/P6-2026-06-17-tasks.md`
+- `docs/acceptance/P6-2026-06-17-incremental-team-collection.md`
 
 P5 文档基线：
 
@@ -141,10 +146,10 @@ P3 module 细节见：
 - `docs/acceptance/P5-2026-05-24-unified-cli-usage-metrics.md`
 - `docs/reviews/P5-2026-06-15-unified-cli-usage-metrics-review.md`
 - `docs/P6-2026-06-17-README.md`
-- `docs/contracts/P6-2026-06-17-trend-intelligence.md`
-- `docs/milestones/P6-trend-intelligence/P6-2026-06-17-design.md`
-- `docs/milestones/P6-trend-intelligence/P6-2026-06-17-tasks.md`
-- `docs/acceptance/P6-2026-06-17-trend-intelligence.md`
+- `docs/contracts/P6-2026-06-17-incremental-team-collection.md`
+- `docs/milestones/P6-incremental-team-collection/P6-2026-06-17-design.md`
+- `docs/milestones/P6-incremental-team-collection/P6-2026-06-17-tasks.md`
+- `docs/acceptance/P6-2026-06-17-incremental-team-collection.md`
 
 ## 5. 阶段索引
 
@@ -208,13 +213,13 @@ P5：Unified CLI Usage Metrics，通过。
 - `docs/reviews/P5-2026-06-15-unified-cli-usage-metrics-review.md`
 - `docs/acceptance/P5-2026-05-24-unified-cli-usage-metrics.md`
 
-P6：Team Trend Intelligence，计划中，未开始实现。
+P6：Incremental Team Collection，计划中，未开始实现。
 
 - `docs/P6-2026-06-17-README.md`
-- `docs/contracts/P6-2026-06-17-trend-intelligence.md`
-- `docs/milestones/P6-trend-intelligence/P6-2026-06-17-design.md`
-- `docs/milestones/P6-trend-intelligence/P6-2026-06-17-tasks.md`
-- `docs/acceptance/P6-2026-06-17-trend-intelligence.md`
+- `docs/contracts/P6-2026-06-17-incremental-team-collection.md`
+- `docs/milestones/P6-incremental-team-collection/P6-2026-06-17-design.md`
+- `docs/milestones/P6-incremental-team-collection/P6-2026-06-17-tasks.md`
+- `docs/acceptance/P6-2026-06-17-incremental-team-collection.md`
 
 ## 6. 验证命令
 

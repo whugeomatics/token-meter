@@ -166,8 +166,8 @@ P5 阶段最终关闭。
 
 - P5 README、contract、integration mapping、design、tasks、review、acceptance 均已保留为 P5 文档基线。
 - P5 review follow-up 结果已写入 review 和 acceptance。
-- 根目录 `AGENTS.md` 已更新为当前轻量入口，明确 P5 已完成，P6 Team Trend Intelligence 已规划但未开始实现。
+- 根目录 `AGENTS.md` 已更新为当前轻量入口，明确 P5 已完成，P6 Incremental Team Collection 已规划但未开始实现。
 - P5 阶段工作上下文已归档到 `docs/archive/P5-2026-05-24-AGENTS.md`，避免后续 agent 被旧阶段描述误导。
 - 后续 roadmap 已从本地网关/provider routing 路线调整为团队 token 统计和趋势变化增强。
 
-结论：P5 Unified CLI Usage Metrics 已完成并归档。后续工作不应继续按 P5 follow-up 推进，应进入 P6 规划文档定义的趋势洞察方向。
+结论：P5 Unified CLI Usage Metrics 已完成并归档。后续工作不应继续按 P5 follow-up 推进，应进入 P6 规划文档定义的增量团队采集方向。
