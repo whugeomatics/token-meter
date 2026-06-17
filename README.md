@@ -4,11 +4,11 @@
 
 **English** | [中文](README.zh-CN.md)
 
-Token Meter is a local AI CLI usage dashboard and future routing tool. The project started with Codex usage analytics and now collects both Codex and Claude Code usage for Local and Team views, with a later path toward more CLI tools and a local OpenAI-compatible model gateway.
+Token Meter is a local and team AI CLI token usage dashboard. The project started with Codex usage analytics and now collects both Codex and Claude Code usage for Local and Team views. The next product direction is stronger team token statistics and trend intelligence, not a request gateway or provider routing layer.
 
 ## Current Status
 
-Current phase: **P5 - Unified CLI usage metrics complete; next phase not started**.
+Current phase: **P5 - Unified CLI usage metrics complete; P6 trend intelligence planned but not implemented**.
 
 P1, P2, P3, P4, and P5 have passed implementation verification. P5 review follow-up was resolved on 2026-06-15.
 
@@ -50,6 +50,14 @@ P5, Unified CLI usage metrics:
 - Local SQLite may keep complete source paths only as local internal ingestion state; complete paths must not enter canonical events, team payloads, reports, exports, stdout, or logs.
 - P5 does not add Cursor, Gemini CLI, a local model gateway, provider routing, pricing, budgets, or alerts.
 
+P6, Team Trend Intelligence:
+
+- P6 is the planned next phase.
+- P6 focuses on explaining token usage changes across users, devices, models, tools, and upload health.
+- P6 should answer "what changed?" for week-over-week and month-to-date usage.
+- P6 uses existing canonical usage events and upload health data; it does not collect prompt or response content.
+- P6 does not add a local model gateway, request proxy, provider routing, pricing, billing, or budget control.
+
 ## Stage Results
 
 Each completed phase should add links to its screenshots or result artifacts here.
@@ -86,6 +94,14 @@ Current phase:
 
 - [Current AGENTS.md](AGENTS.md)
 
+P6 planned baseline:
+
+- [P6 README](docs/P6-2026-06-17-README.md)
+- [P6 Trend Intelligence Contract](docs/contracts/P6-2026-06-17-trend-intelligence.md)
+- [P6 Design](docs/milestones/P6-trend-intelligence/P6-2026-06-17-design.md)
+- [P6 Tasks](docs/milestones/P6-trend-intelligence/P6-2026-06-17-tasks.md)
+- [P6 Acceptance](docs/acceptance/P6-2026-06-17-trend-intelligence.md)
+
 P5 implementation baseline:
 
 - [P5 README](docs/P5-2026-05-24-README.md)
@@ -96,7 +112,7 @@ P5 implementation baseline:
 - [P5 Tasks](docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-tasks.md)
 - [P5 Acceptance](docs/acceptance/P5-2026-05-24-unified-cli-usage-metrics.md)
 - [P5 Review](docs/reviews/P5-2026-06-15-unified-cli-usage-metrics-review.md)
-- [Archived P5 AGENTS](docs/archive/P5-2026-05-24-AGENTS.md)
+- [Archived P5 AGENTS](docs/archive/P5-2026-06-17-AGENTS)
 
 P4 implementation baseline:
 

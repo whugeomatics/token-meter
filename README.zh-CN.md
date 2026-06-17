@@ -100,7 +100,7 @@ P5 实现基线：
 - [P5 Tasks](docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-tasks.md)
 - [P5 Acceptance](docs/acceptance/P5-2026-05-24-unified-cli-usage-metrics.md)
 - [P5 Review](docs/reviews/P5-2026-06-15-unified-cli-usage-metrics-review.md)
-- [P5 AGENTS 归档](docs/archive/P5-2026-05-24-AGENTS.md)
+- [P5 AGENTS 归档](docs/archive/P5-2026-06-17-AGENTS)
 
 P4 实现基线：
 

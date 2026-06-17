@@ -13,7 +13,7 @@
 
 ## 2. 当前阶段
 
-当前阶段：P5 Unified CLI Usage Metrics 已完成，下一阶段尚未启动。
+当前阶段：P5 Unified CLI Usage Metrics 已完成并归档。下一阶段计划为 P6 Team Trend Intelligence，已完成规划文档，尚未开始实现。
 
 P1、P2、P3、P4 已通过验收。P4 聚焦 Claude Code local + teammate usage collection。P4 当前代码已支持 Local 与 Team 默认同时采集 Codex 和 Claude Code，并已完成实现验证。
 
@@ -24,7 +24,23 @@ P5 closeout 结论：
 - Claude Code flat usage 和 Team ingest 的 `total_tokens` fallback 均按 P5 canonical 公式处理。
 - Team ingest 缺失 `source_kind` / `source_quality` 时为兼容旧 payload 写入 `unknown`。
 - Local SQLite 允许在 `source_files.path` 保存完整本地路径，用于本机内部增量采集和问题定位；完整路径不得进入 canonical event、team payload、report、export、stdout 或日志。
-- P5 completion 详见 review、acceptance 和归档文档。后续进入 P6 前必须先补齐 P6 README、contract、design、tasks 和 acceptance。
+- P5 completion 详见 review、acceptance 和归档文档。
+
+P6 planned scope：
+
+- P6 聚焦团队 token 使用统计和趋势变化解释，不改变采集边界。
+- P6 应回答“本周/本月 token 变化主要来自哪个 user、device、model、tool，以及 upload health 是否异常”。
+- P6 使用现有 canonical usage event、period comparison 和 upload health 数据派生洞察。
+- P6 可以增加 What changed、趋势信号、异常提示和 Markdown summary，但不得采集 prompt、response、raw JSONL、raw API body 或 transcript 正文。
+- P6 不实现本地模型网关、请求转发代理、provider 自动路由、provider adapter、费用估算、预算、billing 或云同步。
+
+P6 文档基线：
+
+- `docs/P6-2026-06-17-README.md`
+- `docs/contracts/P6-2026-06-17-trend-intelligence.md`
+- `docs/milestones/P6-trend-intelligence/P6-2026-06-17-design.md`
+- `docs/milestones/P6-trend-intelligence/P6-2026-06-17-tasks.md`
+- `docs/acceptance/P6-2026-06-17-trend-intelligence.md`
 
 P5 文档基线：
 
@@ -97,7 +113,7 @@ P3 module 细节见：
 
 ## 4. 当前阶段必读
 
-处理 P5 follow-up 前至少先读：
+处理 P6 规划、P6 实现或涉及 P5 口径的 follow-up 前至少先读：
 
 - `docs/archive/P1-2026-04-29-AGENTS.md`
 - `docs/archive/P2-2026-04-30-AGENTS.md`
@@ -124,6 +140,11 @@ P3 module 细节见：
 - `docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-tasks.md`
 - `docs/acceptance/P5-2026-05-24-unified-cli-usage-metrics.md`
 - `docs/reviews/P5-2026-06-15-unified-cli-usage-metrics-review.md`
+- `docs/P6-2026-06-17-README.md`
+- `docs/contracts/P6-2026-06-17-trend-intelligence.md`
+- `docs/milestones/P6-trend-intelligence/P6-2026-06-17-design.md`
+- `docs/milestones/P6-trend-intelligence/P6-2026-06-17-tasks.md`
+- `docs/acceptance/P6-2026-06-17-trend-intelligence.md`
 
 ## 5. 阶段索引
 
@@ -186,6 +207,14 @@ P5：Unified CLI Usage Metrics，通过。
 - `docs/milestones/P5-unified-cli-usage-metrics/P5-2026-05-24-tasks.md`
 - `docs/reviews/P5-2026-06-15-unified-cli-usage-metrics-review.md`
 - `docs/acceptance/P5-2026-05-24-unified-cli-usage-metrics.md`
+
+P6：Team Trend Intelligence，计划中，未开始实现。
+
+- `docs/P6-2026-06-17-README.md`
+- `docs/contracts/P6-2026-06-17-trend-intelligence.md`
+- `docs/milestones/P6-trend-intelligence/P6-2026-06-17-design.md`
+- `docs/milestones/P6-trend-intelligence/P6-2026-06-17-tasks.md`
+- `docs/acceptance/P6-2026-06-17-trend-intelligence.md`
 
 ## 6. 验证命令
 
